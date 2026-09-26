@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rapport de forge</title>
+<style>
+:root{--bg:#f6f1e7;--card:#fffdf8;--ink:#2a2420;--muted:#6f655c;--line:#e2d8c6;--seal:#9e2a2b;--ok:#2f6b4f;--warn:#a8671b}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1917;--card:#252220;--ink:#eee6da;--muted:#a89e92;--line:#3a3530;--seal:#c8494a;--ok:#6fb892;--warn:#e0a152}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Georgia,"Times New Roman",serif}
+main{max-width:860px;margin:0 auto;padding:32px 16px 64px}
+header{display:flex;gap:24px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--line);padding-bottom:24px}
+header .t{flex:1;min-width:240px}
+h1{font-size:1.9rem;margin:0 0 6px}
+.sub{color:var(--muted);font-style:italic}
+h2{font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase;margin:36px 0 12px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px}
+ul{margin:0;padding-left:1.2em}li{margin:6px 0}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:system-ui,sans-serif;font-size:.9rem}
+.flow span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.flow i{color:var(--muted);font-style:normal}
+.kill li::marker{content:"✕  ";color:var(--seal)}
+.lock li::marker{content:"✓  ";color:var(--ok)}
+.warn li::marker{content:"!  ";color:var(--warn);font-weight:bold}
+.personas{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.p{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:.93rem}
+.p b{display:block}.p em{color:var(--muted)}
+.cards{font-family:ui-monospace,monospace;letter-spacing:.05em}
+footer{margin-top:40px;color:var(--muted);font-size:.85rem;text-align:center}
+</style>
+</head>
+<body>
+<main>
+<header>
+<svg width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="Sceau HARDENED">
+  <g fill="var(--seal)">
+    <path d="M75 6c8 0 10 7 17 9s14-2 19 4 1 13 5 19 12 6 13 14-6 11-6 18 7 11 4 18-11 6-15 12-2 14-9 17-12-3-19-1-11 9-19 9-10-7-17-9-14 2-19-4-1-13-5-19-12-6-13-14 6-11 6-18-7-11-4-18 11-6 15-12 2-14 9-17 12 3 19 1S67 6 75 6z"/>
+  </g>
+  <circle cx="75" cy="75" r="48" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="2"/>
+  <circle cx="75" cy="75" r="42" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="75" y="70" text-anchor="middle" fill="#fff" font-family="Georgia,serif" font-size="15" font-weight="bold" letter-spacing="1.5">HARDENED</text>
+  <text x="75" y="90" text-anchor="middle" fill="#fff" fill-opacity=".85" font-family="Georgia,serif" font-size="10" letter-spacing="1">26 · IX · 2026</text>
+</svg>
+<div class="t">
+  <h1>Planning poker pour ateliers d'affinage</h1>
+  <div class="sub">Idée forgée par Eric, scrum master. Objectif : clarifier avant de formaliser.</div>
+  <p>Issue : <strong>idée durcie</strong>. Le déroulé, les rôles et le périmètre V1 sont tranchés ; il reste un point ouvert.</p>
+</div>
+</header>
+
+<h2>Le cycle d'un ticket</h2>
+<div class="flow">
+  <span>Vote caché</span><i>→</i><span>Révélation nominative</span><i>→</i><span>Discussion des écarts</span><i>→</i><span>Revote (tours précédents visibles)</span><i>→</i><span>Validation par l'animateur</span><i>→</i><span>Ticket suivant</span>
+</div>
+
+<h2>Décisions verrouillées</h2>
+<div class="card lock"><ul>
+  <li><b>Deux rôles.</b> L'animateur crée la session et pilote tout ; il vote ou non ; son rôle est transmissible. Les votants rejoignent par lien + pseudo unique.</li>
+  <li><b>Vote.</b> Carte modifiable jusqu'à la révélation ; un arrivant peut voter sur le ticket en cours ; chacun voit qui a déjà voté, sans la valeur.</li>
+  <li><b>Cartes fixes :</b> <span class="cards">0 1 2 3 5 8 13 21 ? ☕</span></li>
+  <li><b>Valeur finale</b> choisie explicitement par l'animateur, ou ticket marqué « non estimé ».</li>
+  <li><b>Tickets</b> saisis à la main (liste collée, ajout à la volée) ; <b>export</b> récapitulatif copiable / CSV.</li>
+  <li><b>Session éphémère mais robuste :</b> survit aux rafraîchissements, expire après ~24h.</li>
+  <li><b>Accès</b> en ligne par lien long non devinable, sans mot de passe.</li>
+</ul></div>
+
+<h2>Écarté de la V1</h2>
+<div class="card kill"><ul>
+  <li><b>Intégration Jira</b> : authentification, API et mapping trop coûteux ; la recopie manuelle est acceptée.</li>
+  <li><b>Comptes et historique</b> : inutiles pour des sessions éphémères ; l'export sert d'archive.</li>
+  <li><b>Jeu de cartes configurable</b>, ½ / 40 / 100.</li>
+</ul></div>
+
+<h2>Points faibles qui ont survécu</h2>
+<div class="card warn"><ul>
+  <li>Si l'animateur est déconnecté, il ne peut pas transmettre son rôle lui-même : mécanisme à définir.</li>
+  <li>Qui possède le lien entre dans la session ; les titres de tickets sont exposés (risque accepté).</li>
+  <li>Hypothèse d'usage : visio / hybride, 3 à 12 personnes, une session à la fois.</li>
+</ul></div>
+
+<h2>Ceux qui ont mis l'idée à l'épreuve</h2>
+<div class="personas">
+  <div class="p"><b>🎨 Sally · UX</b><em>« Qui appuie sur révéler ? Qui inscrit le 5 ? »</em></div>
+  <div class="p"><b>🏗️ Winston · Architecte</b><em>« Saisie manuelle ou Jira : le coût n'a rien à voir. »</em></div>
+  <div class="p"><b>📊 Mary · Analyste</b><em>« Et si l'animateur ferme son onglet ? »</em></div>
+  <div class="p"><b>🔒 Vex · Sécurité</b><em>« Qui a le lien entre. Qu'exposez-vous ? »</em></div>
+  <div class="p"><b>🧑‍💻 Karim · Développeur</b><em>« Le scrum master ne doit pas fausser la moyenne. »</em></div>
+  <div class="p"><b>📌 Claire · Product Owner</b><em>« Je ne retaperai pas 15 stories. »</em></div>
+  <div class="p"><b>🔁 Thomas · Autre scrum master</b><em>« Persistance = comptes. »</em></div>
+  <div class="p"><b>🙋 Inès · Développeuse junior</b><em>« Sans carte ?, je vote 8 au hasard. »</em></div>
+  <div class="p"><b>🏢 Laurent · Responsable IT</b><em>« Où ça tourne ? »</em></div>
+</div>
+
+<footer>BMad Forge · planning-poker-affinage · voir forged-idea.md pour la version à transmettre</footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session sur PC</title>
+<style>
+/*
+  Maquette : écran Session sur PC, thème clair, 13 participants (NFR-4).
+  Règle d'Eric (.memlog, dernière entrée) : AUCUN défilement de page sur PC avec 13 participants,
+  tour révélé compris, dans une zone utile de 1280 × 650 px (écran 1366 × 768 moins le navigateur).
+  Chaque cadre a une zone de page (.viewport) d'exactement 1280 × 650 px en overflow:hidden, montée
+  en colonne flex sans rétrécissement : si une bande dépassait, la main serait rognée en bas, et
+  cela se verrait. Le faux navigateur (.chrome, 40 px) s'ajoute au-dessus.
+
+  Cadre 1 : tour caché, 9 votes sur 12, vu par Eric (observateur) : « Tu observes » + « Je veux voter ».
+  Cadre 2 : le même tour vu par Sofia (votante) : carte 8 choisie et soulevée, sa place montre la
+            face 8 avec « visible par toi seul ».
+  Cadre 3 : tour révélé sans consensus, vu par Sofia. Votes numériques (le « ? » de Lucas exclu) :
+            8, 5, 3, 5, 13, 5, 5, 5, 8, 3, 5 → 11 votes, somme 65, moyenne 65 / 11 = 5,909… → « 5,9 » ;
+            plus votée 5 · 6 votes (Karim, Tom, Hugo, Maëlle, Paul, Nora) ; min 3 ; max 13.
+            Le résultat est intégré à la barre d'action sur une seule rangée ; le compteur disparaît.
+
+  Budget vertical (DESIGN.md, Layout & Spacing, « Sur PC, l'écran Session tient sans défilement ») :
+    barre du haut 56 px
+    + marge 16 + table (2 rangées de 7 places au plus ; cartes 44 × 66 ; rangée ≈ 108 px avec
+      pseudo et mention ; écart 12 ; rembourrage 12 + 12) ≈ 252 px
+    + marge 12 + barre d'action / de décision 72 px
+    + main 130 px (soulèvement 12 + marge 12 + cartes 60 × 90 + marge 15 + filet 1)
+    = ≈ 538 px sur 650 ; l'espace restant reste libre entre la barre d'action et la main.
+  Si la fenêtre était moins haute, seule la table défilerait dans sa zone (non illustré ici).
+
+  Sections qui font foi :
+  - DESIGN.md : Colors (thème clair, jetons ci-dessous), Typography (label, card-value 26 px,
+    card-corner 12 px, result-stat 20 px ; moyenne PC en result-stat agrandi à 28 px), Layout &
+    Spacing (trois bandes ; seat-card-width-pc 44 px ; hand-card-width-pc 60 px ;
+    session-min-height-pc 650 px ; touch-min 44 px), Elevation & Depth, Shapes, Components
+    (poker-card : vraie carte, face blanche, liseré intérieur card-frame, valeur centrale et index
+    dans deux coins opposés ; poker-card-selected : contour primary 3 px, soulevée de 12 px ;
+    seat-card-empty / back / face ; mentions de place en label muted-foreground ; déconnecté :
+    opacité normale, pseudo muted-foreground, pastille grise, « déconnecté » ; top-bar 56 px ;
+    copy-link-button ; participant-menu ; action-bar ; Panneau de résultat sur PC).
+  - EXPERIENCE.md : Responsive & Platform (≥ 900 px : aucun défilement de page, grille de 7 places
+    au plus par ligne, résultat dans la barre d'action, main sur une ligne fixée en bas),
+    Component Patterns (Main de cartes, observateur), Accessibility Floor (main = barre d'outils
+    « Ta carte » de boutons bascule aria-pressed).
+  Motif du dos : deux repeating-linear-gradient à 45° et -45° à arrêts nets (pas de dégradé doux),
+  marge blanche obtenue par une ombre intérieure card-face.
+  HTML autonome : CSS en ligne, polices système, aucun JavaScript, aucun accès réseau.
+  En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas cette maquette.
+*/
+:root{
+  --background:#F6F4F0; --surface:#FFFFFF; --surface-muted:#EFECE6; --foreground:#1F2330;
+  --muted-foreground:#646B78; --border:#E3DED5; --primary:#CF3F4A; --primary-foreground:#FFFFFF;
+  --primary-soft:#FDECEC; --card-back:#E0646C; --card-back-pattern:#F4B3B7;
+  --card-face:#FFFFFF; --card-ink:#CF3F4A; --card-frame:#F2C4C7;
+  --presence-online:#16754F; --presence-offline:#7E8490;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-card:12px; --r-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+a{text-decoration:none;color:inherit}
+body{background:#D9D6D0;font-family:var(--font);color:var(--foreground);padding:32px 16px 64px;min-width:1312px}
+.caption{max-width:1280px;margin:0 auto 12px;font-size:14px;font-weight:500;line-height:1.4;color:#3a3f4c}
+.caption strong{font-weight:700}
+.shot{margin-bottom:56px}
+
+/* Cadre de navigateur : la zone de page fait exactement 1280 × 650 */
+.browser{width:1280px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.18);background:#fff}
+.chrome{height:40px;background:#E8E6E1;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #d3d0ca}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#c9c5bd;display:block}
+.url{margin-left:16px;flex:1;max-width:520px;height:26px;border-radius:13px;background:#fff;font-size:13px;color:#646B78;display:flex;align-items:center;padding:0 12px}
+.size{margin-left:auto;font-size:12px;color:#646B78}
+.viewport{width:1280px;height:650px;overflow:hidden;background:var(--background);display:flex;flex-direction:column}
+.viewport > *{flex-shrink:0}
+
+/* Cartes à jouer : anatomie commune (main et table) */
+.pc{font-variant-emoji:text;position:relative;display:flex;align-items:center;justify-content:center;border-radius:var(--r-card);background:var(--card-face);color:var(--card-ink);border:1px solid var(--border);font:700 26px/1 var(--font);font-variant-numeric:tabular-nums}
+.pc::before{content:"";position:absolute;inset:3px;border:1px solid var(--card-frame);border-radius:9px;pointer-events:none}
+.pc .k{position:absolute;font:700 12px/1 var(--font);background:var(--card-face);padding:0 1px}
+.pc .k.tl{top:5px;left:5px}
+.pc .k.br{bottom:5px;right:5px;transform:rotate(180deg)}
+/* Dos : marge blanche, puis croisillons en losanges card-back-pattern sur card-back */
+.back{background-color:var(--card-back);background-image:repeating-linear-gradient(45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px);border:1px solid var(--border);box-shadow:inset 0 0 0 4px var(--card-face)}
+
+/* Bande 1 : barre du haut, 56 px */
+.topbar{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:600;line-height:1.3}
+.brand-mark{width:20px;height:30px;border-radius:5px;box-shadow:inset 0 0 0 2px var(--card-face)}
+.top-actions{display:flex;gap:8px;align-items:center}
+
+.btn{min-height:44px;padding:0 16px;border-radius:var(--r-md);font:500 14px/1.4 var(--font);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;white-space:nowrap}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-secondary{background:var(--surface);color:var(--foreground);border-color:var(--border)}
+.chev{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px)}
+
+/* Bande 2 : table (grille de 7 places au plus) + barre d'action */
+.main{width:960px;margin:0 auto;padding-top:16px;flex:1 0 auto}
+.table{background:var(--surface);border-radius:var(--r-lg);padding:12px;box-shadow:0 1px 3px rgba(31,35,48,.06)}
+.seats{display:grid;grid-template-columns:repeat(7,1fr);gap:12px 8px}
+.seat{display:flex;flex-direction:column;align-items:center;gap:4px;min-height:108px}
+.seat.offline .who{color:var(--muted-foreground)}
+.sc{width:44px;height:66px;border-radius:var(--r-card);flex:none}
+.sc.empty{border:2px dashed var(--muted-foreground);background:transparent}
+.sc.obs{width:auto;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;line-height:1.4;color:var(--muted-foreground)}
+.who{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;line-height:1.4;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:var(--r-full);background:var(--presence-online);flex:none}
+.dot.off{background:var(--presence-offline)}
+.me{color:var(--muted-foreground);font-weight:400}
+.sub{text-align:center;font-size:14px;font-weight:500;color:var(--muted-foreground);line-height:1.3;white-space:nowrap;margin-top:-2px}
+
+.actionbar{height:72px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:0 16px 0 20px;background:var(--surface);border-radius:var(--r-lg);box-shadow:0 1px 3px rgba(31,35,48,.06)}
+.counter{font-size:14px;font-weight:500;line-height:1.4;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.actionbar .btns{display:flex;gap:12px}
+
+/* Résultat intégré à la barre d'action (Panneau de résultat sur PC) */
+.stats{display:flex;align-items:center;gap:32px}
+.lbl{font-size:14px;font-weight:500;line-height:1.4;color:var(--muted-foreground)}
+.avg{padding-right:32px;border-right:1px solid var(--border)}
+.avg-v{font-size:28px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat-v{font-size:20px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;margin-top:2px}
+.stat-v .n{font-size:14px;font-weight:500;line-height:1.4;color:var(--muted-foreground)}
+
+/* Bande 3 : main fixée en bas, 10 cartes de 60 × 90 sur une ligne */
+.hand{background:var(--surface-muted);border-top:1px solid var(--border);padding:24px 16px 15px;display:flex;justify-content:center;gap:12px}
+.card{width:60px;height:90px}
+.card.sel{border:3px solid var(--primary);transform:translateY(-12px);box-shadow:0 10px 18px rgba(207,63,74,.30);transition:transform 150ms}
+.hand.locked .card{opacity:.45;filter:grayscale(.6)}
+.observer{align-items:center;gap:16px;padding:20px 16px}
+.observer p{font-size:16px;line-height:1.5;color:var(--muted-foreground)}
+.link{min-height:44px;display:inline-flex;align-items:center;padding:0 8px;font:500 14px/1.4 var(--font);color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+</style>
+</head>
+<body>
+
+<!-- Cadre 1 -->
+<section class="shot" id="cadre-1">
+  <p class="caption"><strong>1. Vu par Eric (observateur).</strong> Tour caché, 9 votes sur 12 ; Inès, Yanis et Lucas n'ont pas encore voté ; Maëlle est déconnectée, son dos de carte reste en place. Eric n'a pas de main : « Tu observes » et « Je veux voter ».</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/s/k7q2m9</div><span class="size">zone utile 1280 × 650</span></div>
+    <div class="viewport">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div>
+        <div class="top-actions">
+          <a class="btn btn-secondary" href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg>Copier le lien</a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Eric">Eric <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <main class="main">
+        <section class="table" aria-label="Table des participants">
+          <div class="seats">
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Sofia</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Karim</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Léa</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Tom</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Inès</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Hugo</div>
+            </div>
+            <div class="seat offline">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot off"></span>Maëlle</div>
+              <div class="sub">déconnecté</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Paul</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Chloé</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Yanis</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Nora</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Lucas</div>
+            </div>
+            <div class="seat">
+              <div class="sc obs">observe</div>
+              <div class="who"><span class="dot"></span>Eric <span class="me">(toi)</span></div>
+            </div>
+          </div>
+        </section>
+        <div class="actionbar">
+          <span class="counter">9 votes sur 12</span>
+          <div class="btns">
+            <a class="btn btn-secondary" href="#">Effacer les votes</a>
+            <a class="btn btn-primary" href="#">Révéler les votes</a>
+          </div>
+        </div>
+      </main>
+      <footer class="hand observer">
+        <p>Tu observes</p>
+        <a class="link" href="#">Je veux voter</a>
+      </footer>
+    </div>
+  </div>
+</section>
+
+<!-- Cadre 2 -->
+<section class="shot" id="cadre-2">
+  <p class="caption"><strong>2. Le même tour vu par Sofia (votante).</strong> Sa place vient en premier et montre la face « 8 » avec « visible par toi seul » ; dans la main de 10 cartes, la 8 garde sa face blanche, prend un contour rouge épais et se soulève de 12 px.</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/s/k7q2m9</div><span class="size">zone utile 1280 × 650</span></div>
+    <div class="viewport">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div>
+        <div class="top-actions">
+          <a class="btn btn-secondary" href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg>Copier le lien</a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Sofia">Sofia <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <main class="main">
+        <section class="table" aria-label="Table des participants">
+          <div class="seats">
+            <div class="seat">
+              <div class="sc pc" aria-label="ta carte : 8, visible par toi seul"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></div>
+              <div class="who"><span class="dot"></span>Sofia <span class="me">(toi)</span></div>
+              <div class="sub" aria-hidden="true">visible par toi seul</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Karim</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Léa</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Tom</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Inès</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Hugo</div>
+            </div>
+            <div class="seat offline">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot off"></span>Maëlle</div>
+              <div class="sub">déconnecté</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Paul</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Chloé</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Yanis</div>
+            </div>
+            <div class="seat">
+              <div class="sc back" aria-label="a voté"></div>
+              <div class="who"><span class="dot"></span>Nora</div>
+            </div>
+            <div class="seat">
+              <div class="sc empty" aria-label="n'a pas encore voté"></div>
+              <div class="who"><span class="dot"></span>Lucas</div>
+            </div>
+            <div class="seat">
+              <div class="sc obs">observe</div>
+              <div class="who"><span class="dot"></span>Eric</div>
+            </div>
+          </div>
+        </section>
+        <div class="actionbar">
+          <span class="counter">9 votes sur 12</span>
+          <div class="btns">
+            <a class="btn btn-secondary" href="#">Effacer les votes</a>
+            <a class="btn btn-primary" href="#">Révéler les votes</a>
+          </div>
+        </div>
+      </main>
+      <footer class="hand" role="toolbar" aria-label="Ta carte">
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 0"><span class="k tl" aria-hidden="true">0</span>0<span class="k br" aria-hidden="true">0</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 1"><span class="k tl" aria-hidden="true">1</span>1<span class="k br" aria-hidden="true">1</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 2"><span class="k tl" aria-hidden="true">2</span>2<span class="k br" aria-hidden="true">2</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 3"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></a>
+        <a class="card pc sel" href="#" role="button" aria-pressed="true" aria-label="Carte 8"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 13"><span class="k tl" aria-hidden="true">13</span>13<span class="k br" aria-hidden="true">13</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 21"><span class="k tl" aria-hidden="true">21</span>21<span class="k br" aria-hidden="true">21</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte je ne sais pas"><span class="k tl" aria-hidden="true">?</span>?<span class="k br" aria-hidden="true">?</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte pause café"><span class="k tl" aria-hidden="true">☕︎</span>☕︎<span class="k br" aria-hidden="true">☕︎</span></a>
+      </footer>
+    </div>
+  </div>
+</section>
+
+<!-- Cadre 3 -->
+<section class="shot" id="cadre-3">
+  <p class="caption"><strong>3. Tour révélé, sans consensus, vu par Sofia.</strong> Toutes les faces sont visibles. Le résultat remplace le compteur dans la barre d'action, sur une seule rangée : Moyenne 5,9 (65 / 11 votes numériques, le « ? » de Lucas exclu), Plus votée 5 · 6 votes, Min 3, Max 13. La main est grisée ; « Nouveau tour » est le bouton principal.</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/s/k7q2m9</div><span class="size">zone utile 1280 × 650</span></div>
+    <div class="viewport">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div>
+        <div class="top-actions">
+          <a class="btn btn-secondary" href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg>Copier le lien</a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Sofia">Sofia <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <main class="main">
+        <section class="table" aria-label="Table des participants">
+          <div class="seats">
+            <div class="seat">
+              <div class="sc pc" aria-label="8"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></div>
+              <div class="who"><span class="dot"></span>Sofia <span class="me">(toi)</span></div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot"></span>Karim</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="3"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></div>
+              <div class="who"><span class="dot"></span>Léa</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot"></span>Tom</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="13"><span class="k tl" aria-hidden="true">13</span>13<span class="k br" aria-hidden="true">13</span></div>
+              <div class="who"><span class="dot"></span>Inès</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot"></span>Hugo</div>
+            </div>
+            <div class="seat offline">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot off"></span>Maëlle</div>
+              <div class="sub">déconnecté</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot"></span>Paul</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="8"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></div>
+              <div class="who"><span class="dot"></span>Chloé</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="3"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></div>
+              <div class="who"><span class="dot"></span>Yanis</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div>
+              <div class="who"><span class="dot"></span>Nora</div>
+            </div>
+            <div class="seat">
+              <div class="sc pc" aria-label="?"><span class="k tl" aria-hidden="true">?</span>?<span class="k br" aria-hidden="true">?</span></div>
+              <div class="who"><span class="dot"></span>Lucas</div>
+            </div>
+            <div class="seat">
+              <div class="sc obs">observe</div>
+              <div class="who"><span class="dot"></span>Eric</div>
+            </div>
+          </div>
+        </section>
+        <div class="actionbar revealed" role="region" aria-label="Résultat">
+          <div class="stats">
+            <div class="avg"><div class="lbl">Moyenne</div><div class="avg-v">5,9</div></div>
+            <div class="stat"><div class="lbl">Plus votée</div><div class="stat-v">5 <span class="n">· 6 votes</span></div></div>
+            <div class="stat"><div class="lbl">Min</div><div class="stat-v">3</div></div>
+            <div class="stat"><div class="lbl">Max</div><div class="stat-v">13</div></div>
+          </div>
+          <div class="btns">
+            <a class="btn btn-secondary" href="#">Masquer</a>
+            <a class="btn btn-primary" href="#">Nouveau tour</a>
+          </div>
+        </div>
+      </main>
+      <footer class="hand locked" role="toolbar" aria-label="Ta carte" aria-disabled="true">
+        <span class="card pc"><span class="k tl" aria-hidden="true">0</span>0<span class="k br" aria-hidden="true">0</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">1</span>1<span class="k br" aria-hidden="true">1</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">2</span>2<span class="k br" aria-hidden="true">2</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></span>
+        <span class="card pc sel"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">13</span>13<span class="k br" aria-hidden="true">13</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">21</span>21<span class="k br" aria-hidden="true">21</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">?</span>?<span class="k br" aria-hidden="true">?</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">☕︎</span>☕︎<span class="k br" aria-hidden="true">☕︎</span></span>
+      </footer>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -19,7 +19,7 @@ Le vocabulaire est fixé par le glossaire (§3). Les exigences fonctionnelles (F
 
 Nous voulons un outil de planning poker **qui appartienne à l'équipe** : sans publicité, sans abonnement, et que nous pouvons faire évoluer. Il remplace Scrum Poker Online pendant nos ateliers d'affinage, à distance ou en hybride.
 
-L'outil fait une seule chose, et doit la faire de façon fiable : permettre à 3 à 12 personnes de voter à l'aveugle, de révéler les votes, d'en discuter, puis de recommencer pour le ticket suivant. Une coupure réseau ou un changement d'appareil ne doit jamais faire perdre sa place ou son vote. Seul un plantage ou un redémarrage du serveur peut faire perdre une session, et ce risque est accepté (NFR-1).
+L'outil fait une seule chose, et doit la faire de façon fiable : permettre à 3 à 13 personnes de voter à l'aveugle, de révéler les votes, d'en discuter, puis de recommencer pour le ticket suivant. Une coupure réseau ou un changement d'appareil ne doit jamais faire perdre sa place ou son vote. Seul un plantage ou un redémarrage du serveur peut faire perdre une session, et ce risque est accepté (NFR-1).
 
 Il n'y a **aucun rôle privilégié**. N'importe qui peut lancer une session, révéler les votes, les masquer ou les effacer. L'atelier ne dépend donc de personne. Ce choix repose sur un principe : **l'équipe se fait confiance**. C'est cette confiance qui rend acceptables l'accès par simple lien et l'absence de garde-fou contre les fausses manœuvres (FR-15, §7.2).
 
@@ -161,7 +161,11 @@ Tout participant peut masquer un tour révélé. Le tour redevient caché pour t
 #### FR-14 : Synthèse du tour révélé
 Quand un tour est révélé, tous les participants voient :
 - la **moyenne**, arrondie à une décimale et affichée au format français (par exemple « 5,3 »), sans les cartes `?` et `☕`. Elle ne s'affiche pas s'il n'y a aucun vote numérique ;
-- l'indication de **consensus** quand tous les votes numériques portent sur la même carte, avec au moins deux votes numériques.
+- l'indication de **consensus** quand tous les votes numériques portent sur la même carte, avec au moins deux votes numériques ;
+- la **valeur la plus votée** parmi les votes numériques, avec son nombre de votes. En cas d'égalité, toutes les valeurs à égalité sont affichées ;
+- la **valeur minimale** et la **valeur maximale** parmi les votes numériques.
+
+Les cartes `?` et `☕` sont exclues de tous ces calculs. S'il n'y a aucun vote numérique, aucun de ces chiffres ne s'affiche.
 
 ### 4.5 Nouveau tour
 
@@ -191,7 +195,7 @@ Quand plusieurs participants agissent presque en même temps (par exemple, l'un 
 - **NFR-1b, pas de mise en veille en séance :** l'application ne doit jamais être mise en veille par l'hébergeur tant qu'au moins une session a des participants connectés. Contrairement à un plantage, une mise en veille en pleine séance n'est **pas** un risque accepté, parce qu'elle se reproduirait à chaque atelier. C'est un critère éliminatoire pour choisir l'hébergeur.
 - **NFR-2, démarrage à froid :** si l'hébergeur a mis l'application en veille en dehors des séances, le premier chargement peut prendre jusqu'à 30 s. Pendant ce temps, la page affiche « Réveil du serveur… », et aucune erreur technique ne doit apparaître. Si le serveur ne répond toujours pas au bout de 60 s, la page affiche un message d'indisponibilité et un bouton pour réessayer.
 - **NFR-3, réactivité :** en fonctionnement normal, tout changement d'état est propagé dans le délai de diffusion fixé par FR-16.
-- **NFR-4, capacité :** une session accueille au moins 12 participants, et au moins 5 sessions tournent simultanément sans dégradation. Cela représente au moins 60 connexions temps réel simultanées, plus une marge pour les reconnexions et les onglets multiples.
+- **NFR-4, capacité :** une session accueille au moins 13 participants, et au moins 5 sessions tournent simultanément sans dégradation. Cela représente au moins 65 connexions temps réel simultanées, plus une marge pour les reconnexions et les onglets multiples.
 - **NFR-5, appareils :** l'interface fonctionne sur PC et sur téléphone, dans les deux dernières versions majeures de Chrome, Edge, Firefox et Safari, iOS et Android compris. Elle reste utilisable dès 360 px de large, et chaque carte offre une zone tactile d'au moins 44 × 44 px.
 - **NFR-6, sécurité et confidentialité :** le lien de session est impossible à deviner en pratique. Tout le trafic passe en HTTPS. Aucune donnée personnelle n'est collectée en dehors du pseudo. Aucune publicité ni aucun traceur tiers n'est présent. Toutes les données d'une session sont supprimées à son expiration (FR-4). **Risque accepté :** toute personne qui a le lien de session peut entrer dans la session. Il n'existe ni contrôle d'accès ni expulsion d'un participant, conformément au principe de confiance (§1).
 - **NFR-7, langue :** l'interface est entièrement en français.
@@ -241,7 +245,7 @@ Ces éléments ne sont pas abandonnés : si l'équipe les réclame, ils pourront
 ## 9. Questions ouvertes
 
 1. Quel nom donner au produit ?
-2. Quel hébergeur gratuit choisir pour respecter NFR-1b (pas de mise en veille en séance), NFR-2 et NFR-4 (60 connexions temps réel) ? À traiter dans l'architecture.
+2. Quel hébergeur gratuit choisir pour respecter NFR-1b (pas de mise en veille en séance), NFR-2 et NFR-4 (65 connexions temps réel) ? À traiter dans l'architecture.
 
 ## 10. Index des hypothèses
 

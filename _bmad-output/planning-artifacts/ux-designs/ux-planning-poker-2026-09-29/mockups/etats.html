@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écrans d'état</title>
+<style>
+/*
+  Maquette : planche des écrans d'état sur PC (~1280 px), thème clair.
+  1. Réveil du serveur (0 à 60 s), avec une animation CSS de cartes qui se battent.
+  2. Serveur indisponible (au-delà de 60 s), bouton « Réessayer ».
+  3. Session introuvable, bouton « Créer une session ».
+  4. Session vide : Eric seul à la table, « Partage le lien pour inviter ton équipe ».
+
+  Sections qui font foi :
+  - DESIGN.md : Colors (rouge de marque #CF3F4A ; rouge brique foncé danger #8E2A1E, toujours avec
+    icône + texte, pour les erreurs définitives ; titre du réveil en couleur de texte, sans ambre),
+    Typography (display pour les titres des écrans d'état, body pour le texte), Layout & Spacing,
+    Shapes, Components (state-screen : colonne centrée de 400 px ; trois dos de carte animés pour
+    le réveil, icône pour une erreur, puis titre en display, foreground pour le réveil et danger
+    pour une erreur, texte en body, puis bouton principal ; top-bar 56 px, fond surface, filet
+    border ; copy-link-button : secondaire avec icône de lien ; participant-menu : pseudo + flèche ;
+    seat-card-back : dos rouge à croisillons en losanges avec marge blanche, pour l'animation et
+    le logo ; button-primary ; button-secondary).
+  - EXPERIENCE.md : Information Architecture (Session introuvable, Réveil du serveur), Voice and Tone,
+    Component Patterns (Écran d'état, Bouton « Copier le lien »), State Patterns (Réveil du
+    serveur ; Serveur indisponible ; Session disparue ou expirée ; Session vide : barre d'action
+    masquée, « Copier le lien » seul bouton principal), Interaction Primitives
+    (prefers-reduced-motion), Key Flows > Flux 1 étape 2 et « En cas d'échec ».
+  Seule animation : celle du réveil du serveur (dos rouges), coupée si prefers-reduced-motion.
+  Motif du dos : deux repeating-linear-gradient à 45° et -45° à arrêts nets. Aucun JavaScript.
+  En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas cette maquette.
+*/
+:root{
+  --background:#F6F4F0; --surface:#FFFFFF; --surface-muted:#EFECE6; --foreground:#1F2330;
+  --muted-foreground:#646B78; --border:#E3DED5; --primary:#CF3F4A; --primary-foreground:#FFFFFF;
+  --card-back:#E0646C; --card-back-pattern:#F4B3B7; --card-face:#FFFFFF; --danger:#8E2A1E;
+  --presence-online:#16754F;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-card:12px; --r-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+a{text-decoration:none;color:inherit}
+body{background:#D9D6D0;font-family:var(--font);color:var(--foreground);padding:32px 16px 64px}
+.shot{margin-bottom:56px}
+.caption{max-width:1280px;margin:0 auto 12px;font-size:14px;font-weight:500;line-height:1.4;color:#3a3f4c}
+.caption strong{font-weight:700}
+
+.browser{width:1280px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.18);background:#fff}
+.chrome{height:40px;background:#E8E6E1;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #d3d0ca}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#c9c5bd;display:block}
+.url{margin-left:16px;flex:1;max-width:520px;height:26px;border-radius:13px;background:#fff;font-size:13px;color:#646B78;display:flex;align-items:center;padding:0 12px}
+.viewport{position:relative;height:560px;background:var(--background);display:flex;flex-direction:column}
+.viewport.tall{height:760px}
+
+.topbar{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:600;line-height:1.3}
+/* Dos de carte : marge blanche, puis croisillons en losanges (arrêts nets) */
+.back{background-color:var(--card-back);background-image:repeating-linear-gradient(45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px);border:1px solid var(--border);box-shadow:inset 0 0 0 4px var(--card-face)}
+.brand-mark{width:20px;height:30px;border-radius:5px;box-shadow:inset 0 0 0 2px var(--card-face)}
+.top-actions{display:flex;gap:8px}
+
+.btn{min-height:44px;padding:0 20px;border-radius:var(--r-md);font:500 14px/1.4 var(--font);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;white-space:nowrap}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-secondary{background:var(--surface);color:var(--foreground);border-color:var(--border)}
+.chev{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px)}
+
+.center{flex:1;width:400px;max-width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 16px}
+h1{font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-.01em}
+h1.danger{color:var(--danger)}
+.state-ico{color:var(--danger);width:40px;height:40px;margin-bottom:16px}
+.lead{margin-top:12px;font-size:16px;line-height:1.5;color:var(--muted-foreground)}
+.center .btn{margin-top:32px}
+
+/* Animation de réveil : trois dos de carte qui se battent */
+.deck{position:relative;width:120px;height:84px;margin-bottom:32px}
+.deck span{position:absolute;left:32px;top:0;width:56px;height:84px;border-radius:var(--r-card);box-shadow:inset 0 0 0 4px var(--card-face),0 2px 6px rgba(31,35,48,.12)}
+.deck span:nth-child(1){animation:shuffle-left 1.4s ease-in-out infinite}
+.deck span:nth-child(2){animation:shuffle-right 1.4s ease-in-out infinite .2s}
+.deck span:nth-child(3){animation:shuffle-left 1.4s ease-in-out infinite .4s}
+@keyframes shuffle-left{0%,100%{transform:translateX(0) rotate(0)}40%{transform:translateX(-30px) rotate(-8deg)}70%{transform:translateX(0) rotate(0)}}
+@keyframes shuffle-right{0%,100%{transform:translateX(0) rotate(0)}40%{transform:translateX(30px) rotate(8deg)}70%{transform:translateX(0) rotate(0)}}
+@media (prefers-reduced-motion: reduce){.deck span{animation:none!important}}
+
+/* Session vide */
+.main{width:960px;margin:0 auto;padding-top:32px}
+.table{background:var(--surface);border-radius:var(--r-lg);padding:24px;box-shadow:0 1px 3px rgba(31,35,48,.06)}
+.table h2{font-size:18px;font-weight:600;line-height:1.3;margin-bottom:24px}
+.seats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px 16px}
+.seat{display:flex;flex-direction:column;align-items:center;gap:8px}
+.sc{width:56px;height:84px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--muted-foreground)}
+.who{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;line-height:1.4}
+.me{color:var(--muted-foreground);font-weight:400}
+.dot{width:10px;height:10px;border-radius:var(--r-full);background:var(--presence-online)}
+.invite{margin-top:24px;padding:32px 16px;border-radius:var(--r-lg);background:var(--surface-muted);text-align:center}
+.invite p{font-size:16px;line-height:1.5;margin-bottom:16px}
+.hand{position:absolute;left:0;right:0;bottom:0;background:var(--surface-muted);border-top:1px solid var(--border);padding:28px 16px;display:flex;justify-content:center;align-items:center;gap:16px}
+.hand p{font-size:16px;line-height:1.5;color:var(--muted-foreground)}
+.link{min-height:44px;display:inline-flex;align-items:center;padding:0 8px;font:500 14px/1.4 var(--font);color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+</style>
+</head>
+<body>
+
+<section class="shot">
+  <p class="caption"><strong>1. Réveil du serveur (0 à 60 s).</strong> Trois dos de carte rouges à croisillons se battent en boucle ; le titre reste en couleur de texte ; l'animation s'arrête si l'utilisateur a demandé à réduire les animations.</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/</div></div>
+    <div class="viewport">
+      <header class="topbar"><div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div></header>
+      <div class="center" role="status">
+        <div class="deck" aria-hidden="true"><span class="back"></span><span class="back"></span><span class="back"></span></div>
+        <h1>Réveil du serveur…</h1>
+        <p class="lead">Ça prend parfois quelques secondes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="shot">
+  <p class="caption"><strong>2. Serveur indisponible (au-delà de 60 s).</strong> Icône, puis titre en rouge brique foncé, dans une colonne de 400 px ; un seul bouton principal « Réessayer ».</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/</div></div>
+    <div class="viewport">
+      <header class="topbar"><div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div></header>
+      <div class="center">
+        <svg class="state-ico" width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 5.5v5.5"/><circle cx="10" cy="14.2" r=".6" fill="currentColor"/></svg>
+        <h1 class="danger">Le serveur ne répond pas.</h1>
+        <a class="btn btn-primary" href="#">Réessayer</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="shot">
+  <p class="caption"><strong>3. Session introuvable.</strong> Lien inconnu ou expiré, ou session disparue ; icône, puis titre en rouge brique ; on propose d'en créer une nouvelle.</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/s/k7q2m9</div></div>
+    <div class="viewport">
+      <header class="topbar"><div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div></header>
+      <div class="center">
+        <svg class="state-ico" width="40" height="40" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 5.5v5.5"/><circle cx="10" cy="14.2" r=".6" fill="currentColor"/></svg>
+        <h1 class="danger">Cette session n'existe plus.</h1>
+        <p class="lead">Elle a peut-être expiré, ou le serveur a redémarré.</p>
+        <a class="btn btn-primary" href="#">Créer une session</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="shot">
+  <p class="caption"><strong>4. Session vide.</strong> Flux 1, étape 2 : Eric (observateur) est seul à la table ; « Copier le lien » devient le seul bouton principal, dans la table ; la barre d'action est masquée.</p>
+  <div class="browser">
+    <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/s/k7q2m9</div></div>
+    <div class="viewport tall">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark back" aria-hidden="true"></span>Planning Poker</div>
+        <div class="top-actions">
+          <a class="btn btn-secondary" href="#"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg>Copier le lien</a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Eric">Eric <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <main class="main">
+        <section class="table" aria-label="Table des participants">
+          <h2>Participants</h2>
+          <div class="seats">
+            <div class="seat"><div class="sc">observe</div><div class="who"><span class="dot"></span>Eric <span class="me">(toi)</span></div></div>
+          </div>
+          <div class="invite">
+            <p>Partage le lien pour inviter ton équipe</p>
+            <a class="btn btn-primary" href="#">Copier le lien</a>
+          </div>
+        </section>
+        <!-- Barre d'action masquée tant que je suis seul (EXPERIENCE.md, State Patterns : Session vide) -->
+      </main>
+      <footer class="hand">
+        <p>Tu observes</p>
+        <a class="link" href="#">Je veux voter</a>
+      </footer>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

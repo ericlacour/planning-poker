@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Session sur téléphone</title>
+<style>
+/*
+  Maquette : écran Session sur téléphone (390 x 844), thème sombre, vu par Sofia.
+  (a) tour caché, carte 8 choisie ; (b) tour révélé avec consensus, tiroir replié et résultat
+  condensé « Moy. 5 · Plus votée 5 (7) · Min 5 · Max 5 » ; (c) reconnexion en cours.
+
+  Sections qui font foi :
+  - DESIGN.md : Colors (jetons -dark uniquement ; rouge de marque primary-dark #F28B8F ;
+    card-face-dark reste claire en thème sombre ; liseré card-frame-dark #E3B3B7), Typography
+    (label, card-value, card-corner, result-stat), Layout & Spacing (main en tiroir de 2 lignes
+    de 5 cartes, marges de 16 px), Elevation & Depth (thème sombre : surfaces plus claires au lieu
+    des ombres), Shapes, Components (poker-card : vraie carte à jouer, face claire, liseré
+    intérieur card-frame-dark, valeur centrale et index dans deux coins opposés ;
+    poker-card-selected : contour card-ink-dark #B8323D 3 px, soulevée de 12 px ;
+    seat-card-back : marge claire puis croisillons en losanges ; seat-card-face ; ma place en
+    tour caché : « visible par toi seul » en label muted-foreground ; déconnecté : opacité
+    normale, pseudo muted-foreground, pastille grise, libellé « déconnecté » ; Panneau de résultat
+    sur téléphone : une ligne en label, moyenne en result-stat, badge à côté ; consensus-badge ;
+    status-banner ; top-bar 56 px fond surface ; copy-link-button en icône de lien avec libellé
+    accessible ; participant-menu : pseudo + flèche ; action-bar : compteur en label
+    muted-foreground, boutons espacés de 12 px, bouton inactif à 40 % ; presence-dot ;
+    button-primary/secondary).
+  - EXPERIENCE.md : Component Patterns (Barre du haut, Main de cartes, Table des participants,
+    Barre d'action, Panneau de résultat, Bandeau d'état, Bouton « Copier le lien », Menu du
+    participant), Accessibility Floor (main = barre d'outils « Ta carte » de boutons bascule),
+    State Patterns (Tour caché, votes en cours ; Tour révélé ; Consensus ; Participant
+    déconnecté ; Reconnexion en cours), Responsive & Platform (< 600 px : tiroir replié quand le
+    tour est révélé, résultat condensé juste au-dessus de la barre d'action, la table récupère la
+    place), Key Flows > Flux 2 étapes 2 et 3, Flux 1 étape 6 (consensus à 5).
+  Motif du dos : deux repeating-linear-gradient à 45° et -45° à arrêts nets (pas de dégradé doux).
+  En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas cette maquette.
+*/
+:root{
+  --background:#14161D; --surface:#1D2029; --surface-muted:#262A35; --foreground:#ECEDF0;
+  --muted-foreground:#9CA2AE; --border:#2E3340; --primary:#F28B8F; --primary-foreground:#14161D;
+  --primary-soft:#3A2226; --card-back:#C9505A; --card-back-pattern:#E38A90;
+  --card-face:#F4F1EC; --card-ink:#B8323D; --card-frame:#E3B3B7;
+  --success:#42C58E; --success-soft:#173A2C; --warning:#E3A94B; --warning-soft:#3A2E17;
+  --presence-online:#42C58E; --presence-offline:#7A8191;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-card:12px; --r-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+a{text-decoration:none;color:inherit}
+body{background:#0B0C10;font-family:var(--font);color:var(--foreground);padding:32px 16px 64px}
+.board{display:flex;flex-wrap:wrap;gap:40px;justify-content:center}
+.col{width:414px}
+.caption{font-size:14px;font-weight:500;line-height:1.4;color:#C9CCD3;margin-bottom:12px;min-height:60px}
+.caption strong{font-weight:700;color:#fff}
+
+/* Cadre de téléphone */
+.phone{width:414px;padding:12px;border-radius:52px;background:#2B2D33;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.screen{width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--background);display:flex;flex-direction:column;position:relative}
+.status{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:600}
+.status .notch{width:120px;height:30px;border-radius:15px;background:#000}
+
+/* Cartes à jouer : anatomie commune (main et table) ; la face reste claire en thème sombre */
+.pc{font-variant-emoji:text;position:relative;display:flex;align-items:center;justify-content:center;border-radius:var(--r-card);background:var(--card-face);color:var(--card-ink);border:1px solid var(--border);font:700 26px/1 var(--font);font-variant-numeric:tabular-nums}
+.pc::before{content:"";position:absolute;inset:3px;border:1px solid var(--card-frame);border-radius:9px;pointer-events:none}
+.pc .k{position:absolute;font:700 12px/1 var(--font);background:var(--card-face);padding:0 1px}
+.pc .k.tl{top:5px;left:6px}
+.pc .k.br{bottom:5px;right:6px;transform:rotate(180deg)}
+/* Dos : marge claire, puis croisillons en losanges card-back-pattern sur card-back */
+.back{background-color:var(--card-back);background-image:repeating-linear-gradient(45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px);border:1px solid var(--border);box-shadow:inset 0 0 0 4px var(--card-face)}
+
+/* Barre du haut compacte */
+.topbar{height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand-mark{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.brand-mark span{width:22px;height:32px;border-radius:5px;box-shadow:inset 0 0 0 2px var(--card-face)}
+.top-actions{display:flex;gap:8px}
+.btn{min-height:44px;padding:0 14px;border-radius:var(--r-md);font:500 14px/1.4 var(--font);display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;white-space:nowrap}
+.btn-primary{background:var(--primary);color:var(--primary-foreground)}
+.btn-secondary{background:var(--surface);color:var(--foreground);border-color:var(--border)}
+.btn-icon{width:44px;padding:0}
+.chev{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px)}
+
+/* Bandeau d'état */
+.banner{flex:none;margin:8px 16px 0;min-height:44px;padding:0 16px;border-radius:var(--r-md);background:var(--warning-soft);color:var(--warning);font-size:14px;font-weight:500;display:flex;align-items:center}
+
+/* Table (zone qui défile) */
+.scroll{flex:1;overflow:hidden;padding:12px 16px}
+.table{background:var(--surface);border-radius:var(--r-lg);padding:12px 16px 16px}
+.table h2{font-size:18px;font-weight:600;line-height:1.3;margin-bottom:12px}
+.seats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 8px}
+.seat{display:flex;flex-direction:column;align-items:center;gap:6px}
+.seat.offline .who{color:var(--muted-foreground)}
+.sc{width:44px;height:66px;border-radius:var(--r-card)}
+.sc.empty{border:2px dashed var(--muted-foreground)}
+.sc.obs{width:auto;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--muted-foreground)}
+.who{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:500;line-height:1.4}
+.me{color:var(--muted-foreground);font-weight:400}
+.dot{width:10px;height:10px;border-radius:var(--r-full);background:var(--presence-online);flex:none}
+.dot.off{background:var(--presence-offline)}
+.sub{text-align:center;white-space:nowrap;font-size:14px;font-weight:500;color:var(--muted-foreground);line-height:1.4;margin-top:-4px}
+
+/* Panneau de résultat condensé sur une ligne, juste au-dessus de la barre d'action (tour révélé) */
+.result{flex:none;margin:0 16px 12px;background:var(--surface);border-radius:var(--r-lg);padding:8px 8px 8px 12px;display:flex;align-items:center;gap:6px}
+.res-line{flex:1;min-width:0;white-space:nowrap;font-size:14px;font-weight:500;line-height:1.4;font-variant-numeric:tabular-nums}
+.res-line .avg{font-size:20px;font-weight:700;line-height:1.2}
+.res-line .sep{color:var(--muted-foreground)}
+.badge{flex:none;padding:4px 8px;border-radius:var(--r-full);background:var(--success-soft);color:var(--success);font-size:14px;font-weight:500;line-height:1.4}
+
+/* Barre d'action au-dessus du tiroir */
+.actionbar{flex:none;padding:10px 16px 12px;background:var(--surface);border-top:1px solid var(--border)}
+.counter{display:block;font-size:14px;font-weight:500;line-height:1.4;color:var(--muted-foreground);font-variant-numeric:tabular-nums;margin-bottom:8px}
+.actionbar .btns{display:flex;gap:12px}
+.actionbar .btn{flex:1}
+.actionbar.last{padding-bottom:30px}
+
+/* Tiroir de la main : 2 lignes de 5 */
+.drawer{flex:none;background:var(--surface-muted);border-top:1px solid var(--border);padding:16px 16px 26px;display:grid;grid-template-columns:repeat(5,1fr);gap:14px 8px}
+.card{aspect-ratio:2/3;min-width:44px}
+.card.sel{border:3px solid var(--card-ink);transform:translateY(-12px);transition:transform 150ms}
+.disabled{opacity:.4}
+.home{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#ECEDF0;opacity:.6}
+</style>
+</head>
+<body>
+<div class="board">
+
+  <!-- (a) Tour caché -->
+  <div class="col">
+    <p class="caption"><strong>(a) Tour caché.</strong> Sofia a choisi 8 : la carte garde sa face claire, prend un contour rouge épais et se soulève ; sa place montre la face avec « visible par toi seul ». 5 votes sur 7 ; Maëlle déconnectée : pseudo en gris, pastille grise, carte inchangée.</p>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:41</span><span class="notch"></span><span>5G</span></div>
+      <header class="topbar">
+        <span class="brand-mark" role="img" aria-label="Planning Poker"><span class="back"></span></span>
+        <div class="top-actions">
+          <a class="btn btn-secondary btn-icon" href="#" aria-label="Copier le lien"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg></a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Sofia">Sofia <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <div class="scroll">
+        <section class="table">
+          <h2>Participants</h2>
+          <div class="seats">
+            <div class="seat"><div class="sc pc" aria-label="ta carte : 8, visible par toi seul"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></div><div class="who"><span class="dot"></span>Sofia <span class="me">(toi)</span></div><div class="sub" aria-hidden="true">visible par toi seul</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Karim</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Léa</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Tom</div></div>
+            <div class="seat"><div class="sc empty" aria-label="n'a pas encore voté"></div><div class="who"><span class="dot"></span>Inès</div></div>
+            <div class="seat"><div class="sc empty" aria-label="n'a pas encore voté"></div><div class="who"><span class="dot"></span>Hugo</div></div>
+            <div class="seat offline"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot off"></span>Maëlle</div><div class="sub">déconnecté</div></div>
+            <div class="seat"><div class="sc obs">observe</div><div class="who"><span class="dot"></span>Eric</div></div>
+          </div>
+        </section>
+      </div>
+      <div class="actionbar">
+        <span class="counter">5 votes sur 7</span>
+        <div class="btns"><a class="btn btn-secondary" href="#">Effacer les votes</a><a class="btn btn-primary" href="#">Révéler les votes</a></div>
+      </div>
+      <div class="drawer" role="toolbar" aria-label="Ta carte">
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 0"><span class="k tl" aria-hidden="true">0</span>0<span class="k br" aria-hidden="true">0</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 1"><span class="k tl" aria-hidden="true">1</span>1<span class="k br" aria-hidden="true">1</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 2"><span class="k tl" aria-hidden="true">2</span>2<span class="k br" aria-hidden="true">2</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 3"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></a>
+        <a class="card pc sel" href="#" role="button" aria-pressed="true" aria-label="Carte 8"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 13"><span class="k tl" aria-hidden="true">13</span>13<span class="k br" aria-hidden="true">13</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte 21"><span class="k tl" aria-hidden="true">21</span>21<span class="k br" aria-hidden="true">21</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte je ne sais pas"><span class="k tl" aria-hidden="true">?</span>?<span class="k br" aria-hidden="true">?</span></a>
+        <a class="card pc" href="#" role="button" aria-pressed="false" aria-label="Carte pause café"><span class="k tl" aria-hidden="true">☕︎</span>☕︎<span class="k br" aria-hidden="true">☕︎</span></a>
+      </div>
+      <span class="home"></span>
+    </div></div>
+  </div>
+
+  <!-- (b) Tour révélé avec consensus -->
+  <div class="col">
+    <p class="caption"><strong>(b) Tour révélé, consensus.</strong> Toutes les faces à 5. Le tiroir de cartes est replié ; le résultat tient sur une ligne, « Moy. 5 · Plus votée 5 (7) · Min 5 · Max 5 », avec le badge « Consensus ! », juste au-dessus de la barre d'action. La table récupère la place ; « Nouveau tour » est le bouton principal.</p>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:43</span><span class="notch"></span><span>5G</span></div>
+      <header class="topbar">
+        <span class="brand-mark" role="img" aria-label="Planning Poker"><span class="back"></span></span>
+        <div class="top-actions">
+          <a class="btn btn-secondary btn-icon" href="#" aria-label="Copier le lien"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg></a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Sofia">Sofia <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <div class="scroll">
+        <section class="table">
+          <h2>Participants</h2>
+          <div class="seats">
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Sofia <span class="me">(toi)</span></div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Karim</div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Léa</div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Tom</div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Inès</div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Hugo</div></div>
+            <div class="seat"><div class="sc pc" aria-label="5"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></div><div class="who"><span class="dot"></span>Maëlle</div></div>
+            <div class="seat"><div class="sc obs">observe</div><div class="who"><span class="dot"></span>Eric</div></div>
+          </div>
+        </section>
+      </div>
+      <section class="result" aria-label="Résultat">
+        <p class="res-line">Moy. <span class="avg">5</span>&#8239;<span class="sep">·</span>&#8239;Plus votée 5 (7)&#8239;<span class="sep">·</span>&#8239;Min 5&#8239;<span class="sep">·</span>&#8239;Max 5</p>
+        <span class="badge">Consensus&nbsp;!</span>
+      </section>
+      <div class="actionbar last">
+        <span class="counter">7 votes sur 7</span>
+        <div class="btns"><a class="btn btn-secondary" href="#">Masquer</a><a class="btn btn-primary" href="#">Nouveau tour</a></div>
+      </div>
+      <!-- Tiroir de cartes replié pendant le tour révélé ; il se redéploie au tour suivant -->
+      <span class="home"></span>
+    </div></div>
+  </div>
+
+  <!-- (c) Reconnexion -->
+  <div class="col">
+    <p class="caption"><strong>(c) Reconnexion en cours.</strong> Bandeau ambre sous la barre du haut ; la table reste visible, les actions sont désactivées ; la carte 8 reste soulevée.</p>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:42</span><span class="notch"></span><span>—</span></div>
+      <header class="topbar">
+        <span class="brand-mark" role="img" aria-label="Planning Poker"><span class="back"></span></span>
+        <div class="top-actions">
+          <a class="btn btn-secondary btn-icon" href="#" aria-label="Copier le lien"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.8-2.8a3 3 0 0 0-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.8 2.8a3 3 0 0 0 4.2 4.2L10 14.2"/></svg></a>
+          <a class="btn btn-secondary" href="#" aria-label="Menu du participant : Sofia">Sofia <span class="chev" aria-hidden="true"></span></a>
+        </div>
+      </header>
+      <div class="banner" role="status">Reconnexion…</div>
+      <div class="scroll">
+        <section class="table">
+          <h2>Participants</h2>
+          <div class="seats">
+            <div class="seat"><div class="sc pc" aria-label="ta carte : 8, visible par toi seul"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></div><div class="who"><span class="dot"></span>Sofia <span class="me">(toi)</span></div><div class="sub" aria-hidden="true">visible par toi seul</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Karim</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Léa</div></div>
+            <div class="seat"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot"></span>Tom</div></div>
+            <div class="seat"><div class="sc empty" aria-label="n'a pas encore voté"></div><div class="who"><span class="dot"></span>Inès</div></div>
+            <div class="seat"><div class="sc empty" aria-label="n'a pas encore voté"></div><div class="who"><span class="dot"></span>Hugo</div></div>
+            <div class="seat offline"><div class="sc back" aria-label="a voté"></div><div class="who"><span class="dot off"></span>Maëlle</div><div class="sub">déconnecté</div></div>
+            <div class="seat"><div class="sc obs">observe</div><div class="who"><span class="dot"></span>Eric</div></div>
+          </div>
+        </section>
+      </div>
+      <div class="actionbar">
+        <span class="counter">5 votes sur 7</span>
+        <div class="btns disabled" aria-disabled="true"><span class="btn btn-secondary">Effacer les votes</span><span class="btn btn-primary">Révéler les votes</span></div>
+      </div>
+      <div class="drawer disabled" aria-disabled="true">
+        <span class="card pc"><span class="k tl" aria-hidden="true">0</span>0<span class="k br" aria-hidden="true">0</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">1</span>1<span class="k br" aria-hidden="true">1</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">2</span>2<span class="k br" aria-hidden="true">2</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">3</span>3<span class="k br" aria-hidden="true">3</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">5</span>5<span class="k br" aria-hidden="true">5</span></span>
+        <span class="card pc sel"><span class="k tl" aria-hidden="true">8</span>8<span class="k br" aria-hidden="true">8</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">13</span>13<span class="k br" aria-hidden="true">13</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">21</span>21<span class="k br" aria-hidden="true">21</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">?</span>?<span class="k br" aria-hidden="true">?</span></span>
+        <span class="card pc"><span class="k tl" aria-hidden="true">☕︎</span>☕︎<span class="k br" aria-hidden="true">☕︎</span></span>
+      </div>
+      <span class="home"></span>
+    </div></div>
+  </div>
+
+</div>
+</body>
+</html>

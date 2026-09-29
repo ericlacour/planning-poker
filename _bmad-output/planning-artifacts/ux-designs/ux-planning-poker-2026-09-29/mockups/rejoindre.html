@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rejoindre et Accueil</title>
+<style>
+/*
+  Maquette : écran Rejoindre sur téléphone (390 x 844, thème clair), au repos (champ au focus)
+  puis avec le pseudo refusé ; écran Accueil sur PC (~1280 px, thème clair).
+
+  Sections qui font foi :
+  - DESIGN.md : Colors (thème clair ; rouge de marque #CF3F4A pour le bouton principal, le rôle
+    choisi, le focus et le curseur ; rouge brique foncé danger #8E2A1E, toujours avec icône + texte,
+    pour le pseudo refusé), Typography (display pour le titre, body pour le champ, label pour les
+    libellés et les boutons), Layout & Spacing (marges de 16 px sur téléphone, zones de 44 px
+    minimum, colonne unique, panneau de 400 px sur PC), Shapes (rounded.sm pour les champs,
+    rounded.md pour les boutons, rounded.lg pour les panneaux), Components (entry-form : panneau
+    surface 400 px rounded.lg, champ bordé border, primary au focus, danger en erreur avec message
+    et icône « ! » dessous ; rôle en deux boutons segmentés « Je vote » / « J'observe », option
+    choisie remplie en primary-soft avec contour primary ; bouton principal sur toute la largeur ;
+    button-primary ; dos de carte à croisillons pour le logo).
+  Motif du dos : deux repeating-linear-gradient à 45° et -45° à arrêts nets, marge blanche.
+  - EXPERIENCE.md : Information Architecture (Accueil, Rejoindre), Voice and Tone (libellés fixes),
+    Component Patterns (Formulaire d'entrée : « Ton pseudo », groupe « Ton rôle »), State Patterns
+    (Pseudo refusé), Key Flows > Flux 1 étape 1 (Eric, « J'observe », « Créer une session »),
+    Flux 2 étape 1 et « En cas d'échec ».
+  En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas cette maquette.
+*/
+:root{
+  --background:#F6F4F0; --surface:#FFFFFF; --surface-muted:#EFECE6; --foreground:#1F2330;
+  --muted-foreground:#646B78; --border:#E3DED5; --primary:#CF3F4A; --primary-foreground:#FFFFFF;
+  --primary-soft:#FDECEC; --card-back:#E0646C; --card-back-pattern:#F4B3B7; --card-face:#FFFFFF;
+  --danger:#8E2A1E;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --r-sm:6px; --r-md:10px; --r-lg:16px; --r-card:12px; --r-full:9999px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+a{text-decoration:none;color:inherit}
+body{background:#D9D6D0;font-family:var(--font);color:var(--foreground);padding:32px 16px 64px}
+.board{display:flex;flex-wrap:wrap;gap:40px;justify-content:center;margin-bottom:56px}
+.col{width:414px}
+.caption{font-size:14px;font-weight:500;line-height:1.4;color:#3a3f4c;margin-bottom:12px;min-height:40px}
+.caption strong{font-weight:700}
+.wide-caption{max-width:1280px;margin:0 auto 12px}
+
+/* Téléphone */
+.phone{width:414px;padding:12px;border-radius:52px;background:#2B2D33;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.screen{width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--background);position:relative}
+.status{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;font-size:15px;font-weight:600}
+.status .notch{width:120px;height:30px;border-radius:15px;background:#000}
+.home{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1F2330;opacity:.5}
+.phone .content{padding:32px 16px 0}
+.phone .panel{width:100%}
+
+/* Formulaire d'entrée (entry-form, commun) : panneau surface, rounded.lg */
+.panel{width:400px;background:var(--surface);border-radius:var(--r-lg);padding:32px 24px;box-shadow:0 1px 3px rgba(31,35,48,.06)}
+/* Logo : un dos de carte (marge blanche, croisillons en losanges, arrêts nets) */
+.back{background-color:var(--card-back);background-image:repeating-linear-gradient(45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px),repeating-linear-gradient(-45deg,var(--card-back-pattern) 0 2px,transparent 2px 8px);border:1px solid var(--border);box-shadow:inset 0 0 0 4px var(--card-face)}
+.mark{width:32px;height:48px;border-radius:8px;margin-bottom:24px;box-shadow:inset 0 0 0 3px var(--card-face)}
+h1{font-size:28px;font-weight:700;line-height:1.2;letter-spacing:-.01em;margin-bottom:32px}
+.field-label{display:block;font-size:14px;font-weight:500;line-height:1.4;margin-bottom:8px}
+.input{height:48px;width:100%;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);padding:0 12px;font:400 16px/1.5 var(--font);display:flex;align-items:center}
+.input.focus{border-color:var(--primary)}
+.input .caret{display:inline-block;width:2px;height:20px;background:var(--primary);margin-left:1px}
+.field.error .input{border-color:var(--danger)}
+.error-msg{margin-top:8px;font-size:14px;font-weight:500;line-height:1.4;color:var(--danger);display:flex;align-items:flex-start;gap:6px}
+.error-msg .ico{flex:none;margin-top:1px}
+/* Rôle : deux boutons segmentés côte à côte ; l'option choisie est remplie en primary-soft,
+   contour primary */
+.role-group{margin-top:24px}
+.roles{display:flex}
+.role{flex:1;position:relative;min-height:44px;border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;font:500 14px/1.4 var(--font)}
+.role:first-child{border-radius:var(--r-md) 0 0 var(--r-md)}
+.role:last-child{border-radius:0 var(--r-md) var(--r-md) 0;margin-left:-1px}
+.role.on{border-color:var(--primary);background:var(--primary-soft);z-index:1}
+.btn{min-height:48px;width:100%;margin-top:32px;border-radius:var(--r-md);font:500 14px/1.4 var(--font);display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--primary-foreground)}
+
+/* Navigateur (Accueil PC) */
+.browser{width:1280px;margin:0 auto;border-radius:12px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.18);background:#fff}
+.chrome{height:40px;background:#E8E6E1;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #d3d0ca}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#c9c5bd;display:block}
+.url{margin-left:16px;flex:1;max-width:520px;height:26px;border-radius:13px;background:#fff;font-size:13px;color:#646B78;display:flex;align-items:center;padding:0 12px}
+.viewport{height:720px;background:var(--background);display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="col">
+    <p class="caption"><strong>Rejoindre, au repos.</strong> Sofia ouvre le lien ; le champ a le focus (contour rouge) ; « Je vote » est présélectionné.</p>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:38</span><span class="notch"></span><span>5G</span></div>
+      <div class="content">
+        <form class="panel" action="#">
+          <div class="mark back" aria-hidden="true"></div>
+          <h1>Planning Poker</h1>
+          <div class="field">
+            <span class="field-label" id="p1">Ton pseudo</span>
+            <div class="input focus" role="textbox" aria-labelledby="p1">Sofia<span class="caret"></span></div>
+          </div>
+          <div class="role-group">
+            <span class="field-label" id="r1">Ton rôle</span>
+            <div class="roles" role="radiogroup" aria-labelledby="r1">
+              <a class="role on" href="#" role="radio" aria-checked="true">Je vote</a>
+              <a class="role" href="#" role="radio" aria-checked="false">J'observe</a>
+            </div>
+          </div>
+          <a class="btn" href="#">Rejoindre</a>
+        </form>
+      </div>
+      <span class="home"></span>
+    </div></div>
+  </div>
+
+  <div class="col">
+    <p class="caption"><strong>Rejoindre, pseudo refusé.</strong> Contour du champ en rouge brique, message avec icône « ! » dessous ; la saisie « Sofia » est conservée.</p>
+    <div class="phone"><div class="screen">
+      <div class="status"><span>9:52</span><span class="notch"></span><span>5G</span></div>
+      <div class="content">
+        <form class="panel" action="#">
+          <div class="mark back" aria-hidden="true"></div>
+          <h1>Planning Poker</h1>
+          <div class="field error">
+            <span class="field-label" id="p2">Ton pseudo</span>
+            <div class="input" role="textbox" aria-labelledby="p2" aria-invalid="true">Sofia<span class="caret"></span></div>
+            <p class="error-msg" role="alert"><svg class="ico" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 5.5v5.5"/><circle cx="10" cy="14.2" r=".6" fill="currentColor"/></svg>Ce pseudo est déjà pris dans cette session.</p>
+          </div>
+          <div class="role-group">
+            <span class="field-label" id="r2">Ton rôle</span>
+            <div class="roles" role="radiogroup" aria-labelledby="r2">
+              <a class="role on" href="#" role="radio" aria-checked="true">Je vote</a>
+              <a class="role" href="#" role="radio" aria-checked="false">J'observe</a>
+            </div>
+          </div>
+          <a class="btn" href="#">Rejoindre</a>
+        </form>
+      </div>
+      <span class="home"></span>
+    </div></div>
+  </div>
+</div>
+
+<p class="caption wide-caption"><strong>Accueil sur PC.</strong> Flux 1, étape 1 : le pseudo « Eric » est pré-rempli, Eric a choisi « J'observe ».</p>
+<div class="browser">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/</div></div>
+  <div class="viewport">
+    <form class="panel" action="#">
+      <div class="mark back" aria-hidden="true"></div>
+      <h1>Planning Poker</h1>
+      <div class="field">
+        <span class="field-label" id="p3">Ton pseudo</span>
+        <div class="input" role="textbox" aria-labelledby="p3">Eric</div>
+      </div>
+      <div class="role-group">
+        <span class="field-label" id="r3">Ton rôle</span>
+        <div class="roles" role="radiogroup" aria-labelledby="r3">
+          <a class="role" href="#" role="radio" aria-checked="false">Je vote</a>
+          <a class="role on" href="#" role="radio" aria-checked="true">J'observe</a>
+        </div>
+      </div>
+      <a class="btn" href="#">Créer une session</a>
+    </form>
+  </div>
+</div>
+
+</body>
+</html>

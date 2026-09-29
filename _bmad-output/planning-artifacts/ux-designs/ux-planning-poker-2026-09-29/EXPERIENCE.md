@@ -27,7 +27,7 @@ sources:
 | **Rejoindre** | par un lien de session | Entrer dans la session en un seul écran : pseudo, rôle « votant » présélectionné (FR-2) |
 | **Session** | après Accueil ou Rejoindre, ou par reconnexion (FR-7) | Voter, voir qui a voté, révéler, masquer, effacer, voir le résultat |
 | **Session introuvable** | par un lien inconnu ou expiré, ou quand la session a disparu (FR-3, FR-7) | Expliquer ce qui s'est passé et proposer de créer une nouvelle session |
-| **Réveil du serveur** | au premier chargement, quand l'hébergeur a mis l'application en veille (NFR-2) | Faire patienter pendant le réveil, qui prend jusqu'à 30 s. L'attente se prolonge jusqu'à 60 s ; au-delà, afficher « Le serveur ne répond pas. » avec le bouton « Réessayer » |
+| **Réveil du serveur** | au premier chargement, quand l'hébergeur a mis l'application en veille (NFR-2) | Faire patienter pendant le réveil, qui prend jusqu'à 2 min. L'attente se prolonge jusqu'à 3 min ; au-delà, afficher « Le serveur ne répond pas. » avec le bouton « Réessayer » |
 
 Il n'y a ni menu de navigation, ni fenêtre modale. Le changement de rôle (FR-5) et le choix du thème se font depuis la barre du haut de l'écran Session, sans quitter la table.
 
@@ -49,7 +49,7 @@ Le texte de l'interface est court, direct et chaleureux, et **tutoie** l'utilisa
 | « Lien copié » | « Le lien a été copié dans le presse-papiers avec succès » |
 | « Ce pseudo est déjà pris dans cette session. » | « Erreur 409 : conflit d'identifiant » |
 | « Cette session n'existe plus. Elle a peut-être expiré, ou le serveur a redémarré. » | « Session not found » |
-| « Réveil du serveur… Ça prend parfois quelques secondes. » | Une page blanche, ou une erreur technique |
+| « Réveil du serveur… Ça peut prendre jusqu'à 2 minutes. » | Une page blanche, ou une erreur technique |
 
 Libellés fixes, à reprendre tels quels :
 - **Boutons :** « Créer une session », « Rejoindre », « Copier le lien », « Révéler les votes », « Masquer », « Nouveau tour », « Effacer les votes », « Réessayer ».
@@ -89,13 +89,14 @@ Ce tableau décrit le **comportement** des composants. Leur apparence est décri
 | Participant déconnecté | Session | Son pseudo passe en `{colors.muted-foreground}`, avec une pastille grise (`presence-dot`) et le libellé « déconnecté », et sa carte reste en place. Sa place disparaît au bout de 5 minutes de déconnexion (FR-9). |
 | Reconnexion en cours (moi) | Session | Après 2 s de coupure (pour ne pas clignoter sur une micro-coupure), bandeau ambre « Reconnexion… » (`status-banner`, FR-7). La table reste visible, mais les actions sont désactivées jusqu'au retour de la connexion. |
 | Session disparue ou expirée | Session introuvable | Titre « Cette session n'existe plus. », texte « Elle a peut-être expiré, ou le serveur a redémarré. », puis bouton principal « Créer une session » (FR-3, FR-7). |
-| Participant repris ailleurs, ou retiré | Rejoindre | Écran Rejoindre avec le pseudo pré-rempli, et le message « Ta place a été reprise depuis un autre appareil, ou tu as été absent trop longtemps. » (FR-7) |
+| Retour après une longue absence | Session | Téléphone rallumé ou réseau revenu, même au-delà de 5 min : le participant est remis à sa place automatiquement, en passant simplement par « Reconnexion… », sans écran intermédiaire (FR-7, FR-9). Rester inactif ou laisser l'onglet en arrière-plan ne déconnecte jamais. |
+| Pseudo repris ailleurs | Rejoindre | Écran Rejoindre avec le pseudo pré-rempli, et le message « Ta place a été reprise depuis un autre appareil. » (FR-7, FR-8) |
 | Pseudo vide | Accueil, Rejoindre | Le bouton « Créer une session » ou « Rejoindre » reste inactif, sans message d'erreur. |
 | Envoi en cours | Accueil, Rejoindre | Le bouton affiche « Connexion… » et devient inactif. Le champ reste lisible. |
 | Échec réseau à l'envoi | Accueil, Rejoindre | Le message « Impossible de joindre le serveur. » s'affiche sous le bouton, avec une icône. La saisie est conservée, et le bouton redevient actif pour réessayer. |
 | Pseudo refusé | Rejoindre | Message sous le champ : « Ce pseudo est déjà pris dans cette session. » La comparaison ignore les majuscules et les espaces en début et en fin (FR-2). |
-| Réveil du serveur (0 à 60 s) | Réveil du serveur | Petite animation de cartes qui se battent, texte « Réveil du serveur… Ça prend parfois quelques secondes. » (NFR-2). |
-| Serveur indisponible (au-delà de 60 s) | Réveil du serveur | Texte « Le serveur ne répond pas. », bouton principal « Réessayer » (NFR-2). |
+| Réveil du serveur (0 à 3 min) | Réveil du serveur | Petite animation de cartes qui se battent, texte « Réveil du serveur… Ça peut prendre jusqu'à 2 minutes. » (NFR-2). |
+| Serveur indisponible (au-delà de 3 min) | Réveil du serveur | Texte « Le serveur ne répond pas. », bouton principal « Réessayer » (NFR-2). |
 
 ## Interaction Primitives
 
@@ -155,7 +156,7 @@ Ces flux reprennent les parcours du PRD (§2.2).
 5. Eric clique sur « Révéler les votes ». **Moment clé :** les cartes se retournent l'une après l'autre. La moyenne s'affiche : « 6,3 ». En dessous, on lit « Plus votée 5 · 4 votes », « Min 3 » et « Max 13 ». Les sept votes sont 3, 5, 5, 5, 5, 8 et 13 : il n'y a pas de consensus. Les deux votants du 3 et du 13 s'expliquent.
 6. Eric clique sur « Nouveau tour », et l'équipe revote. Cette fois, c'est 5 partout, et le badge « Consensus ! » s'affiche. Eric reporte 5 dans Jira et clique sur « Nouveau tour » pour le ticket suivant.
 
-**En cas d'échec :** si le serveur dormait, Eric voit « Réveil du serveur… » pendant quelques secondes au lieu d'une erreur, puis l'Accueil apparaît.
+**En cas d'échec :** si le serveur dormait, Eric voit « Réveil du serveur… » pendant une à deux minutes au lieu d'une erreur, puis l'Accueil apparaît.
 
 ### Flux 2 : Sofia vote depuis son téléphone et perd le réseau (UJ-2)
 

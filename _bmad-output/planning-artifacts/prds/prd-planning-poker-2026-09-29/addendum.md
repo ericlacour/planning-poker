@@ -24,7 +24,7 @@ Ce document complète le PRD à l'intention de l'architecture et de la conceptio
 
 - **Choix de l'hébergeur gratuit :** pour chaque candidat, il faut vérifier la mise en veille après inactivité (NFR-1b, NFR-2), les limites sur les WebSockets (NFR-4) et les redémarrages (NFR-1). Ce point figurait déjà dans l'addendum du brief et reste une question ouverte du PRD (§9).
 - **Veille pendant une séance (NFR-1b) :** il faut vérifier que l'hébergeur ne met pas l'application en veille alors que des WebSockets sont ouverts, car sur certaines offres gratuites, seules les requêtes HTTP comptent comme activité. NFR-1b en fait un critère éliminatoire. Une parade possible consiste à envoyer régulièrement un signal de vie depuis les navigateurs connectés.
-- **Démarrage à froid (NFR-2) :** le serveur endormi ne peut pas afficher lui-même « Réveil du serveur… ». Il est donc recommandé de l'afficher depuis une page statique servie à part, par exemple sur un CDN ou un hébergement statique. Cette page interroge le serveur jusqu'à ce qu'il réponde et gère aussi le délai de 60 s : message d'indisponibilité et bouton pour réessayer.
+- **Démarrage à froid (NFR-2) :** le serveur endormi ne peut pas afficher lui-même « Réveil du serveur… ». Il est donc recommandé de l'afficher depuis une page statique servie à part, par exemple sur un CDN ou un hébergement statique. Cette page interroge le serveur jusqu'à ce qu'il réponde et gère aussi le délai de 3 min : message d'indisponibilité et bouton pour réessayer.
 - **Redéploiement (NFR-1) :** ne pas redéployer pendant un atelier, puisqu'un redéploiement efface les sessions.
 
 ## Précisions pour la conception UX

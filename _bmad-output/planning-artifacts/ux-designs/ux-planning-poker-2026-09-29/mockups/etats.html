@@ -7,8 +7,8 @@
 <style>
 /*
   Maquette : planche des écrans d'état sur PC (~1280 px), thème clair.
-  1. Réveil du serveur (0 à 60 s), avec une animation CSS de cartes qui se battent.
-  2. Serveur indisponible (au-delà de 60 s), bouton « Réessayer ».
+  1. Réveil du serveur (0 à 3 min), avec une animation CSS de cartes qui se battent.
+  2. Serveur indisponible (au-delà de 3 min), bouton « Réessayer ».
   3. Session introuvable, bouton « Créer une session ».
   4. Session vide : Eric seul à la table, « Partage le lien pour inviter ton équipe ».
 
@@ -102,7 +102,7 @@ h1.danger{color:var(--danger)}
 <body>
 
 <section class="shot">
-  <p class="caption"><strong>1. Réveil du serveur (0 à 60 s).</strong> Trois dos de carte rouges à croisillons se battent en boucle ; le titre reste en couleur de texte ; l'animation s'arrête si l'utilisateur a demandé à réduire les animations.</p>
+  <p class="caption"><strong>1. Réveil du serveur (0 à 3 min).</strong> Trois dos de carte rouges à croisillons se battent en boucle ; le titre reste en couleur de texte ; l'animation s'arrête si l'utilisateur a demandé à réduire les animations.</p>
   <div class="browser">
     <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/</div></div>
     <div class="viewport">
@@ -110,14 +110,14 @@ h1.danger{color:var(--danger)}
       <div class="center" role="status">
         <div class="deck" aria-hidden="true"><span class="back"></span><span class="back"></span><span class="back"></span></div>
         <h1>Réveil du serveur…</h1>
-        <p class="lead">Ça prend parfois quelques secondes.</p>
+        <p class="lead">Ça peut prendre jusqu'à 2 minutes.</p>
       </div>
     </div>
   </div>
 </section>
 
 <section class="shot">
-  <p class="caption"><strong>2. Serveur indisponible (au-delà de 60 s).</strong> Icône, puis titre en rouge brique foncé, dans une colonne de 400 px ; un seul bouton principal « Réessayer ».</p>
+  <p class="caption"><strong>2. Serveur indisponible (au-delà de 3 min).</strong> Icône, puis titre en rouge brique foncé, dans une colonne de 400 px ; un seul bouton principal « Réessayer ».</p>
   <div class="browser">
     <div class="chrome"><i></i><i></i><i></i><div class="url">planning-poker/</div></div>
     <div class="viewport">

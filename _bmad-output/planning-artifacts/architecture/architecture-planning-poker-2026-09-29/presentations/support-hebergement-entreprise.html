@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hébergement en entreprise</title>
+<style>
+:root{
+  --bg:#F6F4F0;--surface:#FFFFFF;--surface-muted:#EFECE6;--fg:#1F2330;--muted-fg:#646B78;--border:#E3DED5;
+  --primary:#CF3F4A;--primary-soft:#FDECEC;--card-back:#E0646C;--card-pattern:#F4B3B7;--card-frame:#F2C4C7;
+  --success:#16754F;--success-soft:#E3F4EC;--warning:#8A560C;--warning-soft:#FBF0DC;--danger:#8E2A1E;--offline:#7E8490;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--surface-muted);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+.stage{position:fixed;left:0;right:0;top:0;bottom:56px}
+.slide{position:absolute;left:50%;top:50%;width:1280px;height:720px;margin:-360px 0 0 -640px;background:var(--bg);display:none;flex-direction:column;padding:44px 64px 58px;overflow:hidden;box-shadow:0 2px 24px rgba(31,35,48,.10);border-radius:4px;transform-origin:50% 50%}
+.slide.active{display:flex}
+.kicker{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);margin-bottom:6px}
+h1{font-size:58px;line-height:1.08;font-weight:700;letter-spacing:-.02em}
+h2{font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin-bottom:22px}
+h3{font-size:19px;font-weight:600;line-height:1.3;margin-bottom:8px}
+p,li{font-size:18px;line-height:1.45}
+ul{padding-left:22px}
+li{margin-bottom:6px}
+li::marker{color:var(--primary)}
+.lead{font-size:23px;line-height:1.45}
+.muted{color:var(--muted-fg)}
+.small,.small li,.small p{font-size:15.5px}
+strong{font-weight:650}
+code,.mono{white-space:nowrap;font-family:var(--mono);font-size:.88em;background:var(--surface-muted);border-radius:5px;padding:1px 5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 22px}
+.card.accent{border-color:var(--card-frame);background:var(--primary-soft)}
+.card.ok{background:var(--success-soft);border-color:#BFE3D2}
+.card.warn{background:var(--warning-soft);border-color:#EED9B3}
+.card p,.card li{font-size:16.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.split{display:grid;grid-template-columns:5fr 7fr;gap:32px;align-items:start}
+.split.even{grid-template-columns:1fr 1fr}
+.tag{display:inline-block;font-size:13px;font-weight:600;border-radius:9999px;padding:2px 10px;margin-right:6px;vertical-align:2px}
+.tag.red{background:var(--primary-soft);color:var(--primary)}
+.tag.green{background:var(--success-soft);color:var(--success)}
+.tag.amber{background:var(--warning-soft);color:var(--warning)}
+.tag.grey{background:var(--surface-muted);color:var(--muted-fg)}
+.why{font-size:15.5px;color:var(--muted-fg);margin-top:6px}
+.why b{color:var(--fg);font-weight:600}
+table.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.tbl th,.tbl td{text-align:left;vertical-align:top;padding:11px 16px;font-size:16px;line-height:1.4;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface-muted);font-size:14px;font-weight:600;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em}
+.tbl tr:last-child td{border-bottom:none}
+.foot{position:absolute;left:64px;right:64px;bottom:20px;display:flex;justify-content:space-between;font-size:13px;color:var(--muted-fg)}
+.foot .num{display:none}
+.callout{border-left:4px solid var(--primary);background:var(--surface);padding:12px 18px;border-radius:0 12px 12px 0;font-size:17px;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:14px;padding:4px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border)}
+.chip.red{background:var(--primary-soft);border-color:var(--card-frame);color:#8f2530}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.stat .v{font-size:38px;font-weight:700;line-height:1;color:var(--primary);letter-spacing:-.01em}
+.stat .l{font-size:15px;color:var(--muted-fg);margin-top:6px;line-height:1.35}
+svg{display:block;overflow:visible}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+svg .t{font-size:16px;font-weight:650}
+svg .s{font-size:13.5px;fill:var(--muted-fg)}
+svg .m{font-family:var(--mono);font-size:13px}
+svg .r{fill:var(--primary)}
+svg .box{fill:var(--surface);stroke:var(--border);stroke-width:1.5}
+svg .boxr{fill:var(--primary-soft);stroke:var(--primary);stroke-width:1.5}
+svg .boxd{fill:var(--surface);stroke:var(--offline);stroke-width:1.5;stroke-dasharray:6 5}
+svg .ln{stroke:var(--fg);stroke-width:1.6;fill:none}
+svg .lnr{stroke:var(--primary);stroke-width:2;fill:none}
+svg .lnm{stroke:var(--offline);stroke-width:1.5;fill:none;stroke-dasharray:6 5}
+.nav{position:fixed;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:center;gap:16px;background:var(--surface);border-top:1px solid var(--border)}
+.nav button{font:inherit;font-size:15px;font-weight:600;min-height:40px;padding:0 18px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer}
+.nav button.next{background:var(--primary);border-color:var(--primary);color:#fff}
+.nav button:disabled{opacity:.4;cursor:default}
+.nav button:focus-visible{outline:3px solid var(--card-frame);outline-offset:2px}
+.counter{font-size:15px;font-variant-numeric:tabular-nums;color:var(--muted-fg);min-width:64px;text-align:center}
+.progress{position:absolute;left:0;top:-1px;height:3px;background:var(--primary);transition:width .2s}
+@media print{
+  @page{size:1280px 720px;margin:0}
+  html,body{height:auto;overflow:visible;background:var(--bg)}
+  body{counter-reset:sl}
+  .stage{position:static}
+  .slide{display:flex!important;position:relative;left:auto;top:auto;margin:0;transform:none!important;box-shadow:none;border-radius:0;break-after:page;page-break-after:always;counter-increment:sl}
+  .slide:last-child{break-after:auto;page-break-after:auto}
+  .foot .num{display:inline}
+  .foot .num::before{content:" · " counter(sl)}
+  .nav{display:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F2330"/></marker>
+    <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#CF3F4A"/></marker>
+    <marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7E8490"/></marker>
+    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#E0646C"/><path d="M0 0V10M0 0H10" stroke="#F4B3B7" stroke-width="2.4"/>
+    </pattern>
+  </defs>
+</svg>
+
+<main class="stage" id="stage">
+
+<!-- 1 -->
+<section class="slide" aria-label="Titre">
+  <div style="display:grid;grid-template-columns:1fr 360px;gap:40px;align-items:center;height:100%">
+    <div>
+      <div class="kicker">Planning Poker pour ateliers d'affinage · hébergement</div>
+      <h1>Héberger le Planning Poker dans l'entreprise</h1>
+      <p class="lead" style="margin-top:22px;max-width:660px">Pourquoi la V1 démarre sur un hébergeur gratuit, quels signaux déclencheront la demande, et pourquoi le passage sur <strong>OpenShift</strong> est déjà préparé.</p>
+      <p class="muted" style="margin-top:34px;font-size:17px">Pour la direction et l'équipe d'exploitation · préparé le 29/09/2026<br>Références : <code>ARCHITECTURE-SPINE.md</code>, <code>research-stack-hosting.md</code>, PRD</p>
+    </div>
+    <svg viewBox="0 0 360 330" width="360" height="330" role="img" aria-label="Schéma stylisé : un pod front et un pod webservice">
+      <rect x="10" y="20" width="340" height="290" rx="22" fill="#FFFFFF" stroke="#CF3F4A" stroke-width="2" stroke-dasharray="8 6"/>
+      <text x="34" y="54" class="t r">OpenShift</text>
+      <rect x="40" y="80" width="280" height="80" rx="14" class="box"/>
+      <text x="62" y="114" class="t">Pod front</text><text x="62" y="138" class="s">serveur statique · port 8080</text>
+      <rect x="40" y="186" width="280" height="96" rx="14" class="boxr"/>
+      <text x="62" y="220" class="t">Pod webservice</text><text x="62" y="244" class="s">Java 25 · Spring Boot 4.1</text><text x="62" y="264" class="s">une réplique · /api/health</text>
+    </svg>
+  </div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span class="num"></span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide" aria-label="Le point de départ : Render Free">
+  <div class="kicker">Le point de départ</div>
+  <h2>V1 sur Render Free : coût zéro, limites connues</h2>
+  <div class="grid4" style="margin-bottom:20px">
+    <div class="stat"><div class="v">0 €</div><div class="l">coût récurrent, sans carte bancaire, HTTPS géré inclus</div></div>
+    <div class="stat"><div class="v">≈ 1 min</div><div class="l">de réveil annoncé par Render, plus le démarrage de la JVM</div></div>
+    <div class="stat"><div class="v">512 Mo</div><div class="l">de mémoire et 0,1 processeur pour le webservice</div></div>
+    <div class="stat"><div class="v">750 h</div><div class="l">d'instance par mois ; au-delà, service suspendu jusqu'au mois suivant</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Ce que Render impose</h3>
+      <ul class="small">
+        <li>Mise en veille après <strong>15 min sans requête HTTP ni message WebSocket entrant</strong>.</li>
+        <li>« Render might restart a Free web service at any time » : les WebSocket sont coupés, et les sessions en mémoire perdues.</li>
+        <li>Réveil plus long que les 30 s visées au départ.</li>
+      </ul>
+    </div>
+    <div class="card accent">
+      <h3>Ce que la V1 fait avec</h3>
+      <ul class="small">
+        <li>Un <code>heartbeat</code> du navigateur toutes les 5 s empêche la veille pendant une séance.</li>
+        <li>Réveil toléré jusqu'à 2 min, avec « Réveil du serveur… » ; PRD mis à jour.</li>
+        <li>Perte de session au redémarrage : risque accepté (NFR-1).</li>
+        <li>Test de charge (65 connexions) dès la première story WebSocket.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : render.com/docs/free, render.com/docs/websocket, changelog Render du 24/02/2026 · AD-8, AD-13<span class="num"></span></span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide" aria-label="Les autres offres gratuites">
+  <div class="kicker">Et les autres offres gratuites ?</div>
+  <h2>Le gratuit reste un compromis, pas une cible</h2>
+  <table class="tbl">
+    <tr><th style="width:24%">Offre</th><th style="width:30%">Atout</th><th>Ce qui la rend fragile</th></tr>
+    <tr><td><strong>Northflank Sandbox</strong><br><span class="muted small">repli n° 1</span></td><td>Toujours actif, sans veille</td><td>Carte bancaire exigée, usage en production déconseillé, ressources par service non publiées.</td></tr>
+    <tr><td><strong>Oracle Always Free + k3s</strong><br><span class="muted small">repli n° 2</span></td><td>VM permanente, 2 OCPU et 12 Go</td><td>Carte bancaire exigée. Allocation <strong>divisée par deux le 15/06/2026</strong>, sans annonce. VM reprise si elle reste peu utilisée pendant 7 jours. TLS et Ingress à opérer soi-même.</td></tr>
+    <tr><td><strong>Koyeb Free</strong></td><td>Réveil rapide de la plateforme</td><td>Carte bancaire exigée ; mise en veille après 1 h sans trafic ; 512 Mo et 0,1 vCPU.</td></tr>
+    <tr><td><strong>Google Cloud Run</strong></td><td>WebSocket supporté</td><td>Connexion coupée au plus tard après 60 min ; une connexion ouverte rend l'instance facturée.</td></tr>
+    <tr><td><strong>Fly.io</strong></td><td>—</td><td>Plus d'offre gratuite pour les nouveaux comptes.</td></tr>
+  </table>
+  <p class="small muted" style="margin-top:14px">Ces offres changent sans préavis. Pour un outil que l'équipe utilise à chaque affinage, l'infrastructure de l'entreprise est la destination naturelle.</p>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Source : research-stack-hosting.md §5 (sources officielles citées) · Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide" aria-label="Les signaux déclencheurs">
+  <div class="kicker">Quand faire la demande</div>
+  <h2>Trois signaux déclencheront la demande</h2>
+  <div class="grid3">
+    <div class="card accent">
+      <h3><span class="tag red">SM-1</span>L'outil est adopté</h3>
+      <p>Trois affinages consécutifs menés uniquement avec l'outil : l'équipe n'utilise plus Scrum Poker Online.</p>
+      <p class="why">Le PRD prévoit l'hébergement sur l'infrastructure de l'entreprise « si l'outil est adopté ».</p>
+    </div>
+    <div class="card">
+      <h3><span class="tag amber">SM-2</span>Incidents ou lenteurs</h3>
+      <ul class="small">
+        <li>Pertes de session qui se répètent : « il faut revoir l'hébergement ».</li>
+        <li>Une mise en veille en pleine séance compte comme incident.</li>
+        <li>Test de charge en échec, ou réveils qui gênent les ateliers.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="tag grey">V2 / V3</span>Nouveaux besoins</h3>
+      <ul class="small">
+        <li><strong>Intégration Jira</strong> : import des tickets, renvoi des estimations.</li>
+        <li><strong>Persistance</strong> : garder les sessions au-delà d'un redémarrage, avec PostgreSQL.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:22px">Ces signaux reprennent les mesures de succès du PRD (SM-1, SM-2) et le périmètre qu'il prévoit pour les V2 et V3.</div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : PRD §7.2, §8 (SM-1, SM-2) · Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide" aria-label="Pourquoi c'est prêt">
+  <div class="kicker">Pourquoi c'est prêt</div>
+  <h2>OpenShift est prévu dès la V1</h2>
+  <div class="grid2" style="gap:18px">
+    <div class="card">
+      <h3><span class="tag green">AD-12</span>Images compatibles OpenShift</h3>
+      <ul class="small">
+        <li>Base <code>eclipse-temurin:25-jre</code>, étiquette épinglée.</li>
+        <li><strong>Non root</strong>, sous un <strong>UID arbitraire</strong> : dossier au groupe 0, <code>chmod -R g=u</code>.</li>
+        <li>Port <strong>8080</strong>, écriture dans <code>/tmp</code> seulement.</li>
+        <li>Configuration <strong>uniquement par variables d'environnement</strong>.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="tag green">AD-11</span>Front configuré à l'exécution</h3>
+      <p>Le front lit <code>/config.json</code> au démarrage. Sur Render, un script le génère ; sur OpenShift, ce sera une <strong>ConfigMap</strong> montée dans le pod. Aucune URL écrite en dur.</p>
+    </div>
+    <div class="card">
+      <h3><span class="tag green">AD-12</span>Une sonde de santé</h3>
+      <p><code>GET /api/health</code> répond 200 dès que le webservice est prêt. Elle sert déjà à Render et au réveil du front ; elle servira aux sondes d'OpenShift.</p>
+    </div>
+    <div class="card">
+      <h3><span class="tag green">AD-1, AD-9</span>Prêt pour PostgreSQL</h3>
+      <p>Webservice hexagonal : le stockage est derrière le port <code>SessionStore</code>. PostgreSQL sera un adaptateur de plus, sans toucher aux règles du vote (NFR-9).</p>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : AD-1, AD-9, AD-11, AD-12 · NFR-9<span class="num"></span></span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide" aria-label="La cible OpenShift">
+  <div class="kicker">La cible</div>
+  <h2>Le Planning Poker sur OpenShift</h2>
+  <svg viewBox="0 0 1136 440" width="1136" height="440" role="img" aria-label="Schéma OpenShift : routes, pods front et webservice, PostgreSQL plus tard, GitLab CI et registre">
+    <rect x="438" y="0" width="260" height="50" rx="12" class="box"/>
+    <text x="568" y="31" text-anchor="middle" class="t">Navigateur · PC ou téléphone</text>
+    <rect x="30" y="80" width="1076" height="252" rx="20" fill="#FFFFFF" stroke="#CF3F4A" stroke-width="1.8" stroke-dasharray="8 6"/>
+    <text x="52" y="108" class="t r">OpenShift · un namespace</text>
+    <rect x="210" y="124" width="220" height="50" rx="10" class="box"/>
+    <text x="320" y="155" text-anchor="middle" class="t">Route front</text>
+    <rect x="620" y="124" width="250" height="50" rx="10" class="boxr"/>
+    <text x="745" y="148" text-anchor="middle" class="t">Route API et WebSocket</text>
+    <text x="745" y="167" text-anchor="middle" class="s">timeouts adaptés au WebSocket</text>
+    <path d="M500 50L340 122" class="ln" marker-end="url(#ah)"/>
+    <text x="428" y="76" text-anchor="end" class="m">HTTPS</text>
+    <path d="M640 50L730 122" class="lnr" marker-end="url(#ahr)"/>
+    <text x="702" y="72" class="m r">HTTPS /api · WSS /ws</text>
+    <rect x="210" y="224" width="220" height="90" rx="12" class="box"/>
+    <text x="320" y="256" text-anchor="middle" class="t">Pod front</text>
+    <text x="320" y="280" text-anchor="middle" class="s">serveur statique · port 8080</text>
+    <text x="320" y="300" text-anchor="middle" class="s">Angular + config.json</text>
+    <rect x="620" y="224" width="250" height="90" rx="12" class="boxr"/>
+    <text x="745" y="256" text-anchor="middle" class="t">Pod webservice</text>
+    <text x="745" y="280" text-anchor="middle" class="s">une réplique · port 8080</text>
+    <text x="745" y="300" text-anchor="middle" class="s">sondes sur /api/health</text>
+    <path d="M320 174V222" class="ln" marker-end="url(#ah)"/>
+    <path d="M745 174V222" class="ln" marker-end="url(#ah)"/>
+    <rect x="52" y="234" width="120" height="70" rx="10" class="box"/>
+    <text x="112" y="263" text-anchor="middle" class="t" style="font-size:15px">ConfigMap</text>
+    <text x="112" y="285" text-anchor="middle" class="m">config.json</text>
+    <path d="M172 269H208" class="lnm" marker-end="url(#ahm)"/>
+    <rect x="918" y="234" width="170" height="70" rx="10" class="boxd"/>
+    <text x="1003" y="263" text-anchor="middle" class="t" style="font-size:15px">Pod PostgreSQL 18</text>
+    <text x="1003" y="285" text-anchor="middle" class="s">plus tard, si besoin</text>
+    <path d="M870 269H916" class="lnm" marker-end="url(#ahm)"/>
+    <rect x="210" y="370" width="220" height="56" rx="12" class="box"/>
+    <text x="320" y="397" text-anchor="middle" class="t">GitLab CI</text>
+    <text x="320" y="416" text-anchor="middle" class="s">build, tests, images</text>
+    <rect x="620" y="370" width="250" height="56" rx="12" class="box"/>
+    <text x="745" y="403" text-anchor="middle" class="t">Registre d'images</text>
+    <path d="M430 398H618" class="ln" marker-end="url(#ah)"/>
+    <text x="524" y="390" text-anchor="middle" class="s">pousse les images</text>
+    <path d="M745 370V316" class="ln" marker-end="url(#ah)"/>
+    <path d="M660 370L400 316" class="ln" marker-end="url(#ah)"/>
+  </svg>
+  <p class="small muted" style="margin-top:6px">Une réplique du webservice tant que l'état vit en mémoire. Le front et le webservice restent deux origines : <code>ALLOWED_ORIGINS</code> et <code>config.json</code> pointent vers les Routes.</p>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : Structural Seed (schéma OpenShift), AD-9, AD-11, AD-12<span class="num"></span></span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide" aria-label="Ce qu'il faudra fournir">
+  <div class="kicker">La demande à l'exploitation</div>
+  <h2>Ce qu'il faudra nous fournir</h2>
+  <table class="tbl">
+    <tr><th style="width:26%">Élément</th><th>Pour quoi faire</th></tr>
+    <tr><td><strong>Un namespace</strong></td><td>Accueillir le pod front, le pod webservice, puis éventuellement PostgreSQL. Quotas de mémoire et de processeur à fixer ensemble, d'après le test de charge (13 participants, 65 connexions).</td></tr>
+    <tr><td><strong>Deux Routes HTTPS</strong></td><td>Une pour le front, une pour l'API. Celle de l'API porte aussi le WebSocket <code>/ws/sessions/{id}</code> : ses <strong>timeouts</strong> doivent tolérer des connexions ouvertes toute la séance. Le trafic y passe toutes les 5 s (ping, <code>tick</code>, <code>heartbeat</code>).</td></tr>
+    <tr><td><strong>Un registre d'images</strong></td><td>Recevoir les images du front et du webservice, construites par la CI.</td></tr>
+    <tr><td><strong>Un pipeline GitLab CI</strong></td><td>Build et tests du backend, du frontend et du contrat ; construction des images ; déploiement uniquement sur une étiquette <code>v*</code>, hors atelier.</td></tr>
+    <tr><td><strong>Configuration</strong></td><td>Variables <code>PORT</code> et <code>ALLOWED_ORIGINS</code> ; ConfigMap <code>config.json</code> avec l'URL de la Route API.</td></tr>
+    <tr><td><strong>Éventuellement, PostgreSQL 18</strong></td><td>Seulement si un besoin de persistance apparaît. Le webservice lira alors <code>DATABASE_URL</code>.</td></tr>
+  </table>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : AD-11, AD-12, AD-13, Conventions (Configuration, CI), Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide" aria-label="Le chantier plusieurs répliques">
+  <div class="kicker">Un chantier à part</div>
+  <h2>Plusieurs répliques demandent un stockage partagé</h2>
+  <svg viewBox="0 0 1136 280" width="1136" height="280" role="img" aria-label="Une réplique, deux répliques sans stockage partagé, et la cible avec stockage partagé">
+    <g>
+      <rect x="0" y="0" width="360" height="276" rx="16" fill="#E3F4EC" stroke="#16754F" stroke-width="1.5"/>
+      <text x="20" y="32" class="t" style="fill:#16754F">V1 : une réplique</text>
+      <rect x="110" y="54" width="140" height="38" rx="9" class="box"/><text x="180" y="79" text-anchor="middle" class="t" style="font-size:15px">Route</text>
+      <path d="M180 92V126" class="ln" marker-end="url(#ah)"/>
+      <rect x="60" y="128" width="240" height="78" rx="12" class="box"/>
+      <text x="180" y="160" text-anchor="middle" class="t" style="font-size:15px">Pod webservice</text>
+      <text x="180" y="184" text-anchor="middle" class="s">toutes les sessions en mémoire</text>
+      <text x="180" y="240" text-anchor="middle" class="s" style="fill:#16754F;font-weight:600">Tout le monde voit le même état.</text>
+    </g>
+    <g>
+      <rect x="388" y="0" width="360" height="276" rx="16" fill="#FDECEC" stroke="#CF3F4A" stroke-width="1.5"/>
+      <text x="408" y="32" class="t r">Deux répliques, sans stockage partagé</text>
+      <rect x="498" y="54" width="140" height="38" rx="9" class="box"/><text x="568" y="79" text-anchor="middle" class="t" style="font-size:15px">Route</text>
+      <path d="M540 92L480 126" class="ln" marker-end="url(#ah)"/>
+      <path d="M596 92L656 126" class="ln" marker-end="url(#ah)"/>
+      <rect x="404" y="128" width="156" height="78" rx="12" class="box"/>
+      <text x="482" y="160" text-anchor="middle" class="t" style="font-size:15px">Pod 1</text>
+      <text x="482" y="184" text-anchor="middle" class="s">sessions A et B</text>
+      <rect x="576" y="128" width="156" height="78" rx="12" class="box"/>
+      <text x="654" y="160" text-anchor="middle" class="t" style="font-size:15px">Pod 2</text>
+      <text x="654" y="184" text-anchor="middle" class="s">session C</text>
+      <text x="568" y="234" text-anchor="middle" class="s" style="fill:#8E2A1E;font-weight:600">L'état est éclaté : chaque pod</text>
+      <text x="568" y="254" text-anchor="middle" class="s" style="fill:#8E2A1E;font-weight:600">ne connaît que ses sessions.</text>
+    </g>
+    <g>
+      <rect x="776" y="0" width="360" height="276" rx="16" fill="#FFFFFF" stroke="#E3DED5" stroke-width="1.5"/>
+      <text x="796" y="32" class="t">Cible : un nouvel AD</text>
+      <rect x="886" y="54" width="140" height="38" rx="9" class="box"/><text x="956" y="79" text-anchor="middle" class="t" style="font-size:15px">Route</text>
+      <path d="M928 92L868 118" class="ln" marker-end="url(#ah)"/>
+      <path d="M984 92L1044 118" class="ln" marker-end="url(#ah)"/>
+      <rect x="792" y="120" width="156" height="50" rx="12" class="box"/><text x="870" y="151" text-anchor="middle" class="t" style="font-size:15px">Pod 1</text>
+      <rect x="964" y="120" width="156" height="50" rx="12" class="box"/><text x="1042" y="151" text-anchor="middle" class="t" style="font-size:15px">Pod 2</text>
+      <path d="M870 170L920 196" class="ln" marker-end="url(#ah)"/>
+      <path d="M1042 170L992 196" class="ln" marker-end="url(#ah)"/>
+      <rect x="820" y="198" width="272" height="62" rx="12" class="boxr"/>
+      <text x="956" y="224" text-anchor="middle" class="t" style="font-size:15px">Stockage partagé</text>
+      <text x="956" y="246" text-anchor="middle" class="s">+ diffusion entre instances</text>
+    </g>
+  </svg>
+  <div class="grid2" style="margin-top:18px">
+    <div class="card"><h3>La règle aujourd'hui</h3><p>AD-9 : l'état vit en mémoire, avec <strong>une seule instance</strong>. On déploie donc le webservice avec <strong>une réplique</strong> ; la capacité visée (65 connexions) sera vérifiée par le test de charge.</p></div>
+    <div class="card accent"><h3>Si l'on veut plus</h3><p>Plusieurs instances exigent un stockage partagé et une diffusion entre instances. C'est un <strong>nouvel AD</strong>, qui remplacera la règle « une seule instance ». Ce n'est pas un simple réglage du nombre de répliques.</p></div>
+  </div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : AD-9, Deferred, NFR-4<span class="num"></span></span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide" aria-label="Risques et mitigation">
+  <div class="kicker">Risques</div>
+  <h2>Les risques de la migration, et leur parade</h2>
+  <table class="tbl">
+    <tr><th style="width:34%">Risque</th><th>Mitigation prévue</th></tr>
+    <tr><td><strong>Une Route coupe les WebSocket longs</strong></td><td>Timeouts de la Route à régler avec l'exploitation. Si une coupure arrive, le client se reconnecte seul (immédiatement, puis 1, 2, 4, 8 s, puis toutes les 10 s) sans perdre sa place ni son vote.</td></tr>
+    <tr><td><strong>Image refusée par les règles de sécurité</strong></td><td>Images déjà non root, sous UID arbitraire, groupe 0, port 8080, écriture dans <code>/tmp</code> seulement (AD-12).</td></tr>
+    <tr><td><strong>Sessions perdues à chaque déploiement</strong></td><td>Risque accepté (NFR-1). Déploiement seulement sur étiquette <code>v*</code>, hors atelier, webservice avant front ; contrat modifié par ajout seulement (AD-13).</td></tr>
+    <tr><td><strong>Front bloqué par CORS ou la CSP</strong></td><td><code>ALLOWED_ORIGINS</code> et <code>config.json</code> renseignés avec les URL des Routes : pure configuration (AD-11).</td></tr>
+    <tr><td><strong>Ressources mal dimensionnées</strong></td><td>Rejouer le test de charge (13 participants, 65 connexions) sur OpenShift avant le premier atelier.</td></tr>
+    <tr><td><strong>Passer à plusieurs répliques trop tôt</strong></td><td>Rester à une réplique tant que le nouvel AD sur le stockage partagé n'est pas écrit (AD-9).</td></tr>
+  </table>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : AD-8, AD-9, AD-11, AD-12, AD-13 · NFR-1<span class="num"></span></span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide" aria-label="Estimation de l'effort">
+  <div class="kicker">Effort de migration</div>
+  <h2>Surtout de la configuration, pas de code métier</h2>
+  <p class="small muted" style="margin:-10px 0 14px">Estimation qualitative : les durées seront chiffrées avec l'exploitation, une fois l'environnement connu.</p>
+  <table class="tbl">
+    <tr><th style="width:30%">Chantier</th><th style="width:16%">Effort</th><th>Pourquoi</th></tr>
+    <tr><td>Logique du vote</td><td><span class="tag green">aucun</span></td><td>NFR-9 : changer d'hébergeur ne touche que la configuration et le stockage, jamais la logique du vote.</td></tr>
+    <tr><td>Images Docker</td><td><span class="tag green">faible</span></td><td>Déjà compatibles OpenShift depuis la V1 (AD-12).</td></tr>
+    <tr><td>Configuration du front</td><td><span class="tag green">faible</span></td><td><code>config.json</code> passe d'un script de build à une ConfigMap (AD-11).</td></tr>
+    <tr><td>Manifests OpenShift</td><td><span class="tag amber">modéré</span></td><td>À écrire : déploiements, services, Routes, ConfigMap. Reportés volontairement jusqu'au passage.</td></tr>
+    <tr><td>Pipeline GitLab CI</td><td><span class="tag amber">modéré</span></td><td>À écrire ; il reprend les étapes de la CI GitHub Actions de la V1.</td></tr>
+    <tr><td>Adaptateur PostgreSQL</td><td><span class="tag grey">si besoin</span></td><td>Un adaptateur derrière <code>SessionStore</code>, seulement si la persistance devient nécessaire.</td></tr>
+    <tr><td>Plusieurs répliques</td><td><span class="tag red">à cadrer</span></td><td>Nouvel AD : stockage partagé et diffusion entre instances.</td></tr>
+  </table>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : NFR-9, AD-9, AD-11, AD-12, Conventions (CI V1), Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" aria-label="En résumé">
+  <div class="kicker">En résumé</div>
+  <h2>Ce que nous demanderons, et quand</h2>
+  <div class="grid3">
+    <div class="card">
+      <h3>Quand</h3>
+      <p>Dès qu'un signal apparaît : l'outil est adopté (SM-1), les incidents ou les lenteurs se répètent, ou Jira et la persistance deviennent nécessaires.</p>
+    </div>
+    <div class="card accent">
+      <h3>Quoi</h3>
+      <p>Un namespace OpenShift, deux Routes HTTPS compatibles WebSocket, un registre, un pipeline GitLab CI. Plus tard, peut-être, une base PostgreSQL 18.</p>
+    </div>
+    <div class="card ok">
+      <h3>Ce que nous apportons</h3>
+      <p>Des images déjà conformes, une sonde <code>/api/health</code>, une configuration par l'environnement, un contrat d'API versionné et des tests automatisés.</p>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:24px;font-size:19px">En attendant, la V1 tourne sur Render Free <strong>pour zéro euro</strong>. Le passage sur OpenShift demande surtout de la configuration, sans refonte de l'application.</div>
+  <div class="foot"><span>Planning Poker · Hébergement en entreprise</span><span>Sources : ARCHITECTURE-SPINE, PRD §7.2, §8<span class="num"></span></span></div>
+</section>
+
+</main>
+
+<nav class="nav" aria-label="Navigation du diaporama">
+  <div class="progress" id="bar"></div>
+  <button type="button" id="prev" aria-label="Diapositive précédente">← Précédente</button>
+  <span class="counter" id="counter" aria-live="polite">1 / 1</span>
+  <button type="button" id="next" class="next" aria-label="Diapositive suivante">Suivante →</button>
+</nav>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var counter=document.getElementById('counter'),bar=document.getElementById('bar');
+  var prev=document.getElementById('prev'),next=document.getElementById('next');
+  var i=0;
+  function fit(){
+    var s=Math.min(window.innerWidth/1280,(window.innerHeight-56)/720)*0.97;
+    slides.forEach(function(el){el.style.transform='scale('+s+')';});
+  }
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(el,k){el.classList.toggle('active',k===i);el.setAttribute('aria-hidden',k===i?'false':'true');});
+    counter.textContent=(i+1)+' / '+slides.length;
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    prev.disabled=(i===0);next.disabled=(i===slides.length-1);
+    try{if(location.hash!=='#'+(i+1))history.replaceState(null,'','#'+(i+1));}catch(e){}
+  }
+  prev.addEventListener('click',function(){go(i-1);});
+  next.addEventListener('click',function(){go(i+1);});
+  document.addEventListener('keydown',function(e){
+    if(e.altKey||e.ctrlKey||e.metaKey)return;
+    var k=e.key;
+    if(k==='ArrowRight'||k==='ArrowDown'||k==='PageDown'||(k===' '&&!e.shiftKey)){e.preventDefault();go(i+1);}
+    else if(k==='ArrowLeft'||k==='ArrowUp'||k==='PageUp'||(k===' '&&e.shiftKey)){e.preventDefault();go(i-1);}
+    else if(k==='Home'){e.preventDefault();go(0);}
+    else if(k==='End'){e.preventDefault();go(slides.length-1);}
+  });
+  window.addEventListener('resize',fit);
+  window.addEventListener('hashchange',function(){var h=parseInt(location.hash.slice(1),10);if(!isNaN(h)&&h-1!==i)go(h-1);});
+  var h=parseInt(location.hash.slice(1),10);
+  go(isNaN(h)?0:h-1);fit();
+})();
+</script>
+</body>
+</html>

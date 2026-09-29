@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture Planning Poker</title>
+<style>
+:root{
+  --bg:#F6F4F0;--surface:#FFFFFF;--surface-muted:#EFECE6;--fg:#1F2330;--muted-fg:#646B78;--border:#E3DED5;
+  --primary:#CF3F4A;--primary-soft:#FDECEC;--card-back:#E0646C;--card-pattern:#F4B3B7;--card-frame:#F2C4C7;
+  --success:#16754F;--success-soft:#E3F4EC;--warning:#8A560C;--warning-soft:#FBF0DC;--danger:#8E2A1E;--offline:#7E8490;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,"SFMono-Regular",Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--surface-muted);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+.stage{position:fixed;left:0;right:0;top:0;bottom:56px}
+.slide{position:absolute;left:50%;top:50%;width:1280px;height:720px;margin:-360px 0 0 -640px;background:var(--bg);display:none;flex-direction:column;padding:44px 64px 58px;overflow:hidden;box-shadow:0 2px 24px rgba(31,35,48,.10);border-radius:4px;transform-origin:50% 50%}
+.slide.active{display:flex}
+.kicker{font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--primary);margin-bottom:6px}
+h1{font-size:58px;line-height:1.08;font-weight:700;letter-spacing:-.02em}
+h2{font-size:36px;line-height:1.15;font-weight:700;letter-spacing:-.01em;margin-bottom:22px}
+h3{font-size:19px;font-weight:600;line-height:1.3;margin-bottom:8px}
+p,li{font-size:18px;line-height:1.45}
+ul{padding-left:22px}
+li{margin-bottom:6px}
+li::marker{color:var(--primary)}
+.lead{font-size:23px;line-height:1.45}
+.muted{color:var(--muted-fg)}
+.small,.small li,.small p{font-size:15.5px}
+strong{font-weight:650}
+code,.mono{white-space:nowrap;font-family:var(--mono);font-size:.88em;background:var(--surface-muted);border-radius:5px;padding:1px 5px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px 22px}
+.card.accent{border-color:var(--card-frame);background:var(--primary-soft)}
+.card.ok{background:var(--success-soft);border-color:#BFE3D2}
+.card.warn{background:var(--warning-soft);border-color:#EED9B3}
+.card p,.card li{font-size:16.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.split{display:grid;grid-template-columns:5fr 7fr;gap:32px;align-items:start}
+.split.even{grid-template-columns:1fr 1fr}
+.tag{display:inline-block;font-size:13px;font-weight:600;border-radius:9999px;padding:2px 10px;margin-right:6px;vertical-align:2px}
+.tag.red{background:var(--primary-soft);color:var(--primary)}
+.tag.green{background:var(--success-soft);color:var(--success)}
+.tag.amber{background:var(--warning-soft);color:var(--warning)}
+.tag.grey{background:var(--surface-muted);color:var(--muted-fg)}
+.why{font-size:15.5px;color:var(--muted-fg);margin-top:6px}
+.why b{color:var(--fg);font-weight:600}
+table.tbl{width:100%;border-collapse:separate;border-spacing:0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.tbl th,.tbl td{text-align:left;vertical-align:top;padding:11px 16px;font-size:16px;line-height:1.4;border-bottom:1px solid var(--border)}
+.tbl th{background:var(--surface-muted);font-size:14px;font-weight:600;color:var(--muted-fg);text-transform:uppercase;letter-spacing:.04em}
+.tbl tr:last-child td{border-bottom:none}
+.foot{position:absolute;left:64px;right:64px;bottom:20px;display:flex;justify-content:space-between;font-size:13px;color:var(--muted-fg)}
+.foot .num{display:none}
+.callout{border-left:4px solid var(--primary);background:var(--surface);padding:12px 18px;border-radius:0 12px 12px 0;font-size:17px;line-height:1.45}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:14px;padding:4px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--border)}
+.chip.red{background:var(--primary-soft);border-color:var(--card-frame);color:#8f2530}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px}
+.stat .v{font-size:38px;font-weight:700;line-height:1;color:var(--primary);letter-spacing:-.01em}
+.stat .l{font-size:15px;color:var(--muted-fg);margin-top:6px;line-height:1.35}
+svg{display:block;overflow:visible}
+svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:var(--fg)}
+svg .t{font-size:16px;font-weight:650}
+svg .s{font-size:13.5px;fill:var(--muted-fg)}
+svg .m{font-family:var(--mono);font-size:13px}
+svg .r{fill:var(--primary)}
+svg .box{fill:var(--surface);stroke:var(--border);stroke-width:1.5}
+svg .boxr{fill:var(--primary-soft);stroke:var(--primary);stroke-width:1.5}
+svg .boxd{fill:var(--surface);stroke:var(--offline);stroke-width:1.5;stroke-dasharray:6 5}
+svg .ln{stroke:var(--fg);stroke-width:1.6;fill:none}
+svg .lnr{stroke:var(--primary);stroke-width:2;fill:none}
+svg .lnm{stroke:var(--offline);stroke-width:1.5;fill:none;stroke-dasharray:6 5}
+.nav{position:fixed;left:0;right:0;bottom:0;height:56px;display:flex;align-items:center;justify-content:center;gap:16px;background:var(--surface);border-top:1px solid var(--border)}
+.nav button{font:inherit;font-size:15px;font-weight:600;min-height:40px;padding:0 18px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--fg);cursor:pointer}
+.nav button.next{background:var(--primary);border-color:var(--primary);color:#fff}
+.nav button:disabled{opacity:.4;cursor:default}
+.nav button:focus-visible{outline:3px solid var(--card-frame);outline-offset:2px}
+.counter{font-size:15px;font-variant-numeric:tabular-nums;color:var(--muted-fg);min-width:64px;text-align:center}
+.progress{position:absolute;left:0;top:-1px;height:3px;background:var(--primary);transition:width .2s}
+@media print{
+  @page{size:1280px 720px;margin:0}
+  html,body{height:auto;overflow:visible;background:var(--bg)}
+  body{counter-reset:sl}
+  .stage{position:static}
+  .slide{display:flex!important;position:relative;left:auto;top:auto;margin:0;transform:none!important;box-shadow:none;border-radius:0;break-after:page;page-break-after:always;counter-increment:sl}
+  .slide:last-child{break-after:auto;page-break-after:auto}
+  .foot .num{display:inline}
+  .foot .num::before{content:" · " counter(sl)}
+  .nav{display:none}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F2330"/></marker>
+    <marker id="ahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#CF3F4A"/></marker>
+    <marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7E8490"/></marker>
+    <pattern id="hatch" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="10" height="10" fill="#E0646C"/><path d="M0 0V10M0 0H10" stroke="#F4B3B7" stroke-width="2.4"/>
+    </pattern>
+  </defs>
+</svg>
+
+<main class="stage" id="stage">
+
+<!-- 1 -->
+<section class="slide" aria-label="Titre">
+  <div style="display:grid;grid-template-columns:1fr 380px;gap:40px;align-items:center;height:100%">
+    <div>
+      <div class="kicker">Planning Poker pour ateliers d'affinage · étape architecture BMAD</div>
+      <h1>L'architecture de la V1</h1>
+      <p class="lead" style="margin-top:22px;max-width:640px">Ce que nous construisons, comment les morceaux tiennent ensemble, et <strong>pourquoi</strong> chaque choix a été fait.</p>
+      <p class="muted" style="margin-top:34px;font-size:17px">Pour l'équipe de développement · 29/09/2026<br>Référence : <code>ARCHITECTURE-SPINE.md</code>, décisions AD-1 à AD-13</p>
+    </div>
+    <svg viewBox="0 0 380 360" width="380" height="360" role="img" aria-label="Deux cartes à jouer et un dos de carte">
+      <g transform="rotate(-12 110 190)">
+        <rect x="30" y="80" width="160" height="240" rx="12" fill="#fff" stroke="#E3DED5" stroke-width="1.5"/>
+        <rect x="40" y="90" width="140" height="220" rx="8" fill="url(#hatch)"/>
+      </g>
+      <g transform="rotate(-2 200 180)">
+        <rect x="115" y="60" width="160" height="240" rx="12" fill="#fff" stroke="#E3DED5" stroke-width="1.5"/>
+        <rect x="125" y="70" width="140" height="220" rx="8" fill="none" stroke="#F2C4C7"/>
+        <text x="136" y="94" style="font-size:16px;font-weight:700;fill:#CF3F4A">5</text>
+        <text x="195" y="200" text-anchor="middle" style="font-size:72px;font-weight:700;fill:#CF3F4A">5</text>
+        <text x="254" y="276" text-anchor="middle" transform="rotate(180 254 270)" style="font-size:16px;font-weight:700;fill:#CF3F4A">5</text>
+      </g>
+      <g transform="rotate(10 290 190)">
+        <rect x="205" y="70" width="160" height="240" rx="12" fill="#fff" stroke="#CF3F4A" stroke-width="3"/>
+        <rect x="215" y="80" width="140" height="220" rx="8" fill="none" stroke="#F2C4C7"/>
+        <text x="226" y="104" style="font-size:16px;font-weight:700;fill:#CF3F4A">8</text>
+        <text x="285" y="210" text-anchor="middle" style="font-size:72px;font-weight:700;fill:#CF3F4A">8</text>
+      </g>
+    </svg>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span class="num"></span></div>
+</section>
+
+<!-- 2 -->
+<section class="slide" aria-label="Le produit">
+  <div class="kicker">Le produit</div>
+  <h2>Un planning poker qui appartient à l'équipe</h2>
+  <div class="split" style="grid-template-columns:7fr 5fr">
+    <div>
+      <p class="lead">Il remplace Scrum Poker Online pendant nos ateliers d'affinage, à distance ou en hybride.</p>
+      <ul style="margin-top:16px">
+        <li>Voter à l'aveugle, révéler, discuter, effacer, recommencer.</li>
+        <li><strong>Aucun rôle privilégié</strong> : n'importe qui crée, révèle, masque ou efface.</li>
+        <li>Accès par simple lien, sans compte, sur PC ou téléphone.</li>
+        <li>Une coupure réseau ne fait <strong>jamais</strong> perdre sa place ni son vote.</li>
+        <li>Seul un plantage ou un redémarrage du serveur peut perdre une session : <strong>risque accepté</strong>.</li>
+      </ul>
+      <div class="callout" style="margin-top:20px"><strong>Conséquence pour l'architecture :</strong> le serveur fait autorité sur l'état de la session ; le navigateur n'en est qu'un reflet.</div>
+    </div>
+    <div class="grid2" style="gap:14px">
+      <div class="stat"><div class="v">3 à 13</div><div class="l">personnes par session</div></div>
+      <div class="stat"><div class="v">65</div><div class="l">connexions temps réel simultanées (5 sessions × 13), NFR-4</div></div>
+      <div class="stat"><div class="v">&lt; 1 s</div><div class="l">pour diffuser un changement à tous (FR-16)</div></div>
+      <div class="stat"><div class="v">0 €</div><div class="l">de coût récurrent en V1 (NFR-10)</div></div>
+      <div class="stat"><div class="v">24 h</div><div class="l">de vie pour une session, puis tout est supprimé</div></div>
+      <div class="stat"><div class="v">0</div><div class="l">compte, publicité ou traceur tiers</div></div>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Source : PRD §1, §5<span class="num"></span></span></div>
+</section>
+
+<!-- 3 -->
+<section class="slide" aria-label="Les grands choix">
+  <div class="kicker">Les grands choix</div>
+  <h2>Quatre choix structurants, et leur raison</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3><span class="tag red">Webservice</span>Java 25 LTS et Spring Boot 4.1.1</h3>
+      <p>LTS en vigueur. Spring est le framework le plus répandu et le mieux documenté : le plus fiable pour du code écrit par des agents. Build Maven 3.9.16.</p>
+      <p class="why"><b>Écartés :</b> Quarkus (plus léger) et Micronaut. <b>Attention :</b> Spring Boot 4.1.1 va jusqu'à Java 26, pas 27.</p>
+    </div>
+    <div class="card">
+      <h3><span class="tag red">Front</span>Angular 22</h3>
+      <p>Choix de l'équipe. Zoneless, OnPush et signals par défaut, tests Vitest. Un seul <code>SessionService</code> détient la connexion et l'état (AD-10).</p>
+      <p class="why"><b>Écartée :</b> une bibliothèque cliente WebSocket ; l'API native suffit.</p>
+    </div>
+    <div class="card">
+      <h3><span class="tag red">Dépôt</span>Un monodépôt</h3>
+      <p><code>contract/</code>, <code>backend/</code>, <code>frontend/</code>, <code>deploy/</code> dans un seul dépôt Git : un message change des deux côtés dans le même changement.</p>
+      <p class="why"><b>Évite :</b> la dérive du contrat de messages entre front et webservice.</p>
+    </div>
+    <div class="card accent">
+      <h3><span class="tag red">Échanges</span>REST pour entrer, WebSocket pour la séance</h3>
+      <p>REST crée, vérifie et rejoint. Ensuite, <strong>toutes</strong> les actions de séance passent par un seul WebSocket, dans un seul ordre.</p>
+      <p class="why"><b>Écarté :</b> STOMP et SockJS. On garde un WebSocket brut, avec des messages JSON définis par le contrat.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : Stack, AD-2, AD-10, memlog<span class="num"></span></span></div>
+</section>
+
+<!-- 4 -->
+<section class="slide" aria-label="Communication hybride">
+  <div class="kicker">Communication hybride</div>
+  <h2>Entrer par REST, vivre la séance en WebSocket</h2>
+  <div class="split" style="grid-template-columns:430px 1fr;gap:36px">
+    <div>
+      <h3>Entrer : quatre endpoints REST, pas un de plus</h3>
+      <ul class="small">
+        <li><code>GET /api/health</code> : sonde de réveil</li>
+        <li><code>POST /api/sessions</code> : crée et fait entrer le créateur</li>
+        <li><code>GET /api/sessions/{id}</code> : 204 ou 404</li>
+        <li><code>POST …/{id}/participants</code> : rejoindre, ou reprendre un pseudo</li>
+      </ul>
+      <p class="small muted" style="margin:2px 0 14px">Ils renvoient <code>participantId</code> et le secret <code>participantToken</code>.</p>
+      <h3>La séance : un seul WebSocket brut</h3>
+      <ul class="small">
+        <li><code>WS /ws/sessions/{id}</code> est le <strong>seul</strong> canal des actions de séance.</li>
+        <li>Surface fermée : toute nouveauté commence par le contrat.</li>
+      </ul>
+      <div class="callout" style="margin-top:14px;font-size:16px"><strong>Pourquoi :</strong> un seul canal donne un seul ordre des actions. Deux actions quasi simultanées aboutissent au même état final chez tous (FR-17).</div>
+    </div>
+    <svg viewBox="0 0 680 470" width="100%" role="img" aria-label="Séquence : REST pour entrer, puis WebSocket pour la séance">
+      <rect x="0" y="66" width="680" height="178" rx="12" fill="#EFECE6"/>
+      <rect x="0" y="252" width="680" height="214" rx="12" fill="#FDECEC"/>
+      <text x="668" y="86" text-anchor="end" class="s" style="font-weight:600">Entrer · REST</text>
+      <text x="668" y="272" text-anchor="end" class="s" style="font-weight:600;fill:#CF3F4A">Séance · WebSocket</text>
+      <rect x="10" y="8" width="140" height="44" rx="10" class="box"/><text x="80" y="36" text-anchor="middle" class="t">Navigateur</text>
+      <rect x="275" y="8" width="170" height="44" rx="10" class="box"/><text x="360" y="36" text-anchor="middle" class="m">REST /api</text>
+      <rect x="495" y="8" width="180" height="44" rx="10" class="boxr"/><text x="585" y="36" text-anchor="middle" class="m">WS /ws/sessions/{id}</text>
+      <path d="M80 52V462M360 52V462M585 52V462" class="lnm" style="stroke-dasharray:3 5"/>
+      <g style="paint-order:stroke;stroke:#EFECE6;stroke-width:6px">
+        <text x="220" y="112" text-anchor="middle" class="m" style="stroke:#EFECE6">GET /api/health (réveil)</text>
+        <text x="220" y="152" text-anchor="middle" class="m" style="stroke:#EFECE6">GET /api/sessions/{id} → 204 / 404</text>
+        <text x="220" y="192" text-anchor="middle" class="m" style="stroke:#EFECE6">POST …/participants {pseudo, role}</text>
+        <text x="220" y="230" text-anchor="middle" class="m" style="stroke:#EFECE6">participantId, participantToken</text>
+      </g>
+      <path d="M80 120H358" class="ln" marker-end="url(#ah)"/>
+      <path d="M80 160H358" class="ln" marker-end="url(#ah)"/>
+      <path d="M80 200H358" class="ln" marker-end="url(#ah)"/>
+      <path d="M360 238H82" class="ln" style="stroke-dasharray:5 4" marker-end="url(#ah)"/>
+      <g style="paint-order:stroke;stroke:#FDECEC;stroke-width:6px">
+        <text x="332" y="294" text-anchor="middle" class="m" style="stroke:#FDECEC">ouverture, puis hello {participantToken}</text>
+        <text x="332" y="334" text-anchor="middle" class="m" style="stroke:#FDECEC">sessionState (version n)</text>
+        <text x="332" y="374" text-anchor="middle" class="m" style="stroke:#FDECEC">vote · reveal · hide · clear {roundId} · changeRole</text>
+        <text x="332" y="414" text-anchor="middle" class="m" style="stroke:#FDECEC">sessionState (n+1), à chaque connexion</text>
+        <text x="332" y="452" text-anchor="middle" class="s" style="stroke:#FDECEC">toutes les 5 s : ping et tick du serveur, heartbeat du client</text>
+      </g>
+      <path d="M80 302H583" class="ln" marker-end="url(#ah)"/>
+      <path d="M585 342H82" class="lnr" style="stroke-dasharray:5 4" marker-end="url(#ahr)"/>
+      <path d="M80 382H583" class="ln" marker-end="url(#ah)"/>
+      <path d="M585 422H82" class="lnr" style="stroke-dasharray:5 4" marker-end="url(#ahr)"/>
+    </svg>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-2, AD-4, AD-5, AD-7<span class="num"></span></span></div>
+</section>
+
+<!-- 5 -->
+<section class="slide" aria-label="Déploiement V1 sur Render">
+  <div class="kicker">Déploiement V1</div>
+  <h2>Deux services sur Render Free, pour zéro euro</h2>
+  <svg viewBox="0 0 1136 290" width="1136" height="290" role="img" aria-label="Le navigateur appelle le site statique et le web service Docker hébergés sur Render">
+    <rect x="10" y="58" width="190" height="220" rx="14" class="box"/>
+    <text x="105" y="160" text-anchor="middle" class="t">Navigateur</text>
+    <text x="105" y="184" text-anchor="middle" class="s">PC ou téléphone</text>
+    <rect x="560" y="6" width="570" height="280" rx="18" fill="#FFFFFF" stroke="#CF3F4A" stroke-width="1.5" stroke-dasharray="7 5"/>
+    <text x="582" y="34" class="t r">Render Free · V1</text>
+    <rect x="600" y="52" width="500" height="80" rx="12" class="box"/>
+    <text x="620" y="84" class="t">Site statique</text>
+    <text x="620" y="110" class="s">Angular + config.json · jamais mis en veille · sert la page de réveil</text>
+    <rect x="600" y="166" width="500" height="104" rx="12" class="boxr"/>
+    <text x="620" y="196" class="t">Web service Docker</text>
+    <text x="620" y="221" class="s">Spring Boot 4.1 sur Java 25 · une seule instance · PORT 8080</text>
+    <text x="620" y="245" class="s">État des sessions en mémoire · 512 Mo et 0,1 processeur</text>
+    <path d="M200 92H598" class="ln" marker-end="url(#ah)"/>
+    <text x="400" y="84" text-anchor="middle" class="m">HTTPS : l'application</text>
+    <path d="M200 196H598" class="ln" marker-end="url(#ah)"/>
+    <text x="385" y="188" text-anchor="middle" class="m" style="font-size:12.5px">HTTPS /api : santé, créer, vérifier, rejoindre</text>
+    <path d="M200 242H598" class="lnr" marker-end="url(#ahr)"/>
+    <text x="400" y="234" text-anchor="middle" class="m r">WSS /ws/sessions/{id}</text>
+    <text x="400" y="262" text-anchor="middle" class="s">hello, intentions, heartbeat, tick</text>
+  </svg>
+  <div class="grid3" style="margin-top:20px">
+    <div class="card"><h3>Deux origines</h3><p>Le front lit l'URL de l'API dans <code>/config.json</code>, généré depuis <code>API_BASE_URL</code>. L'API n'accepte que <code>ALLOWED_ORIGINS</code>. CSP stricte, HTTPS et WSS seulement.</p></div>
+    <div class="card"><h3>Pas de veille en séance</h3><p>Render s'endort après 15 min sans message entrant. Le <code>heartbeat</code> du client, toutes les 5 s, le garde éveillé tant qu'une séance a lieu (NFR-1b).</p></div>
+    <div class="card"><h3>Un filet de sécurité</h3><p>Test de charge (13 participants, 65 connexions) dès la première story WebSocket. En cas d'échec : repli sur Northflank, puis Oracle Always Free avec k3s.</p></div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : Structural Seed, AD-8, AD-11, AD-13, Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 6 -->
+<section class="slide" aria-label="Architecture hexagonale">
+  <div class="kicker">Webservice hexagonal</div>
+  <h2>Les règles au centre, les protocoles autour</h2>
+  <div class="split" style="grid-template-columns:420px 1fr;gap:40px">
+    <div>
+      <ul class="small">
+        <li><strong>domain</strong> : Java pur. Règles du jeu, synthèse (moyenne, plus votée, min, max, consensus), instantané filtré.</li>
+        <li><strong>application</strong> : cas d'usage, balayeur des délais, ports <code>SessionStore</code> et <code>SessionBroadcaster</code>, <code>Clock</code>.</li>
+        <li><strong>adaptateurs</strong> : traduisent REST, WebSocket ou stockage. Ils ne prennent <strong>jamais</strong> de décision métier.</li>
+        <li><strong>config</strong> : assemblage Spring, CORS, origines WebSocket.</li>
+      </ul>
+      <div class="card accent" style="margin-top:14px"><h3>Garde-fou automatique</h3><p>Un test ArchUnit fait échouer le build si <code>domain</code> importe Spring, Jackson ou <code>jakarta</code>, ou si le sens des dépendances est violé.</p></div>
+      <p class="small muted" style="margin-top:12px">Bénéfice : PostgreSQL ou Jira arriveront comme de nouveaux adaptateurs, sans toucher aux règles (NFR-9).</p>
+    </div>
+    <svg viewBox="0 0 720 440" width="100%" role="img" aria-label="Couches hexagonales et sens des dépendances">
+      <rect x="260" y="4" width="200" height="54" rx="10" class="box"/>
+      <text x="360" y="27" text-anchor="middle" class="t m" style="font-size:15px">config</text>
+      <text x="360" y="47" text-anchor="middle" class="s">assemblage Spring, CORS</text>
+      <path d="M260 40 C150 44 95 70 90 116" class="ln" marker-end="url(#ah)"/>
+      <path d="M460 40 C570 44 625 66 630 110" class="ln" marker-end="url(#ah)"/>
+      <rect x="215" y="96" width="290" height="308" rx="18" class="box"/>
+      <text x="360" y="128" text-anchor="middle" class="t m" style="font-size:15px">application</text>
+      <text x="360" y="151" text-anchor="middle" class="s">cas d'usage · balayeur · Clock</text>
+      <text x="360" y="176" text-anchor="middle" class="s">ports : SessionStore,</text>
+      <text x="360" y="195" text-anchor="middle" class="s">SessionBroadcaster</text>
+      <path d="M360 208V258" class="lnr" marker-end="url(#ahr)"/>
+      <rect x="245" y="262" width="230" height="124" rx="14" class="boxr"/>
+      <text x="360" y="294" text-anchor="middle" class="t m r" style="font-size:15px">domain</text>
+      <text x="360" y="318" text-anchor="middle" class="s">Java pur, sans Spring</text>
+      <text x="360" y="340" text-anchor="middle" class="s">règles · synthèse</text>
+      <text x="360" y="362" text-anchor="middle" class="s">instantané filtré</text>
+      <rect x="0" y="118" width="172" height="66" rx="12" class="box"/>
+      <text x="86" y="146" text-anchor="middle" class="m">adapter.in.rest</text>
+      <text x="86" y="168" text-anchor="middle" class="s">contrôleurs REST</text>
+      <rect x="0" y="230" width="172" height="82" rx="12" class="box"/>
+      <text x="86" y="258" text-anchor="middle" class="m">adapter.in.ws</text>
+      <text x="86" y="280" text-anchor="middle" class="s">WebSocket ; implémente</text>
+      <text x="86" y="299" text-anchor="middle" class="s">SessionBroadcaster</text>
+      <rect x="548" y="112" width="172" height="80" rx="12" class="box"/>
+      <text x="634" y="138" text-anchor="middle" class="m">adapter.out.memory</text>
+      <text x="634" y="160" text-anchor="middle" class="s">V1, en mémoire ;</text>
+      <text x="634" y="179" text-anchor="middle" class="s">implémente SessionStore</text>
+      <rect x="548" y="230" width="172" height="82" rx="12" class="boxd"/>
+      <text x="634" y="258" text-anchor="middle" class="m">adapter.out.postgres</text>
+      <text x="634" y="280" text-anchor="middle" class="s">plus tard</text>
+      <text x="634" y="299" text-anchor="middle" class="s">même port SessionStore</text>
+      <path d="M172 151H213" class="ln" marker-end="url(#ah)"/>
+      <path d="M172 271H213" class="ln" marker-end="url(#ah)"/>
+      <path d="M548 151H507" class="ln" marker-end="url(#ah)"/>
+      <path d="M548 271H507" class="lnm" marker-end="url(#ahm)"/>
+      <text x="0" y="434" class="s">→ se lit « dépend de ». Les adaptateurs dépendent aussi de domain.</text>
+    </svg>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : Design Paradigm, AD-1, AD-9<span class="num"></span></span></div>
+</section>
+
+<!-- 7 -->
+<section class="slide" aria-label="Le cycle d'une action">
+  <div class="kicker">Le cycle d'une action</div>
+  <h2>Une intention, un verrou, une version, un instantané</h2>
+  <svg viewBox="0 0 1136 250" width="1136" height="250" role="img" aria-label="Intention, puis sous le verrou de session : charger, appliquer la règle, incrémenter la version, publier">
+    <rect x="0" y="70" width="190" height="140" rx="14" class="boxr"/>
+    <text x="95" y="104" text-anchor="middle" class="t">Intention</text>
+    <text x="95" y="134" text-anchor="middle" class="m">vote {roundId, card}</text>
+    <text x="95" y="160" text-anchor="middle" class="s">reçue sur</text>
+    <text x="95" y="180" text-anchor="middle" class="s">le WebSocket</text>
+    <path d="M190 140H231" class="ln" marker-end="url(#ah)"/>
+    <rect x="234" y="16" width="900" height="226" rx="18" fill="none" stroke="#CF3F4A" stroke-width="1.8" stroke-dasharray="8 6"/>
+    <g transform="translate(256 30)"><rect x="0" y="6" width="16" height="12" rx="2" fill="#CF3F4A"/><path d="M3 7V3a5 5 0 0 1 10 0v4" fill="none" stroke="#CF3F4A" stroke-width="2"/></g>
+    <text x="282" y="47" class="t r" style="font-size:15px">Sous le verrou propre à cette session</text>
+    <g>
+      <rect x="256" y="70" width="196" height="150" rx="12" class="box"/>
+      <circle cx="280" cy="94" r="13" fill="#CF3F4A"/><text x="280" y="99" text-anchor="middle" style="fill:#fff;font-size:14px;font-weight:700">1</text>
+      <text x="302" y="100" class="t">Charger</text>
+      <text x="274" y="138" class="m">SessionStore.find</text>
+      <text x="274" y="164" class="s">même chemin pour les</text>
+      <text x="274" y="184" class="s">actions et le balayeur</text>
+    </g>
+    <path d="M452 145H474" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="476" y="70" width="196" height="150" rx="12" class="box"/>
+      <circle cx="500" cy="94" r="13" fill="#CF3F4A"/><text x="500" y="99" text-anchor="middle" style="fill:#fff;font-size:14px;font-weight:700">2</text>
+      <text x="522" y="100" class="t">Appliquer la règle</text>
+      <text x="494" y="138" class="s">dans domain uniquement</text>
+      <text x="494" y="164" class="s">roundId périmé : ignoré</text>
+      <text x="494" y="184" class="s">interdit : error + code</text>
+    </g>
+    <path d="M672 145H694" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="696" y="70" width="196" height="150" rx="12" class="box"/>
+      <circle cx="720" cy="94" r="13" fill="#CF3F4A"/><text x="720" y="99" text-anchor="middle" style="fill:#fff;font-size:14px;font-weight:700">3</text>
+      <text x="742" y="100" class="t">version + 1, save</text>
+      <text x="714" y="138" class="s">seulement si l'état</text>
+      <text x="714" y="158" class="s">observable a changé</text>
+      <text x="714" y="184" class="s">sinon : rien n'est diffusé</text>
+    </g>
+    <path d="M892 145H914" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="916" y="70" width="198" height="150" rx="12" class="boxr"/>
+      <circle cx="940" cy="94" r="13" fill="#CF3F4A"/><text x="940" y="99" text-anchor="middle" style="fill:#fff;font-size:14px;font-weight:700">4</text>
+      <text x="962" y="100" class="t">Publier</text>
+      <text x="934" y="138" class="s">un instantané filtré</text>
+      <text x="934" y="158" class="s">pour chaque destinataire</text>
+      <text x="934" y="184" class="s">file bornée, sans attente</text>
+    </g>
+  </svg>
+  <div class="grid4" style="margin-top:22px">
+    <div class="card"><h3>Actions simultanées</h3><p>Sérialisées par session : la dernière reçue s'applique, et tous voient le même état final.</p></div>
+    <div class="card"><h3>Intention nommée</h3><p><code>reveal</code>, jamais « inverser ». Un clic tardif ne peut pas effacer le tour suivant.</p></div>
+    <div class="card"><h3>Déjà satisfaite</h3><p><code>reveal</code> sur un tour révélé ne change rien : ni version, ni erreur.</p></div>
+    <div class="card"><h3>Connexion lente</h3><p>File d'envoi bornée (2 s, 64 Ko). Au-delà, la connexion est fermée et le client se reconnecte.</p></div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-3, AD-4<span class="num"></span></span></div>
+</section>
+
+<!-- 8 -->
+<section class="slide" aria-label="Pourquoi personne ne peut tricher">
+  <div class="kicker">Vote à l'aveugle</div>
+  <h2>Pourquoi personne ne peut tricher</h2>
+  <div class="split" style="grid-template-columns:540px 1fr;gap:36px">
+    <div>
+      <p class="small muted" style="margin-bottom:10px">Exemple : tour caché, Sofia a joué 5 et Karim 8. Chacun reçoit <strong>son</strong> instantané.</p>
+      <div class="card" style="padding:14px 18px;margin-bottom:12px">
+        <h3 style="font-size:16px">Instantané envoyé à Sofia</h3>
+        <pre class="mono" style="display:block;background:none;padding:0;font-size:14px;line-height:1.55;white-space:pre">round: { status: HIDDEN }
+{ pseudo: "Sofia", hasVoted: true, vote: <span style="color:#CF3F4A;font-weight:700">"5"</span> }
+{ pseudo: "Karim", hasVoted: true, vote: <span style="color:#646B78">null</span> }</pre>
+      </div>
+      <div class="card" style="padding:14px 18px">
+        <h3 style="font-size:16px">Instantané envoyé à Karim</h3>
+        <pre class="mono" style="display:block;background:none;padding:0;font-size:14px;line-height:1.55;white-space:pre">round: { status: HIDDEN }
+{ pseudo: "Sofia", hasVoted: true, vote: <span style="color:#646B78">null</span> }
+{ pseudo: "Karim", hasVoted: true, vote: <span style="color:#CF3F4A;font-weight:700">"8"</span> }</pre>
+      </div>
+      <p class="small muted" style="margin-top:10px">Extrait simplifié du squelette normatif <code>sessionState</code>.</p>
+    </div>
+    <div>
+      <ul class="small">
+        <li><strong>La carte des autres n'arrive jamais dans mon navigateur.</strong> Le domaine filtre l'instantané par destinataire : ni les outils de développement ni le trafic réseau ne la montrent.</li>
+        <li><strong>Le serveur décide.</strong> Le client n'envoie que des intentions ; règles et synthèse sont calculées par le domaine.</li>
+        <li><strong>Pas de vote après coup.</strong> Voter sur un tour révélé renvoie <code>ROUND_REVEALED</code> ; un observateur reçoit <code>NOT_A_VOTER</code>.</li>
+        <li><strong>Personne ne parle à ma place.</strong> Mon <code>participantToken</code> est secret : jamais dans une URL, un instantané ou un journal.</li>
+        <li><strong>Rien ne fuit dans les journaux</strong> : ni jeton, ni vote d'un tour caché, ni pseudo.</li>
+      </ul>
+      <div class="card warn" style="margin-top:12px"><p><strong>Risque accepté (confiance d'équipe) :</strong> reprendre le pseudo d'un participant déconnecté n'est pas bloqué (FR-8, NFR-6).</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-1, AD-4, AD-5, AD-7, Journalisation<span class="num"></span></span></div>
+</section>
+
+<!-- 9 -->
+<section class="slide" aria-label="Le contrat d'abord">
+  <div class="kicker">Le contrat d'abord</div>
+  <h2><code style="font-size:.85em">contract/</code> est la source de vérité</h2>
+  <div class="split" style="grid-template-columns:1fr 600px;gap:40px">
+    <div>
+      <ul>
+        <li><strong>La première story du build livre le contrat complet</strong>, avec un exemple de chaque message, avant toute story front ou webservice.</li>
+        <li>Types Java et TypeScript <strong>écrits à la main</strong> ; des tests valident les exemples contre les JSON Schema, des deux côtés.</li>
+        <li>Un message change dans le <strong>même changement</strong> que le code des deux côtés.</li>
+        <li>Aucun champ ne circule s'il n'est pas décrit.</li>
+        <li>Entre deux versions : <strong>ajouts seulement</strong>, ni suppression ni renommage (AD-13).</li>
+      </ul>
+      <p class="small muted" style="margin-top:8px">Pourquoi : des agents qui codent en parallèle ne doivent pas inventer chacun leur version d'un message.</p>
+    </div>
+    <div>
+      <svg viewBox="0 0 600 300" width="600" height="300" role="img" aria-label="Le contrat alimente le backend et le frontend">
+        <rect x="160" y="6" width="280" height="130" rx="14" class="boxr"/>
+        <text x="300" y="38" text-anchor="middle" class="t m r">contract/</text>
+        <text x="300" y="68" text-anchor="middle" class="m">openapi.yaml · OpenAPI 3.2</text>
+        <text x="300" y="92" text-anchor="middle" class="m">asyncapi.yaml · AsyncAPI 3.1</text>
+        <text x="300" y="118" text-anchor="middle" class="s">JSON Schema + exemples</text>
+        <path d="M250 136L150 196" class="ln" marker-end="url(#ah)"/>
+        <path d="M350 136L450 196" class="ln" marker-end="url(#ah)"/>
+        <text x="300" y="178" text-anchor="middle" class="s">s'y conforment</text>
+        <rect x="0" y="198" width="270" height="96" rx="12" class="box"/>
+        <text x="135" y="228" text-anchor="middle" class="t">backend/ · Java</text>
+        <text x="135" y="254" text-anchor="middle" class="s">types écrits à la main</text>
+        <text x="135" y="276" text-anchor="middle" class="s">tests : exemples ↔ schémas</text>
+        <rect x="330" y="198" width="270" height="96" rx="12" class="box"/>
+        <text x="465" y="228" text-anchor="middle" class="t">frontend/ · Angular</text>
+        <text x="465" y="254" text-anchor="middle" class="s">types écrits à la main</text>
+        <text x="465" y="276" text-anchor="middle" class="s">tests : exemples ↔ schémas</text>
+      </svg>
+      <p class="small" style="margin:14px 0 6px"><strong>Client → serveur</strong></p>
+      <div class="chips"><span class="chip">hello</span><span class="chip">heartbeat</span><span class="chip red">vote</span><span class="chip red">reveal</span><span class="chip red">hide</span><span class="chip red">clear</span><span class="chip red">changeRole</span></div>
+      <p class="small" style="margin:10px 0 6px"><strong>Serveur → client</strong></p>
+      <div class="chips"><span class="chip red">sessionState</span><span class="chip">tick</span><span class="chip">error</span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-6, AD-13, Consistency Conventions<span class="num"></span></span></div>
+</section>
+
+<!-- 10 -->
+<section class="slide" aria-label="Identité et poignée de main">
+  <div class="kicker">Identité</div>
+  <h2>Trois identifiants, un seul secret</h2>
+  <div class="split" style="grid-template-columns:1fr 1fr;gap:32px">
+    <div>
+      <table class="tbl">
+        <tr><th>Identifiant</th><th>Nature</th><th>Où il circule</th></tr>
+        <tr><td><code>sessionId</code></td><td>128 bits aléatoires</td><td>dans le lien de session</td></tr>
+        <tr><td><code>participantId</code></td><td>UUID public</td><td>désigne un participant dans l'état</td></tr>
+        <tr><td><code>participantToken</code></td><td>128 bits, <strong style="color:#CF3F4A">secret</strong></td><td>jamais dans une URL, un instantané ou un journal</td></tr>
+      </table>
+      <p class="small" style="margin-top:14px">Tous générés avec <code>SecureRandom</code>. Le jeton est rangé dans le <code>localStorage</code> (<code>pp.token.{sessionId}</code>), partagé par les onglets : plusieurs onglets = un seul participant.</p>
+      <p class="small" style="margin-top:10px"><strong>Reprise depuis un autre appareil (FR-8)</strong> : nouveau jeton émis, l'ancien est révoqué et ses connexions fermées en <code>4401</code>.</p>
+    </div>
+    <div class="card">
+      <h3>Poignée de main <code>hello</code></h3>
+      <ol style="padding-left:22px" class="small">
+        <li>Le client ouvre <code>/ws/sessions/{sessionId}</code>.</li>
+        <li>Premier message, sous 5 s : <code>hello {participantToken}</code>.</li>
+        <li>Session inconnue ou expirée : fermeture <code>4404</code> → « Session introuvable ».</li>
+        <li>Puis le jeton :
+          <div style="margin-top:6px;display:grid;gap:6px">
+            <div><span class="tag green">actif</span>participant reconnecté</div>
+            <div><span class="tag green">retiré, pseudo libre</span>remis à sa place</div>
+            <div><span class="tag red">inconnu, révoqué, pseudo pris</span><code>4401</code> → écran Rejoindre, pseudo prérempli</div>
+          </div>
+        </li>
+        <li>Le serveur envoie l'instantané <code>sessionState</code>.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-7, Fermetures WebSocket<span class="num"></span></span></div>
+</section>
+
+<!-- 11 -->
+<section class="slide" aria-label="Présence et reconnexion">
+  <div class="kicker">Présence et reconnexion</div>
+  <h2>L'inactivité ne déconnecte jamais</h2>
+  <p class="small" style="margin:-8px 0 8px">Seul l'état <strong>réseau</strong> compte. Écouter sans rien toucher, onglet en arrière-plan ou téléphone verrouillé : on reste dans la session.</p>
+  <svg viewBox="0 0 1136 176" width="1136" height="176" role="img" aria-label="Chronologie après une coupure réseau">
+    <text x="0" y="18" class="s" style="font-weight:600">Après une coupure réseau :</text>
+    <path d="M40 60H700" stroke="#1F2330" stroke-width="2"/>
+    <path d="M718 60H1120" stroke="#1F2330" stroke-width="2"/>
+    <path d="M702 70L712 50M710 70L720 50" stroke="#646B78" stroke-width="2"/>
+    <g>
+      <circle cx="60" cy="60" r="8" fill="#8E2A1E"/><text x="60" y="42" text-anchor="middle" class="t">0 s</text>
+      <text x="60" y="92" text-anchor="middle" class="s" style="fill:#1F2330;font-weight:600">Coupure</text>
+      <text x="60" y="112" text-anchor="middle" class="s">reconnexion</text><text x="60" y="130" text-anchor="middle" class="s">immédiate</text>
+    </g>
+    <g>
+      <circle cx="245" cy="60" r="8" fill="#8A560C"/><text x="245" y="42" text-anchor="middle" class="t">2 s</text>
+      <text x="245" y="92" text-anchor="middle" class="s" style="fill:#1F2330;font-weight:600">Bandeau « Reconnexion… »</text>
+      <text x="245" y="112" text-anchor="middle" class="s">table visible,</text><text x="245" y="130" text-anchor="middle" class="s">actions désactivées</text>
+    </g>
+    <g>
+      <circle cx="440" cy="60" r="8" fill="#646B78"/><text x="440" y="42" text-anchor="middle" class="t">12 s</text>
+      <text x="440" y="92" text-anchor="middle" class="s" style="fill:#1F2330;font-weight:600">Le client s'en rend compte</text>
+      <text x="440" y="112" text-anchor="middle" class="s">aucun message reçu</text><text x="440" y="130" text-anchor="middle" class="s">(pas de tick)</text>
+    </g>
+    <g>
+      <circle cx="630" cy="60" r="8" fill="#7E8490"/><text x="630" y="42" text-anchor="middle" class="t">15 s</text>
+      <text x="630" y="92" text-anchor="middle" class="s" style="fill:#1F2330;font-weight:600">Le serveur ferme</text>
+      <text x="630" y="112" text-anchor="middle" class="s">ni pong ni message :</text><text x="630" y="130" text-anchor="middle" class="s">déconnecté pour tous</text>
+    </g>
+    <g>
+      <circle cx="830" cy="60" r="8" fill="#646B78"/><text x="830" y="42" text-anchor="middle" class="t">5 min</text>
+      <text x="830" y="92" text-anchor="middle" class="s" style="fill:#1F2330;font-weight:600">Retiré de la liste</text>
+      <text x="830" y="112" text-anchor="middle" class="s">vote du tour supprimé,</text><text x="830" y="130" text-anchor="middle" class="s">jeton toujours valable</text>
+    </g>
+    <g>
+      <circle cx="1040" cy="60" r="9" fill="#16754F"/><text x="1040" y="42" text-anchor="middle" class="t" style="fill:#16754F">Retour</text>
+      <text x="1040" y="92" text-anchor="middle" class="s" style="fill:#16754F;font-weight:600">Remis à sa place</text>
+      <text x="1040" y="112" text-anchor="middle" class="s">même participantId,</text><text x="1040" y="130" text-anchor="middle" class="s">pseudo et rôle</text>
+      <text x="1040" y="150" text-anchor="middle" class="s">(si le pseudo est libre)</text>
+    </g>
+  </svg>
+  <div class="grid2" style="grid-template-columns:3fr 2fr;gap:20px;margin-top:8px">
+    <table class="tbl">
+      <tr><th>Signal</th><th>Qui, quand</th><th>À quoi il sert</th></tr>
+      <tr><td>ping de protocole</td><td>serveur, 5 s</td><td>vivacité : le navigateur répond seul, même onglet caché</td></tr>
+      <tr><td><code>tick</code></td><td>serveur, 5 s</td><td>le client détecte la perte (12 s sans message)</td></tr>
+      <tr><td><code>heartbeat</code></td><td>client, 5 s</td><td>garder Render éveillé, uniquement</td></tr>
+    </table>
+    <div class="card"><h3>Reconnexion du client</h3><p>Immédiate, puis après 1, 2, 4 et 8 s, puis toutes les 10 s. Aussi immédiate sur <code>online</code> et au retour au premier plan. Le balayeur serveur passe chaque seconde.</p></div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-7, AD-8, EXPERIENCE › Reconnexion<span class="num"></span></span></div>
+</section>
+
+<!-- 12 -->
+<section class="slide" aria-label="Fiabilité et limites acceptées">
+  <div class="kicker">Fiabilité</div>
+  <h2>Ce que nous acceptons, et ce que nous refusons</h2>
+  <table class="tbl">
+    <tr><th style="width:27%">Situation</th><th style="width:15%">Statut</th><th>Ce que prévoit l'architecture</th></tr>
+    <tr><td><strong>Le serveur plante ou redémarre</strong></td><td><span class="tag amber">accepté</span></td><td>Les sessions en mémoire sont perdues (NFR-1). L'équipe crée une nouvelle session et revote le ticket. La page affiche « Session introuvable », sans insister.</td></tr>
+    <tr><td><strong>Réveil après une mise en veille</strong></td><td><span class="tag amber">accepté</span></td><td>Jusqu'à 2 min : « Réveil du serveur… ». Au-delà de 3 min : « Le serveur ne répond pas. » et un bouton Réessayer. Conseil : ouvrir l'outil quelques minutes avant l'atelier.</td></tr>
+    <tr><td><strong>Mise en veille pendant une séance</strong></td><td><span class="tag red">refusé</span></td><td>Critère éliminatoire (NFR-1b). Le <code>heartbeat</code> toutes les 5 s garde Render éveillé tant qu'une séance a lieu.</td></tr>
+    <tr><td><strong>Déploiement pendant un atelier</strong></td><td><span class="tag red">refusé</span></td><td>Pas de déploiement à chaque push : seulement sur une <strong>étiquette Git <code>v*</code></strong> posée hors atelier. Webservice d'abord, front ensuite. Contrat modifié par ajout seulement.</td></tr>
+    <tr><td><strong>Quota Render de 750 h par mois</strong></td><td><span class="tag green">maîtrisé</span></td><td>Un seul web service : ni préproduction, ni aperçu de PR.</td></tr>
+    <tr><td><strong>512 Mo et 0,1 processeur</strong></td><td><span class="tag grey">à vérifier</span></td><td>Test de charge (13 participants, 65 connexions, sur Render) dans la première story WebSocket. Échec : on change d'hébergeur.</td></tr>
+  </table>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : PRD NFR-1, NFR-1b, NFR-2 · AD-8, AD-9, AD-13<span class="num"></span></span></div>
+</section>
+
+<!-- 13 -->
+<section class="slide" aria-label="Ce qui est reporté">
+  <div class="kicker">Deferred</div>
+  <h2>Ce qui est volontairement reporté</h2>
+  <div class="grid3" style="gap:16px">
+    <div class="card"><h3>Adaptateur PostgreSQL</h3><p>Derrière <code>SessionStore</code>, quand un besoin de persistance apparaîtra. Aucun en V1.</p></div>
+    <div class="card accent"><h3>Plusieurs instances</h3><p>Exigent un stockage partagé et une diffusion entre instances. <strong>Nouvel AD</strong>, qui remplacera la règle « une seule instance ».</p></div>
+    <div class="card"><h3>OpenShift et GitLab CI</h3><p>Manifests et pipeline écrits au passage en entreprise. Images déjà prêtes, <code>config.json</code> en ConfigMap.</p></div>
+    <div class="card"><h3>Intégration Jira</h3><p>Un nouvel adaptateur sortant, en V2 ou V3, si l'outil est adopté.</p></div>
+    <div class="card"><h3>Observabilité</h3><p>Métriques et traces plus tard : les journaux JSON suffisent en V1.</p></div>
+    <div class="card"><h3>Hébergeur de repli</h3><p>Northflank, puis Oracle Always Free avec k3s, si le test de charge ou l'usage réel échoue sur Render.</p></div>
+  </div>
+  <div class="card" style="margin-top:16px;background:transparent"><p><strong>Bibliothèque cliente WebSocket côté Angular</strong> : l'API native suffit. Si une bibliothèque arrive un jour, elle reste confinée à <code>SessionService</code>.</p></div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Source : ARCHITECTURE-SPINE › Deferred<span class="num"></span></span></div>
+</section>
+
+<!-- 14 -->
+<section class="slide" aria-label="Prochaines étapes BMAD">
+  <div class="kicker">Prochaines étapes BMAD</div>
+  <h2>De la spine au premier atelier</h2>
+  <svg viewBox="0 0 1136 170" width="1136" height="170" role="img" aria-label="Étapes : architecture, epics et stories, build, atelier réel">
+    <g>
+      <rect x="0" y="20" width="250" height="130" rx="14" fill="#E3F4EC" stroke="#16754F" stroke-width="1.5"/>
+      <text x="20" y="52" class="t" style="fill:#16754F">✓ Architecture</text>
+      <text x="20" y="80" class="s">spine v2, AD-1 à AD-13</text>
+      <text x="20" y="102" class="s">cinq revues appliquées</text>
+      <text x="20" y="124" class="s">aucune question bloquante</text>
+    </g>
+    <path d="M250 85H290" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="292" y="20" width="250" height="130" rx="14" class="boxr"/>
+      <text x="312" y="52" class="t r">Epics et stories</text>
+      <text x="312" y="80" class="m">bmad-create-epics-</text>
+      <text x="312" y="100" class="m">and-stories</text>
+      <text x="312" y="124" class="s">à partir du PRD et de la spine</text>
+    </g>
+    <path d="M542 85H582" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="584" y="20" width="270" height="130" rx="14" class="box"/>
+      <text x="604" y="52" class="t">Build</text>
+      <text x="604" y="80" class="m">bmad-build</text>
+      <text x="604" y="104" class="s">story 1 : le contrat complet</text>
+      <text x="604" y="126" class="s">puis front et webservice</text>
+    </g>
+    <path d="M854 85H894" class="ln" marker-end="url(#ah)"/>
+    <g>
+      <rect x="896" y="20" width="238" height="130" rx="14" class="box"/>
+      <text x="916" y="52" class="t">En atelier</text>
+      <text x="916" y="80" class="s">SM-1 : trois affinages</text>
+      <text x="916" y="102" class="s">consécutifs avec l'outil</text>
+      <text x="916" y="124" class="s">SM-2 : zéro incident bloquant</text>
+    </g>
+  </svg>
+  <div class="grid3" style="margin-top:18px">
+    <div class="card accent"><h3>Story 1 : le contrat</h3><p><code>openapi.yaml</code>, <code>asyncapi.yaml</code> et un exemple de chaque message, avant toute story qui code le front ou le webservice.</p></div>
+    <div class="card"><h3>Première story WebSocket</h3><p>Elle embarque le test de charge sur Render : 13 participants, 65 connexions. C'est le verdict sur l'hébergeur.</p></div>
+    <div class="card"><h3>Règle du jeu</h3><p>La spine fait référence. Une story qui veut s'en écarter passe d'abord par un nouvel AD, pas par le code.</p></div>
+  </div>
+  <div class="foot"><span>Planning Poker · Architecture V1</span><span>Sources : AD-6, Conventions › Tests, PRD §8, memlog<span class="num"></span></span></div>
+</section>
+
+</main>
+
+<nav class="nav" aria-label="Navigation du diaporama">
+  <div class="progress" id="bar"></div>
+  <button type="button" id="prev" aria-label="Diapositive précédente">← Précédente</button>
+  <span class="counter" id="counter" aria-live="polite">1 / 1</span>
+  <button type="button" id="next" class="next" aria-label="Diapositive suivante">Suivante →</button>
+</nav>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var counter=document.getElementById('counter'),bar=document.getElementById('bar');
+  var prev=document.getElementById('prev'),next=document.getElementById('next');
+  var i=0;
+  function fit(){
+    var s=Math.min(window.innerWidth/1280,(window.innerHeight-56)/720)*0.97;
+    slides.forEach(function(el){el.style.transform='scale('+s+')';});
+  }
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach(function(el,k){el.classList.toggle('active',k===i);el.setAttribute('aria-hidden',k===i?'false':'true');});
+    counter.textContent=(i+1)+' / '+slides.length;
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    prev.disabled=(i===0);next.disabled=(i===slides.length-1);
+    try{if(location.hash!=='#'+(i+1))history.replaceState(null,'','#'+(i+1));}catch(e){}
+  }
+  prev.addEventListener('click',function(){go(i-1);});
+  next.addEventListener('click',function(){go(i+1);});
+  document.addEventListener('keydown',function(e){
+    if(e.altKey||e.ctrlKey||e.metaKey)return;
+    var k=e.key;
+    if(k==='ArrowRight'||k==='ArrowDown'||k==='PageDown'||(k===' '&&!e.shiftKey)){e.preventDefault();go(i+1);}
+    else if(k==='ArrowLeft'||k==='ArrowUp'||k==='PageUp'||(k===' '&&e.shiftKey)){e.preventDefault();go(i-1);}
+    else if(k==='Home'){e.preventDefault();go(0);}
+    else if(k==='End'){e.preventDefault();go(slides.length-1);}
+  });
+  window.addEventListener('resize',fit);
+  window.addEventListener('hashchange',function(){var h=parseInt(location.hash.slice(1),10);if(!isNaN(h)&&h-1!==i)go(h-1);});
+  var h=parseInt(location.hash.slice(1),10);
+  go(isNaN(h)?0:h-1);fit();
+})();
+</script>
+</body>
+</html>

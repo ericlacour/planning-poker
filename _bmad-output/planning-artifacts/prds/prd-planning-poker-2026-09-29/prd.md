@@ -41,7 +41,7 @@ Le projet est aussi le terrain d'apprentissage de la méthode BMAD, suivie de bo
 
   Eric présente le premier **ticket** à l'écran partagé. Les votants choisissent une **carte**, et la liste montre au fur et à mesure qui a voté. Quand tout le monde a voté, Eric clique sur **Révéler**. Tout le monde voit les votes nominatifs et la **moyenne**, mais aucun **consensus** n'est signalé (un 3 et un 13). Les deux concernés s'expliquent, puis Eric clique sur **Effacer** et l'équipe revote. Cette fois, c'est 5 partout, et le consensus s'affiche. Eric reporte 5 dans Jira et passe au ticket suivant.
 
-  **Cas limite :** si l'outil a été mis en veille par l'hébergeur, la première ouverture affiche « Réveil du serveur… » pendant quelques secondes au lieu d'une erreur.
+  **Cas limite :** si l'outil a été mis en veille par l'hébergeur, la première ouverture affiche « Réveil du serveur… » pendant une à deux minutes au lieu d'une erreur.
 
 - **UJ-2. Sofia vote depuis son téléphone et perd le réseau.**
   Sofia, développeuse, suit la visio sur son PC mais vote sur son téléphone. Elle ouvre le lien reçu par chat, saisit « Sofia » et rejoint la session en tant que **votante**. En plein **tour**, son wifi tombe. Pour les autres, elle apparaît comme déconnectée. Trente secondes plus tard, la page se reconnecte d'elle-même : elle est toujours « Sofia », et la carte qu'elle avait choisie est toujours là.
@@ -122,7 +122,9 @@ Dans le même navigateur, un participant qui perd sa connexion ou rafraîchit la
 - La page tente de se reconnecter d'elle-même, sans action de l'utilisateur, et affiche clairement son état (« Reconnexion… »).
 - Plusieurs onglets du même navigateur ouverts sur la même session représentent un seul et même participant.
 - Si la session n'existe plus (serveur redémarré ou session expirée), la page n'insiste pas : elle affiche le message de FR-3, qui propose de créer une nouvelle session.
-- Si le participant a entre-temps été repris depuis un autre appareil (FR-8) ou retiré (FR-9), la page ne tente pas de reconnexion. Elle affiche l'écran pour rejoindre la session, avec le pseudo prérempli.
+- Un participant retiré pour absence (FR-9) qui revient, par exemple en rallumant son téléphone après 20 minutes, est **remis automatiquement à sa place**, sous le même pseudo, sans repasser par l'écran pour rejoindre. Seul son vote éventuel du tour en cours a été perdu.
+- Rester inactif, sans rien toucher, ou laisser l'onglet en arrière-plan pendant l'explication d'une story ne déconnecte jamais un participant, quelle qu'en soit la durée.
+- Si son pseudo a entre-temps été repris depuis un autre appareil (FR-8), ou pris par quelqu'un d'autre après son retrait, la page ne tente pas de reconnexion. Elle affiche l'écran pour rejoindre la session, avec le pseudo prérempli.
 
 #### FR-8 : Reprendre son pseudo depuis un autre appareil
 Une personne peut rejoindre la session depuis un autre appareil ou navigateur avec le pseudo d'un participant **déconnecté**. Elle reprend alors ce participant, avec son rôle et son vote. Réalise UJ-2.
@@ -131,7 +133,7 @@ Une personne peut rejoindre la session depuis un autre appareil ou navigateur av
 - Rien n'empêche de reprendre le pseudo d'un participant déconnecté qui n'est pas soi. Ce risque est accepté au nom de la confiance d'équipe (§1, NFR-6).
 
 #### FR-9 : Retrait des participants absents
-Un participant déconnecté depuis plus de 5 minutes est retiré de la liste des participants, et son vote du tour en cours est supprimé. Son pseudo redevient libre.
+Un participant déconnecté depuis plus de 5 minutes est retiré de la liste des participants, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient avec le même navigateur alors que son pseudo est encore libre, il est remis à sa place automatiquement (FR-7).
 
 ### 4.3 Vote
 
@@ -156,7 +158,7 @@ Tout participant, votant ou observateur, peut révéler le tour en cours, à tou
 - Un votant qui n'a pas voté apparaît comme « n'a pas voté ».
 
 #### FR-13 : Masquer
-Tout participant peut masquer un tour révélé. Le tour redevient caché pour tous : les votes ne sont plus visibles, et les votants peuvent de nouveau modifier leur carte.
+Tout participant peut masquer un tour révélé. Le tour redevient caché pour tous : les votes ne sont plus visibles, et les votants peuvent de nouveau modifier leur carte. Le vote d'un participant devenu observateur pendant la révélation (FR-5) est retiré au masquage.
 
 #### FR-14 : Synthèse du tour révélé
 Quand un tour est révélé, tous les participants voient :
@@ -193,7 +195,7 @@ Quand plusieurs participants agissent presque en même temps (par exemple, l'un 
 
 - **NFR-1, fiabilité en séance :** tant que le serveur fonctionne, une session ne perd jamais son état (participants, votes, état du tour), quelles que soient les coupures côté participant (réseau, rafraîchissement, changement d'appareil). En revanche, **perdre la session lors d'un plantage ou d'un redémarrage du serveur est un risque accepté** : le planning poker n'est pas une activité critique. Dans ce cas, l'équipe crée une nouvelle session et revote le ticket en cours.
 - **NFR-1b, pas de mise en veille en séance :** l'application ne doit jamais être mise en veille par l'hébergeur tant qu'au moins une session a des participants connectés. Contrairement à un plantage, une mise en veille en pleine séance n'est **pas** un risque accepté, parce qu'elle se reproduirait à chaque atelier. C'est un critère éliminatoire pour choisir l'hébergeur.
-- **NFR-2, démarrage à froid :** si l'hébergeur a mis l'application en veille en dehors des séances, le premier chargement peut prendre jusqu'à 30 s. Pendant ce temps, la page affiche « Réveil du serveur… », et aucune erreur technique ne doit apparaître. Si le serveur ne répond toujours pas au bout de 60 s, la page affiche un message d'indisponibilité et un bouton pour réessayer.
+- **NFR-2, démarrage à froid :** si l'hébergeur a mis l'application en veille en dehors des séances, le premier chargement peut prendre jusqu'à 2 min (réveil de l'hébergeur gratuit puis démarrage du webservice). Pendant ce temps, la page affiche « Réveil du serveur… », et aucune erreur technique ne doit apparaître. Conseil d'usage : ouvrir l'outil quelques minutes avant l'atelier. Si le serveur ne répond toujours pas au bout de 3 min, la page affiche un message d'indisponibilité et un bouton pour réessayer.
 - **NFR-3, réactivité :** en fonctionnement normal, tout changement d'état est propagé dans le délai de diffusion fixé par FR-16.
 - **NFR-4, capacité :** une session accueille au moins 13 participants, et au moins 5 sessions tournent simultanément sans dégradation. Cela représente au moins 65 connexions temps réel simultanées, plus une marge pour les reconnexions et les onglets multiples.
 - **NFR-5, appareils :** l'interface fonctionne sur PC et sur téléphone, dans les deux dernières versions majeures de Chrome, Edge, Firefox et Safari, iOS et Android compris. Elle reste utilisable dès 360 px de large, et chaque carte offre une zone tactile d'au moins 44 × 44 px.

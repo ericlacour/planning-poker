@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Récapitulatif des epics</title>
+<style>
+  :root{
+    --background:#F6F4F0; --surface:#FFFFFF; --surface-muted:#EFECE6; --foreground:#1F2330;
+    --muted:#646B78; --border:#E3DED5; --primary:#CF3F4A; --primary-soft:#FDECEC;
+    --success:#16754F; --success-soft:#E3F4EC; --warning:#8A560C; --warning-soft:#FBF0DC;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --background:#14161D; --surface:#1D2029; --surface-muted:#262A35; --foreground:#ECEDF0;
+      --muted:#9CA2AE; --border:#2E3340; --primary:#F28B8F; --primary-soft:#3A2226;
+      --success:#42C58E; --success-soft:#173A2C; --warning:#E3A94B; --warning-soft:#3A2E17;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--background);color:var(--foreground);
+    font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  main{max-width:1100px;margin:0 auto;padding:32px 16px 64px}
+  header p{color:var(--muted);margin:4px 0 0}
+  h1{font-size:28px;margin:0}
+  h2{font-size:20px;margin:0}
+  .epic{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-top:24px;overflow:hidden}
+  .epic-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+  .num{display:inline-block;background:var(--primary);color:#fff;border-radius:8px;padding:2px 10px;font-weight:700;font-size:14px}
+  .goal{color:var(--muted);margin:6px 20px 12px}
+  .frs{font-size:14px;color:var(--muted);padding:0 20px 12px}
+  .frs b{color:var(--foreground)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;vertical-align:top;padding:10px 20px;border-top:1px solid var(--border)}
+  th{background:var(--surface-muted);font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  td.id{font-weight:700;white-space:nowrap;color:var(--primary)}
+  td.title{font-weight:600;width:28%}
+  .status{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:2px 10px;white-space:nowrap}
+  .s-todo{background:var(--surface-muted);color:var(--muted)}
+  .s-written{background:var(--warning-soft);color:var(--warning)}
+  .s-done{background:var(--success-soft);color:var(--success)}
+  .pending{padding:16px 20px;color:var(--muted);font-style:italic}
+  footer{margin-top:24px;color:var(--muted);font-size:14px}
+  @media (max-width:700px){
+    th:nth-child(4),td:nth-child(4){display:none}
+    th,td{padding:10px 12px}
+    td.title{width:auto}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Planning Poker : récapitulatif des epics et des stories</h1>
+    <p>Source : <code>epics.md</code>. Ce récapitulatif est mis à jour à chaque étape du découpage.</p>
+  </header>
+
+  <section class="epic" aria-labelledby="e1">
+    <div class="epic-head"><span class="num">Epic 1</span><h2 id="e1">Un premier atelier de bout en bout</h2></div>
+    <p class="goal">L'équipe mène un vrai affinage avec l'outil déployé sur Render : créer, rejoindre, voter à l'aveugle, révéler avec la synthèse, effacer, et retrouver sa place après un rafraîchissement. Le tout sur PC et sur téléphone.</p>
+    <p class="frs"><b>FR :</b> FR1, FR2, FR3, FR6, FR7 (rafraîchissement), FR10, FR11, FR12, FR14, FR15, FR16 (diffusion), FR17</p>
+    <table>
+      <thead><tr><th>#</th><th>Story</th><th>Ce qu'elle livre</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td class="id">1.1</td><td class="title">Le contrat d'échange front / webservice</td><td><code>contract/openapi.yaml</code> et <code>asyncapi.yaml</code> : squelette <code>sessionState</code>, tous les messages, codes d'erreur et de fermeture, exemples validés (AD-6).</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.2</td><td class="title">Ouvrir l'outil, même quand le serveur dort</td><td>Amorçage du monodépôt : webservice minimal (<code>/api/health</code>, hexagonal, ArchUnit, Dockerfile compatible OpenShift), front Angular (jetons CSS, <code>config.json</code>, écrans de réveil et d'indisponibilité), CI GitHub Actions, <code>render.yaml</code>, premier déploiement.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.3</td><td class="title">Créer une session et en partager le lien</td><td><code>POST /api/sessions</code>, domaine Session et normalisation du pseudo, écran d'accueil (formulaire, envoi, erreurs), jeton conservé dans le navigateur.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.4</td><td class="title">Rejoindre une session par son lien</td><td><code>GET /api/sessions/{id}</code> et écran « Session introuvable », <code>POST …/participants</code> et pseudo refusé, écran Rejoindre avec « votant » présélectionné.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.5</td><td class="title">Voir la table en direct</td><td>WebSocket : <code>hello</code>, <code>sessionState</code>, table triée (observateurs à la fin), « (toi) », arrivées en direct, session vide et « Copier le lien », retour après un rafraîchissement, <code>heartbeat</code>, <b>test de charge sur Render</b>.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.6</td><td class="title">Voter à l'aveugle</td><td>Main de vraies cartes (boutons bascule), choisir ou retirer son vote, « a voté », « visible par toi seul », compteur « N votes sur M », intentions interdites rejetées.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.7</td><td class="title">Révéler, lire le résultat, passer au ticket suivant</td><td>Révéler, synthèse (moyenne, plus votée avec égalités, min, max, consensus), effacer ou « Nouveau tour » avec <code>roundId</code>, intentions idempotentes, blocage de 1 s, annonce <code>aria-live</code>.</td><td><span class="status s-written">Rédigée</span></td></tr>
+        <tr><td class="id">1.8</td><td class="title">Un écran de séance qui tient sur PC et sur téléphone</td><td>PC sans défilement avec 13 participants, tiroir 2 × 5 et résultat condensé sur téléphone, vérification Playwright, étiquette <code>v1.0</code> et déploiement.</td><td><span class="status s-written">Rédigée</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="epic" aria-labelledby="e2">
+    <div class="epic-head"><span class="num">Epic 2</span><h2 id="e2">Personne ne perd sa place</h2></div>
+    <p class="goal">Reconnexion automatique, présence en direct, inactivité sans conséquence, retrait puis retour transparent, reprise du pseudo, onglets multiples, expiration au bout de 24 h.</p>
+    <p class="frs"><b>FR :</b> FR4, FR7 (robustesse), FR8, FR9, FR16 (déconnexions)</p>
+    <table><thead><tr><th>#</th><th>Story</th><th>Ce qu'elle livre</th><th>Statut</th></tr></thead><tbody><tr><td class="id">2.1</td><td class="title">Voir qui est vraiment là</td><td>Présence en direct, plusieurs onglets pour un participant, déconnexion en moins d'1 s à la fermeture, ping serveur toutes les 5 s (connexion morte après 15 s), place déconnectée en gris lisible avec sa carte conservée.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">2.2</td><td class="title">Se reconnecter tout seul après une coupure</td><td>Surveillance du <code>tick</code> (12 s), reconnexion aussitôt puis à 1, 2, 4, 8 et 10 s, relance sur <code>online</code> et <code>visibilitychange</code>, bandeau « Reconnexion… » après 2 s, vote retrouvé, onglet 20 min en arrière-plan sans déconnexion.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">2.3</td><td class="title">Revenir après une longue absence</td><td>Retrait au bout de 5 min (vote supprimé, pseudo libéré), jeton toujours valable, remise en place automatique si le pseudo est libre, sinon écran Rejoindre.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">2.4</td><td class="title">Reprendre sa place depuis un autre appareil</td><td>Reprise d'un participant déconnecté avec son rôle et son vote, nouveau jeton et révocation de l'ancien, fermeture 4401 et « Ta place a été reprise depuis un autre appareil. »</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">2.5</td><td class="title">Une session qui s'efface d'elle-même</td><td>Expiration à 24 h avec une <code>Clock</code> en UTC, suppression des données, fermeture 4404, jeton retiré du navigateur.</td><td><span class="status s-written">Rédigée</span></td></tr></tbody></table>
+  </section>
+
+  <section class="epic" aria-labelledby="e3">
+    <div class="epic-head"><span class="num">Epic 3</span><h2 id="e3">Des séances souples et soignées</h2></div>
+    <p class="goal">Changer de rôle, masquer pour revoter, thème sombre, révélation animée, accessibilité vérifiée, tests de bout en bout des trois parcours.</p>
+    <p class="frs"><b>FR :</b> FR5, FR13</p>
+    <table><thead><tr><th>#</th><th>Story</th><th>Ce qu'elle livre</th><th>Statut</th></tr></thead><tbody><tr><td class="id">3.1</td><td class="title">Changer de rôle en pleine séance</td><td>Menu du participant « Je vote / J'observe » ; vote retiré si le tour est caché, conservé s'il est révélé ; « votera au prochain tour » ; la place change de groupe.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">3.2</td><td class="title">Masquer pour revoter</td><td>« Masquer » actif, tour de nouveau caché et cartes modifiables, vote d'un observateur retiré, intention idempotente et blocage de 1 s.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">3.3</td><td class="title">Choisir son thème</td><td>Automatique, Clair ou Sombre, mémorisé sous <code>pp.theme</code> ; cartes claires en thème sombre ; contrastes AA vérifiés.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">3.4</td><td class="title">Une révélation qui se voit</td><td>Les cartes se retournent l'une après l'autre en 400 ms ; aucun mouvement avec <code>prefers-reduced-motion</code> ; ni son ni confettis.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">3.5</td><td class="title">Un outil accessible à tous</td><td>Audit axe WCAG 2.2 AA, séance complète au clavier, annonces <code>aria-live</code>, zoom à 200 % et 360 px sans défilement horizontal.</td><td><span class="status s-written">Rédigée</span></td></tr><tr><td class="id">3.6</td><td class="title">Les trois parcours garantis de bout en bout</td><td>Playwright sur Chromium et WebKit pour UJ-1, UJ-2 et UJ-3 dans la CI, puis étiquette de version et déploiement.</td><td><span class="status s-written">Rédigée</span></td></tr></tbody></table>
+  </section>
+
+  <footer>Statuts : <span class="status s-todo">À rédiger</span> <span class="status s-written">Rédigée</span> <span class="status s-done">Livrée</span></footer>
+</main>
+</body>
+</html>

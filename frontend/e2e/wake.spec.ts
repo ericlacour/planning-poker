@@ -105,3 +105,12 @@ test('la CSP du index.html construit bloque bien un style injecté en ligne', as
     .poll(() => page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations.length))
     .toBeGreaterThan(0);
 });
+
+test('sans config.json lisible, l\'écran « Le serveur ne répond pas. » s\'affiche au lieu d\'une page blanche', async ({ page }) => {
+  const checkSecurity = await watchSecurity(page);
+  await page.route(`${APP}/config.json`, (route) => route.fulfill({ status: 404, body: 'Not Found' }));
+  await page.goto('/');
+  await expect(page.getByRole('alert')).toContainText('Le serveur ne répond pas.');
+  await expect(page.getByRole('button', { name: 'Réessayer' })).toBeVisible();
+  await checkSecurity();
+});

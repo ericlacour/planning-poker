@@ -12,29 +12,29 @@ Planning poker pour les ateliers d'affinage : sans compte, sans publicité, sur 
 
 ## Lancer en local
 
-Prérequis : JDK 25 et Node.js ≥ 24.15.
+Prérequis : JDK 25 et Node.js ≥ 24.15. Deux terminaux, depuis la racine du dépôt :
 
 ```bash
-# Webservice, sur http://localhost:8080
-cd backend
-ALLOWED_ORIGINS=http://localhost:4200 ./mvnw spring-boot:run
+# Terminal 1 : webservice, sur http://localhost:8080
+(cd backend && ALLOWED_ORIGINS=http://localhost:4200 ./mvnw spring-boot:run)
 
-# Front, sur http://localhost:4200 (config.json pointe vers http://localhost:8080)
-cd frontend
-npm ci
-npm start
+# Terminal 2 : front, sur http://localhost:4200 (config.json pointe vers http://localhost:8080)
+(cd frontend && npm ci && npm start)
 ```
 
 ## Tester
 
+Depuis la racine du dépôt :
+
 ```bash
-cd contract && npm ci && npm run validate && npm test
-cd backend && ./mvnw verify
-cd frontend && npm ci && npm test
-cd frontend && API_BASE_URL=http://127.0.0.1:4310 npm run build:e2e && npx playwright install chromium && npm run e2e
+(cd contract && npm ci && npm run validate && npm test)
+(cd backend && ./mvnw verify)
+(cd frontend && npm ci && npm test)
+(cd frontend && API_BASE_URL=http://127.0.0.1:4310 npm run build:e2e && npx playwright install chromium && npm run e2e)
+bash deploy/render-deploy.test.sh
 ```
 
 ## Configuration
 
-- Webservice : `PORT` (8080 par défaut) et `ALLOWED_ORIGINS` (origines du front, séparées par des virgules ; aucune par défaut).
+- Webservice : `PORT` (8080 par défaut) et `ALLOWED_ORIGINS` (origines `http(s)://hôte[:port]` du front, séparées par des virgules ; aucune par défaut ; un joker `*` ou un chemin empêche le démarrage).
 - Front : `API_BASE_URL` au build, qui produit `config.json` et la CSP du `index.html`.

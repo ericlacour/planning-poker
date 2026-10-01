@@ -9,9 +9,15 @@ const port = Number(process.env.PORT ?? 4300);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 createServer((request, response) => {
-  const path = normalize(decodeURIComponent(new URL(request.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+  let path;
+  try {
+    path = normalize(decodeURIComponent(new URL(request.url, 'http://x').pathname)).replace(/^(\.\.[/\\])+/, '');
+  } catch {
+    response.writeHead(400).end();
+    return;
+  }
   let file = join(root, path);
   if (!existsSync(file) || statSync(file).isDirectory()) file = join(root, 'index.html');
   response.writeHead(200, { 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' });
-  createReadStream(file).pipe(response);
+  createReadStream(file).on('error', () => response.destroy()).pipe(response);
 }).listen(port, '127.0.0.1', () => console.log(`dist servi sur http://127.0.0.1:${port}`));

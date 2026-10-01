@@ -10,9 +10,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   contract:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: contract
@@ -29,6 +34,7 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
@@ -42,15 +48,29 @@ jobs:
       - run: ./mvnw -B verify
       - name: Image Docker (AD-12)
         run: docker build -t planning-poker-api:ci .
-      - name: L'image démarre sous un UID arbitraire, en lecture seule hors /tmp
+      - name: L'image démarre sous un UID arbitraire, en lecture seule hors /tmp, avec des journaux JSON
         run: |
           docker run -d --name api --read-only --tmpfs /tmp -u 54321:0 -e PORT=9090 -p 9090:9090 planning-poker-api:ci
-          for i in $(seq 1 60); do curl -sf http://localhost:9090/api/health && exit 0; sleep 1; done
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9090/api/health; then
+              docker logs api 2>&1 | jq -se 'length > 0 and all(has("@timestamp"))' > /dev/null
+              exit $?
+            fi
+            sleep 1
+          done
           docker logs api
           exit 1
 
+  deploy-script:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash deploy/render-deploy.test.sh
+
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend

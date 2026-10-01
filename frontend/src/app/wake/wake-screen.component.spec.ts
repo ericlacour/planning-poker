@@ -27,6 +27,7 @@ describe('WakeScreenComponent', () => {
     fixture.componentInstance.retry.subscribe(() => retried++);
 
     expect(element.querySelector('h1')?.textContent).toBe('Le serveur ne répond pas.');
+    expect(element.querySelector('[role="alert"]')).not.toBeNull();
     const button = element.querySelector('button');
     expect(button?.textContent).toBe('Réessayer');
     button?.click();

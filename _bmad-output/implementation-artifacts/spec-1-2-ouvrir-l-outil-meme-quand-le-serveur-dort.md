@@ -2,7 +2,7 @@
 title: 'Story 1.2 : ouvrir l''outil, même quand le serveur dort'
 type: 'feature'
 created: '2026-10-01'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'eb855b769f36357b5df28254f9b12aeeac5df40c'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -125,10 +125,64 @@ Story gardée entière, à la demande de l'utilisateur.
   - Il déclenche le Deploy Hook du webservice et attend qu'il soit `live` en interrogeant `GET /v1/services/{id}/deploys?limit=1`, avec la variable `RENDER_BACKEND_SERVICE_ID` et le secret `RENDER_API_KEY`. Il déclenche ensuite le Deploy Hook du front.
   - **Non vérifié ici** : la forme exacte de la réponse de l'API Render, et le blueprint lui-même. Ce sera fait lors du premier déploiement `v0.1`.
 - Versions des actions GitHub : `checkout`, `setup-node` et `setup-java` en v5.
+- **Revue 1** :
+  - WebSocket :
+    - le délai et le premier message ne ferment jamais la connexion tous les deux (la retirer de l'attente donne seul le droit de la fermer) ;
+    - une trame binaire ferme en `1008` ;
+    - la longueur du jeton est comptée en points de code ;
+    - 9 tests de `hello` ont été ajoutés.
+  - `ALLOWED_ORIGINS` refuse au démarrage `*`, un chemin ou un schéma autre que http(s), et normalise la casse ; 10 tests ajoutés.
+  - La classe de test `PollutedDomainClass` n'est plus un `@Component`.
+  - Front :
+    - écran « Le serveur ne répond pas. » au lieu d'une page blanche si `config.json` est illisible (e2e ajouté) ;
+    - `role="alert"` sur l'écran d'indisponibilité ;
+    - `strict` et `strictTemplates` explicites ;
+    - `.vscode` du modèle Karma supprimé ;
+    - serveur e2e robuste.
+  - Render :
+    - en-têtes `X-Frame-Options`, CSP complémentaire (`frame-ancestors`, `base-uri`, `form-action`, `object-src`) et `Cache-Control: no-cache` sur `/*` ;
+    - la balise `<meta>` du build reste exactement celle de la spec.
+  - Déploiement : `deploy/render-deploy.sh`, testé par `deploy/render-deploy.test.sh` (5 scénarios, tâche CI `deploy-script`). Il :
+    - suit le déploiement par identifiant, plus par horodatage ;
+    - tolère une erreur passagère de l'API ;
+    - vérifie que le commit déployé est le commit étiqueté ;
+    - attend aussi que le front soit `live`, d'où la nouvelle variable `RENDER_FRONTEND_SERVICE_ID`.
+  - CI : `timeout-minutes`, `concurrency`, journaux JSON de l'image vérifiés.
+
+## Review Triage Log
+
+| # | Source | Constat | Verdict | Suite |
+|---|---|---|---|---|
+| 1 | blind, edge | Fermetures concurrentes possibles (délai et premier message) | medium : deux fils ferment la même session | patch |
+| 2 | edge | Trame binaire fermée en 1003 au lieu de 1008 | medium : écart au contrat | patch |
+| 3 | edge | Longueur du jeton comptée en unités UTF-16 | low : correction directe | patch |
+| 4 | verification-gap | Règles du `hello` (champ en trop, jeton vide, trop long, non textuel) non testées | gap pré-vérifié | patch |
+| 5 | blind | `ALLOWED_ORIGINS=*` ouvre tout, sans contrôle | medium : contourne AD-11 | patch |
+| 6 | blind | `PollutedDomainClass` est un `@Component` scanné par les tests | low : bean fautif dans chaque contexte | patch |
+| 7 | blind, edge | Page blanche si `config.json` est illisible | medium : contraire à NFR-2 | patch |
+| 8 | blind | Écran d'indisponibilité non annoncé aux lecteurs d'écran | medium : accessibilité | patch (`role="alert"`) |
+| 9 | blind | Focus perdu après « Réessayer » | low : l'écran revient de lui-même | rejeté |
+| 10 | blind | `strict` et `strictTemplates` absents de `tsconfig.json` | low : TS 6 est strict par défaut ; explicité | patch |
+| 11 | blind | `.vscode` hérité du modèle Karma | low : suppression | patch |
+| 12 | blind | CSP sans `frame-ancestors`, `base-uri`, `form-action` ; clickjacking | medium | patch (en-têtes Render) |
+| 13 | blind, edge | `no-cache` sur `/index.html` seulement, pas sur la réécriture SPA | medium : coquille périmée après déploiement | patch |
+| 14 | blind, edge, gap | Attente du déploiement : erreur passagère fatale, horodatages fragiles, mauvais déploiement suivi, commit non vérifié, front non suivi | medium | patch (`render-deploy.sh` testé) |
+| 15 | blind | Aucune exigence de CI verte avant déploiement | medium | defer |
+| 16 | blind | Pas de `timeout-minutes` ni de `concurrency` ; journaux JSON non vérifiés en CI | low | patch |
+| 17 | blind | Pas de cache des navigateurs Playwright en CI | low : coût en temps seulement | rejeté |
+| 18 | edge | `serve-dist.mjs` plante sur un échappement invalide ou une erreur de lecture | low : correction directe | patch |
+| 19 | blind | Blocs shell du README faux une fois collés | low : correction directe | patch |
+| 20 | edge | `config.json` remplacé par `index.html` via la réécriture : erreur opaque | low : couvert par le patch 7 | rejeté |
+| 21 | edge | « Horloge injectable » : seul `HEALTH_PROBE` l'est | low : la correction modifierait la spec | rejeté |
+| 22 | blind | `node.size() != 2` refuse un `hello` avec un champ en trop | false : c'est le `additionalProperties: false` du contrat | rejeté |
+| 23 | blind | `sessionId` du chemin WS non contrôlé | false : forme fausse = session inconnue (contrat) | rejeté |
+| 24 | blind | Statut du sprint resté `in-progress` | false : passe à `review` à la présentation | rejeté |
+| 25 | gap | Logique d'attente Render non vérifiée automatiquement | gap pré-vérifié | patch (test du script) ; la forme réelle de l'API reste à confirmer au premier `v0.1` |
 
 ## Verification
 
 **Commands :**
-- `cd backend && JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw -q verify` -- attendu : build et tests verts.
-- `cd frontend && npm ci && npm test && API_BASE_URL=https://api.example.invalid npm run build && API_BASE_URL=http://127.0.0.1:4310 npm run build:e2e && PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run e2e` -- attendu : 16 tests verts, build avec CSP injectée, 6 e2e verts.
+- `cd backend && JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw -q verify` -- attendu : 30 tests verts.
+- `cd frontend && npm ci && npm test && API_BASE_URL=https://api.example.invalid npm run build && API_BASE_URL=http://127.0.0.1:4310 npm run build:e2e && PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run e2e` -- attendu : 16 tests verts, build avec CSP injectée, 7 e2e verts.
 - `cd contract && npm run validate && npm test` -- attendu : inchangé, vert.
+- `bash deploy/render-deploy.test.sh` -- attendu : 5 scénarios ok.

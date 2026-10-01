@@ -40,10 +40,16 @@ services:
       - path: /*
         name: Referrer-Policy
         value: no-referrer
-      - path: /config.json
-        name: Cache-Control
-        value: no-cache
-      - path: /index.html
+      # Directives qu'une balise <meta> ne peut pas porter, ou qui ne retombent pas sur default-src.
+      # Elles s'ajoutent à la CSP injectée dans index.html au build (AD-11).
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      # index.html (servi aussi par la réécriture SPA) et config.json changent à chaque déploiement.
+      - path: /*
         name: Cache-Control
         value: no-cache
     envVars:

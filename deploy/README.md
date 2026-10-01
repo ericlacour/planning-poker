@@ -40,7 +40,7 @@ La création manuelle, décrite plus bas, reste possible si le blueprint n'est p
 | Publish Directory | `dist/frontend/browser` |
 | Auto-Deploy | **Off** (AD-13) |
 | Redirects/Rewrites | Source `/*`, Destination `/index.html`, Action **Rewrite**. Sans cette règle, les liens de session directs répondent « Not Found ». |
-| Headers | `X-Content-Type-Options: nosniff` et `Referrer-Policy: no-referrer` sur `/*` ; `Cache-Control: no-cache` sur `/config.json` et `/index.html`. |
+| Headers | Sur `/*` : `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, `Cache-Control: no-cache`, et une CSP `frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'` (directives qu'une balise `<meta>` ne peut pas porter, qui s'ajoutent à celle du build). |
 | CSP | **Aucun réglage dans Render.** Le build injecte dans `index.html` la balise `<meta http-equiv="Content-Security-Policy">` avec `default-src 'self'; connect-src 'self' https://<url-webservice> wss://<url-webservice>`, à partir de `API_BASE_URL` (AD-11). Elle suit donc toujours l'URL du webservice. |
 
 | Variable d'environnement | Valeur |
@@ -61,7 +61,7 @@ Les deux services dépendent chacun de l'URL de l'autre :
 - Aucun déploiement automatique à chaque push.
 - On déploie en posant une étiquette Git `v*` (par exemple `v0.1`), **en dehors des ateliers**, puisqu'un déploiement efface les sessions en cours.
 - L'étiquette doit pointer sur la tête de `main`, puisque Render déploie la branche `main`. Le workflow refuse sinon.
-- Le workflow `.github/workflows/deploy.yml` appelle le **Deploy Hook** du webservice, attend par l'API Render que ce déploiement soit `live` (30 minutes au plus), puis appelle le Deploy Hook du front.
+- Le workflow `.github/workflows/deploy.yml` appelle le **Deploy Hook** du webservice, attend par l'API Render que ce déploiement soit `live` sur le commit étiqueté (30 minutes au plus), puis fait de même pour le front (`deploy/render-deploy.sh`, testé par `deploy/render-deploy.test.sh`).
 - Réglages GitHub du dépôt (Settings → Secrets and variables → Actions) :
 
 | Nom | Type | Où le trouver |
@@ -70,6 +70,7 @@ Les deux services dépendent chacun de l'URL de l'autre :
 | `RENDER_DEPLOY_HOOK_FRONTEND` | secret | Render, site statique, Settings → Deploy Hook |
 | `RENDER_API_KEY` | secret | Render, Account Settings → API Keys |
 | `RENDER_BACKEND_SERVICE_ID` | variable | identifiant `srv-…` du webservice, visible dans son URL Render |
+| `RENDER_FRONTEND_SERVICE_ID` | variable | identifiant `srv-…` du site statique |
 
 - Ces valeurs ne doivent jamais être commitées.
 

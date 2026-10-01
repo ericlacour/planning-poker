@@ -7,12 +7,15 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocketHandshakeException;
+import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
@@ -80,5 +83,41 @@ class SessionSocketHandlerTest {
         WebSocket socket = open("https://front.example", recorder);
         socket.sendText(ContractExamples.read("hello", "hello"), true);
         assertThat(recorder.closeCode.get(5, TimeUnit.SECONDS)).isEqualTo(4404);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"type\":\"hello\",\"participantToken\":\"Xb4Rt9LmQ2vN7cZp1HsK0w\",\"extra\":1}",
+            "{\"type\":\"hello\",\"participantToken\":\"\"}",
+            "{\"type\":\"hello\",\"participantToken\":42}",
+            "{\"type\":\"hello\"}",
+            "pas du JSON" })
+    void closesWith1008OnAHelloThatBreaksItsSchema(String hello) throws Exception {
+        CloseRecorder recorder = new CloseRecorder();
+        open("https://front.example", recorder).sendText(hello, true);
+        assertThat(recorder.closeCode.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
+    }
+
+    @Test
+    void closesWith1008OnATokenOver64CodePoints() throws Exception {
+        CloseRecorder recorder = new CloseRecorder();
+        open("https://front.example", recorder)
+                .sendText("{\"type\":\"hello\",\"participantToken\":\"" + "a".repeat(65) + "\"}", true);
+        assertThat(recorder.closeCode.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
+    }
+
+    @Test
+    void acceptsATokenOf64CodePointsEvenOutsideTheBasicPlane() throws Exception {
+        CloseRecorder recorder = new CloseRecorder();
+        open("https://front.example", recorder)
+                .sendText("{\"type\":\"hello\",\"participantToken\":\"" + "😀".repeat(64) + "\"}", true);
+        assertThat(recorder.closeCode.get(5, TimeUnit.SECONDS)).isEqualTo(4404);
+    }
+
+    @Test
+    void closesWith1008OnABinaryFirstMessage() throws Exception {
+        CloseRecorder recorder = new CloseRecorder();
+        open("https://front.example", recorder).sendBinary(ByteBuffer.wrap(new byte[] { 1, 2, 3 }), true);
+        assertThat(recorder.closeCode.get(5, TimeUnit.SECONDS)).isEqualTo(1008);
     }
 }

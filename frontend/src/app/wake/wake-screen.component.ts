@@ -6,7 +6,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (unavailable()) {
-      <main class="state-screen">
+      <main class="state-screen" role="alert">
         <svg class="state-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="10" cy="10" r="8" />
           <path d="M10 5.5v5.5" />

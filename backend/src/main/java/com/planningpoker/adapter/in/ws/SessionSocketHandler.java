@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -27,6 +28,8 @@ import tools.jackson.databind.json.JsonMapper;
  * Poignée de main minimale du canal {@code /ws/sessions/{sessionId}} (asyncapi.yaml), en attendant la story 1.5 :
  * un premier message autre qu'un {@code hello} valide, ou aucun {@code hello} dans le délai, ferme en 1008 ;
  * un {@code hello} valide ferme en 4404, puisqu'aucune session n'existe encore.
+ * Seul celui qui retire la connexion de {@code pendingHellos} la ferme : le délai et le premier message ne se
+ * concurrencent jamais.
  */
 @Component
 public class SessionSocketHandler extends TextWebSocketHandler implements DisposableBean {
@@ -51,15 +54,26 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        ScheduledFuture<?> timeout = timer.schedule(() -> close(session, INVALID_HELLO),
-                helloTimeout.toMillis(), TimeUnit.MILLISECONDS);
+        ScheduledFuture<?> timeout = timer.schedule(() -> {
+            if (pendingHellos.remove(session.getId()) != null) {
+                close(session, INVALID_HELLO);
+            }
+        }, helloTimeout.toMillis(), TimeUnit.MILLISECONDS);
         pendingHellos.put(session.getId(), timeout);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
-        cancelTimeout(session);
-        close(session, isValidHello(message.getPayload()) ? SESSION_NOT_FOUND : INVALID_HELLO);
+        if (cancelTimeout(session)) {
+            close(session, isValidHello(message.getPayload()) ? SESSION_NOT_FOUND : INVALID_HELLO);
+        }
+    }
+
+    @Override
+    protected void handleBinaryMessage(WebSocketSession session, BinaryMessage message) {
+        if (cancelTimeout(session)) {
+            close(session, INVALID_HELLO);
+        }
     }
 
     @Override
@@ -79,19 +93,25 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
                 return false;
             }
             JsonNode token = node.get("participantToken");
-            return "hello".equals(node.path("type").asString(null))
-                    && token != null && token.isString()
-                    && !token.asString().isEmpty() && token.asString().length() <= TOKEN_MAX_LENGTH;
+            if (!"hello".equals(node.path("type").asString(null)) || token == null || !token.isString()) {
+                return false;
+            }
+            // JSON Schema compte les longueurs en points de code.
+            int length = token.asString().codePointCount(0, token.asString().length());
+            return length >= 1 && length <= TOKEN_MAX_LENGTH;
         } catch (JacksonException e) {
             return false;
         }
     }
 
-    private void cancelTimeout(WebSocketSession session) {
+    /** Vrai si l'appelant a retiré la connexion de l'attente du {@code hello}, et lui seul peut donc la fermer. */
+    private boolean cancelTimeout(WebSocketSession session) {
         ScheduledFuture<?> timeout = pendingHellos.remove(session.getId());
-        if (timeout != null) {
-            timeout.cancel(false);
+        if (timeout == null) {
+            return false;
         }
+        timeout.cancel(false);
+        return true;
     }
 
     private void close(WebSocketSession session, CloseStatus status) {
@@ -99,7 +119,7 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
             if (session.isOpen()) {
                 session.close(status);
             }
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             LOG.debug("WebSocket close failed for connection {}", session.getId(), e);
         }
     }

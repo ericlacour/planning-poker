@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "numeric-card.json",
+  "title": "Numeric card",
+  "description": "A numeric card. Min, max and most voted only consider numeric cards (\"?\" and \"coffee\" are excluded).",
+  "type": "string",
+  "enum": ["0", "1", "2", "3", "5", "8", "13", "21"]
+}

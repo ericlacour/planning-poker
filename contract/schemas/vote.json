@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vote.json",
+  "title": "vote (client → server)",
+  "description": "Choose (card) or withdraw (card: null) one's vote in a hidden round. Stale roundId: silently ignored. Errors: NOT_A_VOTER, ROUND_REVEALED, INVALID_CARD (a string outside the deck of card.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "roundId",
+    "card"
+  ],
+  "properties": {
+    "type": {
+      "const": "vote"
+    },
+    "roundId": {
+      "$ref": "common.json#/$defs/roundId"
+    },
+    "card": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 16
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "heartbeat.json",
+  "title": "heartbeat (client → server)",
+  "description": "Sent every 5 s. Only keeps Render awake; liveness is measured by protocol pings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type"
+  ],
+  "properties": {
+    "type": {
+      "const": "heartbeat"
+    }
+  }
+}

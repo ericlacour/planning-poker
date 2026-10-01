@@ -1,0 +1,168 @@
+openapi: 3.2.0
+info:
+  title: Planning Poker - REST API
+  version: 1.0.0
+  description: |
+    Closed REST surface of the webservice (AD-2). Every session action
+    (vote, reveal, hide, clear, changeRole) goes through the WebSocket
+    described in `asyncapi.yaml`, never through REST.
+
+    - Errors are `application/problem+json` (RFC 9457) with a `code`
+      property. The text shown to the user comes from the front.
+    - A malformed request body (unknown role, missing field, invalid JSON)
+      is a `400` problem **without** `code`.
+    - A `sessionId` of the wrong shape is a session that does not exist
+      (`404 SESSION_NOT_FOUND`).
+    - The contract only evolves by addition (AD-13).
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+
+servers:
+  - url: http://localhost:8080
+    description: Local development. Deployed URLs come from `apiBaseUrl` in the front's `/config.json` (AD-11).
+
+# No authentication: access by link is an accepted risk (NFR-6). The participant
+# token returned on create/join is never a REST credential: it only
+# authenticates the WebSocket `hello` message.
+security: []
+
+tags:
+  - name: health
+    description: Wake-up probe.
+  - name: sessions
+    description: Create, check and join a session.
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Wake-up and health probe
+      description: Answers 200 as soon as the webservice is ready. Polled by the front during the cold start (up to 3 min) and used by Render as health check.
+      responses:
+        '200':
+          description: The webservice is ready.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/health-response.json'
+
+  /api/sessions:
+    post:
+      tags: [sessions]
+      operationId: createSession
+      summary: Create a session and join it
+      description: Creates the session **and** makes its creator join it, with the given pseudo and role. No special right is attached to the creator.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/create-session-request.json'
+      responses:
+        '201':
+          description: Session created, creator joined.
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/create-session-response.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    get:
+      tags: [sessions]
+      operationId: checkSession
+      summary: Check that a session exists
+      description: Called by the front as soon as a session link is opened (FR-3).
+      responses:
+        '204':
+          description: The session exists.
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+
+  /api/sessions/{sessionId}/participants:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      tags: [sessions]
+      operationId: joinSession
+      summary: Join a session, or take over a disconnected participant
+      description: |
+        Joins the session with a free pseudo. If the pseudo (compared after
+        normalization, ignoring case) belongs to a **disconnected**
+        participant, takes this participant over with the same
+        `participantId`, role and vote: a new token is issued, the old one is
+        revoked and its connections are closed with `4401` (FR-8, AD-7).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: './schemas/join-session-request.json'
+      responses:
+        '200':
+          description: Participant joined (or taken over).
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/join-session-response.json'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+        '409':
+          $ref: '#/components/responses/PseudoTaken'
+
+components:
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      description: 128 random bits, base64url without padding.
+      schema:
+        $ref: './schemas/common.json#/$defs/sessionId'
+
+  responses:
+    BadRequest:
+      description: Invalid pseudo (`INVALID_PSEUDO`), or malformed body (no `code`).
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - properties:
+                  status:
+                    const: 400
+                  code:
+                    const: INVALID_PSEUDO
+    SessionNotFound:
+      description: Unknown or expired session.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - required: [code]
+                properties:
+                  status:
+                    const: 404
+                  code:
+                    const: SESSION_NOT_FOUND
+    PseudoTaken:
+      description: The pseudo belongs to a connected participant of the session (ignoring case and surrounding spaces).
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - required: [code]
+                properties:
+                  status:
+                    const: 409
+                  code:
+                    const: PSEUDO_TAKEN

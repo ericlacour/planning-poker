@@ -1,0 +1,72 @@
+{
+  "type": "sessionState",
+  "sessionId": "k3Jx9QvT2mLpZ8wR4nYb7A",
+  "version": 9,
+  "selfParticipantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+  "round": {
+    "roundId": "Jd8sK2pQ",
+    "status": "REVEALED"
+  },
+  "participants": [
+    {
+      "participantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+      "pseudo": "Alice",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 1,
+      "hasVoted": true,
+      "vote": "3",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45",
+      "pseudo": "Bob",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 2,
+      "hasVoted": true,
+      "vote": "3",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "0c8b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06",
+      "pseudo": "Chloé",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 3,
+      "hasVoted": true,
+      "vote": "coffee",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "9e1f2a3b-4c5d-4e6f-8a7b-9c0d1e2f3a4b",
+      "pseudo": "David",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 4,
+      "hasVoted": false,
+      "vote": null,
+      "canVoteThisRound": true
+    }
+  ],
+  "progress": {
+    "voted": 3,
+    "expected": 4
+  },
+  "summary": {
+    "average": 3,
+    "mostVoted": {
+      "values": [
+        "3"
+      ],
+      "count": 2
+    },
+    "min": "3",
+    "max": "3",
+    "consensus": true
+  },
+  "lastChange": {
+    "action": "REVEAL",
+    "byParticipantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90"
+  }
+}

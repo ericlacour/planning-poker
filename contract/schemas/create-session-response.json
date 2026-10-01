@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "create-session-response.json",
+  "title": "Create session response",
+  "description": "The session is created and its creator has joined it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sessionId", "participantId", "participantToken"],
+  "properties": {
+    "sessionId": { "$ref": "common.json#/$defs/sessionId" },
+    "participantId": { "$ref": "common.json#/$defs/participantId" },
+    "participantToken": { "$ref": "common.json#/$defs/participantToken" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "join-session-response.json",
+  "title": "Join session response",
+  "description": "A new participant, or a disconnected participant taken over from another device (new token, the old one is revoked).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["participantId", "participantToken"],
+  "properties": {
+    "participantId": { "$ref": "common.json#/$defs/participantId" },
+    "participantToken": { "$ref": "common.json#/$defs/participantToken" }
+  }
+}

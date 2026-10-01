@@ -1,0 +1,7 @@
+# Règles de lint d'openapi.yaml, utilisées par scripts/validate.mjs.
+extends:
+  - minimal
+rules:
+  # Le seul serveur déclaré est le poste de développement : les URL déployées
+  # viennent de /config.json (AD-11).
+  no-server-example.com: off

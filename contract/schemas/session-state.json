@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "session-state.json",
+  "title": "sessionState (server → client)",
+  "description": "Complete snapshot built by the domain for one recipient, sent after each version change and on each new connection. The client replaces its state with it and never merges. Within a connection it ignores a lower version; after a reconnection it accepts the first snapshot whatever its version.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "sessionId", "version", "selfParticipantId", "round", "participants", "progress", "summary", "lastChange"],
+  "properties": {
+    "type": { "const": "sessionState" },
+    "sessionId": { "$ref": "common.json#/$defs/sessionId" },
+    "version": {
+      "description": "Incremented on every observable change of the session.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "selfParticipantId": {
+      "description": "The recipient of this snapshot.",
+      "$ref": "common.json#/$defs/participantId"
+    },
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roundId", "status"],
+      "properties": {
+        "roundId": { "$ref": "common.json#/$defs/roundId" },
+        "status": { "type": "string", "enum": ["HIDDEN", "REVEALED"] }
+      }
+    },
+    "participants": {
+      "description": "Already sorted by the server: voters, then observers, each group by joinOrder. The client only moves its own seat to the head of its group.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/participant" }
+    },
+    "progress": {
+      "description": "\"N votes sur M\".",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["voted", "expected"],
+      "properties": {
+        "voted": { "description": "Voters who have voted.", "type": "integer", "minimum": 0 },
+        "expected": { "description": "All voters, disconnected ones included.", "type": "integer", "minimum": 0 }
+      }
+    },
+    "summary": {
+      "description": "null while the round is hidden. Computed by the domain only.",
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/summary" }
+      ]
+    },
+    "lastChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "byParticipantId"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["JOIN", "LEAVE", "VOTE", "REVEAL", "HIDE", "CLEAR", "ROLE", "PRESENCE"]
+        },
+        "byParticipantId": {
+          "description": "Author of the change; null when the server itself made it (sweeper).",
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "common.json#/$defs/participantId" }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "participant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["participantId", "pseudo", "role", "connected", "joinOrder", "hasVoted", "vote", "canVoteThisRound"],
+      "properties": {
+        "participantId": { "$ref": "common.json#/$defs/participantId" },
+        "pseudo": { "$ref": "common.json#/$defs/pseudo" },
+        "role": { "$ref": "role.json" },
+        "connected": { "type": "boolean" },
+        "joinOrder": { "type": "integer", "minimum": 1 },
+        "hasVoted": { "type": "boolean" },
+        "vote": {
+          "description": "Hidden round: filled only for the recipient, null for everyone else. Revealed round: filled for everyone who voted.",
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "card.json" }
+          ]
+        },
+        "canVoteThisRound": {
+          "description": "false for an observer, and for an observer who became a voter during a revealed round (votes from the next round).",
+          "type": "boolean"
+        }
+      }
+    },
+    "summary": {
+      "description": "\"?\" and \"coffee\" are excluded. Without any numeric vote, every value is null and consensus is false.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["average", "mostVoted", "min", "max", "consensus"],
+      "properties": {
+        "average": {
+          "description": "Rounded to one decimal with RoundingMode.HALF_UP (5.25 gives 5.3). Displayed in French format by the front.",
+          "type": ["number", "null"]
+        },
+        "mostVoted": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["values", "count"],
+              "properties": {
+                "values": {
+                  "description": "All values in case of a tie, in deck order.",
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "$ref": "numeric-card.json" }
+                },
+                "count": { "description": "Votes for each of these values.", "type": "integer", "minimum": 1 }
+              }
+            }
+          ]
+        },
+        "min": { "oneOf": [{ "type": "null" }, { "$ref": "numeric-card.json" }] },
+        "max": { "oneOf": [{ "type": "null" }, { "$ref": "numeric-card.json" }] },
+        "consensus": {
+          "description": "true when all numeric votes are identical and there are at least two of them.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

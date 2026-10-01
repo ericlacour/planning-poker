@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "error.json",
+  "title": "error (server → client)",
+  "description": "A forbidden intent changed nothing (ROUND_REVEALED, NOT_A_VOTER, INVALID_CARD), or a message did not match this contract (INVALID_MESSAGE). The text shown comes from the front.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "code"
+  ],
+  "properties": {
+    "type": {
+      "const": "error"
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "ROUND_REVEALED",
+        "NOT_A_VOTER",
+        "INVALID_CARD",
+        "INVALID_MESSAGE"
+      ]
+    }
+  }
+}

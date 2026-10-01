@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "change-role.json",
+  "title": "changeRole (client → server)",
+  "description": "Switch between voter and observer. Same role: no change.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "role"
+  ],
+  "properties": {
+    "type": {
+      "const": "changeRole"
+    },
+    "role": {
+      "$ref": "role.json"
+    }
+  }
+}

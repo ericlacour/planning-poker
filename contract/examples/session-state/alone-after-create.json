@@ -1,0 +1,31 @@
+{
+  "type": "sessionState",
+  "sessionId": "k3Jx9QvT2mLpZ8wR4nYb7A",
+  "version": 1,
+  "selfParticipantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+  "round": {
+    "roundId": "Jd8sK2pQ",
+    "status": "HIDDEN"
+  },
+  "participants": [
+    {
+      "participantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+      "pseudo": "Alice",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 1,
+      "hasVoted": false,
+      "vote": null,
+      "canVoteThisRound": true
+    }
+  ],
+  "progress": {
+    "voted": 0,
+    "expected": 1
+  },
+  "summary": null,
+  "lastChange": {
+    "action": "JOIN",
+    "byParticipantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90"
+  }
+}

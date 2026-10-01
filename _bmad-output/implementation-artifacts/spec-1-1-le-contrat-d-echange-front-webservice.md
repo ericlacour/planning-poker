@@ -2,7 +2,8 @@
 title: 'Story 1.1 : le contrat d''échange front / webservice'
 type: 'feature'
 created: '2026-10-01'
-status: 'draft'
+status: 'in-review'
+baseline_commit: 'c021ad63b628136e6417d0e7ab077b6874860fce'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -61,20 +62,33 @@ context:
 ## Tasks & Acceptance
 
 **Execution :**
-- [ ] `contract/schemas/*.json` -- un fichier par type, en JSON Schema 2020-12 avec `$id` relatif : `card`, `role`, les requêtes et réponses REST, `health`, `problem`, et chaque message WS (`hello`, `heartbeat`, `vote`, `reveal`, `hide`, `clear`, `changeRole`, `sessionState`, `tick`, `error`) -- source unique des charges utiles.
-- [ ] `contract/openapi.yaml` -- les 4 endpoints, avec leurs `operationId`, statuts, `$ref` vers les schémas et réponses `application/problem+json` -- AD-2.
-- [ ] `contract/asyncapi.yaml` -- le canal `/ws/sessions/{sessionId}`, les opérations `send` et `receive` et les 10 messages. Les codes d'erreur et de fermeture sont décrits dans la description du canal et dans `x-close-codes` -- AD-4, AD-5, AD-7.
-- [ ] `contract/examples/<schéma>/<cas>.json` -- au moins un exemple par message et par réponse REST, dont `sessionState/hidden-round.json` (le vote des autres à `null`) et `sessionState/revealed-tie.json` (égalité sur la plus votée) -- le répertoire nomme le schéma visé.
-- [ ] `contract/scripts/validate.mjs` et `contract/package.json` -- lint des deux documents, validation de chaque exemple, contrôle que chaque schéma de message ou de réponse a au moins un exemple, et cas négatifs intégrés -- AC 3.
-- [ ] `contract/README.md` -- structure, règles d'évolution (ajout seulement, AD-13) et commande `npm ci && npm run validate`.
-- [ ] `.gitignore` -- `node_modules/`.
+- [x] `contract/schemas/*.json` -- un fichier par type, en JSON Schema 2020-12 avec `$id` relatif : `card`, `role`, les requêtes et réponses REST, `health`, `problem`, et chaque message WS (`hello`, `heartbeat`, `vote`, `reveal`, `hide`, `clear`, `changeRole`, `sessionState`, `tick`, `error`) -- source unique des charges utiles.
+- [x] `contract/openapi.yaml` -- les 4 endpoints, avec leurs `operationId`, statuts, `$ref` vers les schémas et réponses `application/problem+json` -- AD-2.
+- [x] `contract/asyncapi.yaml` -- le canal `/ws/sessions/{sessionId}`, les opérations `send` et `receive` et les 10 messages. Les codes d'erreur et de fermeture sont décrits dans la description du canal et dans `x-close-codes` -- AD-4, AD-5, AD-7.
+- [x] `contract/examples/<schéma>/<cas>.json` -- au moins un exemple par message et par réponse REST, dont `sessionState/hidden-round.json` (le vote des autres à `null`) et `sessionState/revealed-tie.json` (égalité sur la plus votée) -- le répertoire nomme le schéma visé.
+- [x] `contract/scripts/validate.mjs` et `contract/package.json` -- lint des deux documents, validation de chaque exemple, contrôle que chaque schéma de message ou de réponse a au moins un exemple, et cas négatifs intégrés -- AC 3.
+- [x] `contract/README.md` -- structure, règles d'évolution (ajout seulement, AD-13) et commande `npm ci && npm run validate`.
+- [x] `.gitignore` -- `node_modules/`.
 
 **Acceptance Criteria :**
 - Étant donné `openapi.yaml`, quand on le lit, alors il décrit exactement `GET /api/health`, `POST /api/sessions`, `GET /api/sessions/{sessionId}` (204 ou 404) et `POST /api/sessions/{sessionId}/participants`, avec des erreurs `problem+json` qui portent `code` ∈ {`PSEUDO_TAKEN`, `INVALID_PSEUDO`, `SESSION_NOT_FOUND`}.
 - Étant donné `asyncapi.yaml`, quand on le lit, alors il contient les messages `hello`, `heartbeat`, `vote`, `reveal`, `hide`, `clear`, `changeRole`, `sessionState`, `tick` et `error`, les codes WS `ROUND_REVEALED`, `NOT_A_VOTER`, `INVALID_CARD` et `INVALID_MESSAGE`, et les fermetures `4401` et `4404`.
 - Étant donné le script, quand on fausse un exemple, alors la validation échoue.
 
+## Implementation Notes
+
+- Fichiers : `contract/{openapi.yaml, asyncapi.yaml, redocly.yaml, README.md, package.json, package-lock.json}`, 20 schémas dans `contract/schemas/`, 30 exemples dans `contract/examples/`, `contract/scripts/{validate.mjs, validate.test.mjs}`, et `.gitignore` à la racine.
+- Les cas négatifs sont dans `scripts/validate.test.mjs` (`npm test`, 13 tests). Chaque test fausse une copie du contrat. `npm run validate` ne vérifie que le contrat livré.
+- Statuts choisis : `POST /api/sessions` → 201, `POST …/participants` → 200, puisqu'une reprise de pseudo ne crée rien.
+- `vote.card` est une chaîne quelconque ou `null`, sans être restreinte au paquet. Sinon, `INVALID_CARD` serait inatteignable, car une carte inconnue deviendrait `INVALID_MESSAGE`. De même, `hello.participantToken` est une chaîne libre : un jeton mal formé donne `4401`.
+- Les réponses d'erreur sont nommées dans `components.responses` (`BadRequest`, `SessionNotFound`, `PseudoTaken`). Leurs exemples sont `examples/problem/<nom-en-kebab>*.json` et sont validés contre le schéma exact de la réponse.
+- Le script vérifie aussi la surface fermée (liste en dur des 4 opérations et des 10 messages) et les règles d'AD-5 propres à `sessionState` : tri, filtrage du tour caché, `progress`, et `summary` recalculé.
+- AsyncAPI 3.1 refuse `info.license.identifier`, alors qu'OpenAPI 3.2 l'accepte. Les charges utiles AsyncAPI gardent `$schema` 2020-12, ce que le parseur accepte.
+- `openapi.yaml` déclare `security: []` (pas d'authentification REST) et le serveur local. `redocly.yaml` part de `minimal` et coupe seulement `no-server-example.com`.
+- `engines.node` vaut `>=24.15.0`, comme le front. En local, avec Node 22, npm affiche seulement `EBADENGINE`.
+
 ## Verification
 
 **Commands :**
 - `cd contract && npm ci && npm run validate` -- attendu : sortie 0, avec un résumé des documents et des exemples validés.
+- `cd contract && npm test` -- attendu : 13 tests verts (cas de la matrice I/O).

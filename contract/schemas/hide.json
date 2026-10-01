@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hide.json",
+  "title": "hide (client → server)",
+  "description": "Hide a revealed round so that votes become editable again. Already hidden or stale roundId: no change.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "roundId"
+  ],
+  "properties": {
+    "type": {
+      "const": "hide"
+    },
+    "roundId": {
+      "$ref": "common.json#/$defs/roundId"
+    }
+  }
+}

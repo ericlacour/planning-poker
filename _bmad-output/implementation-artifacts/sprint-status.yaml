@@ -29,14 +29,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-01-2026 14:46
+last_updated: 10-01-2026 15:03
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
   epic-1: in-progress
-  1-1-le-contrat-d-échange-front-webservice: in-progress
+  1-1-le-contrat-d-échange-front-webservice: review
   1-2-ouvrir-l-outil-même-quand-le-serveur-dort: backlog
   1-3-créer-une-session-et-en-partager-le-lien: backlog
   1-4-rejoindre-une-session-par-son-lien: backlog

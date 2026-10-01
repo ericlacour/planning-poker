@@ -2,7 +2,7 @@
 title: 'Story 1.1 : le contrat d''échange front / webservice'
 type: 'feature'
 created: '2026-10-01'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c021ad63b628136e6417d0e7ab077b6874860fce'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -86,9 +86,34 @@ context:
 - AsyncAPI 3.1 refuse `info.license.identifier`, alors qu'OpenAPI 3.2 l'accepte. Les charges utiles AsyncAPI gardent `$schema` 2020-12, ce que le parseur accepte.
 - `openapi.yaml` déclare `security: []` (pas d'authentification REST) et le serveur local. `redocly.yaml` part de `minimal` et coupe seulement `no-server-example.com`.
 - `engines.node` vaut `>=24.15.0`, comme le front. En local, avec Node 22, npm affiche seulement `EBADENGINE`.
+- Revue 1 : surface AsyncAPI contrôlée aussi sur le canal et les opérations (sens send/receive) et sur `additionalOperations` ; règles d'AD-5 appliquées aux seuls exemples conformes (plus de plantage) ; comparaison de `summary` insensible à l'ordre des clés ; observateur ou votant hors tour sans vote pendant un tour caché ; paramètre `sessionId` REST non contraint ; réponse `default` sur chaque opération ; règles du protocole WS (second `hello`, `1008`, bornes → `INVALID_MESSAGE`, ordre des contrôles de `vote`) ; exemple `revealed-seen-by-observer.json` (destinataire observateur, `canVoteThisRound: false`, moyenne 5,25 → 5,3) ; 17 tests négatifs ajoutés.
+
+## Review Triage Log
+
+| # | Source | Constat | Verdict | Suite |
+|---|---|---|---|---|
+| 1 | blind, edge | La surface WS ne contrôle ni le canal ni les opérations ni leur sens | medium : reproduit par l'edge hunter (vote retiré du canal → « Contrat valide ») | patch |
+| 2 | blind, edge | `additionalOperations` d'OpenAPI 3.2 échappe à la surface fermée | low : correction directe d'une ligne | patch |
+| 3 | blind, edge | Paramètre `sessionId` contraint par un motif alors que la forme fausse doit donner 404 | medium : un validateur généré répondrait 400 | patch |
+| 4 | blind, edge | Bornes `maxLength` (`card`, jeton, `roundId`, pseudo brut) contraires aux erreurs documentées | medium : comportement non dit pour les valeurs hors bornes | patch (documenté : `INVALID_MESSAGE`, `1008`, 400 sans code) |
+| 5 | blind, edge | Second `hello`, intention avant `hello`, ordre des contrôles de `vote` non spécifiés | medium : deux implémentations divergeraient | patch (règles dans `asyncapi.yaml`) |
+| 6 | blind, edge | Aucune réponse 5xx/`default` alors que le réveil Render renvoie 502/503 | medium : le front n'a rien sur quoi s'appuyer | patch |
+| 7 | blind, edge | Plantage (TypeError) quand un exemple `sessionState` hors schéma atteint les règles d'AD-5 | medium : reproduit ; cas courant en éditant un exemple | patch |
+| 8 | edge | Comparaison de `summary` sensible à l'ordre des clés | low : faux échec reproduit, correction directe | patch |
+| 9 | edge | Observateur avec un vote pendant un tour caché accepté | medium : exemple faux accepté (AC 3) | patch |
+| 10 | blind | Exemples manquants (destinataire observateur, `canVoteThisRound: false`, moyenne non entière) | low | patch (un exemple) |
+| 11 | verification-gap | Règles de tri, `progress`, `summary` caché, exemple caché à null, surface des messages, `selfParticipantId`, observateur, `vote`/`hasVoted`, noms `problem/` non testées | gap pré-vérifié | patch (17 tests) |
+| 12 | blind, edge | Plantages sur YAML illisible, `$id` dupliqué, `$ref` irrésoluble, fichier parasite dans `examples/` | low : échec bruyant (sortie ≠ 0), jamais un faux succès | rejeté |
+| 13 | edge | Script lancé par un lien symbolique : sortie 0 sans rien valider | low : improbable, `npm run validate` n'y passe pas | rejeté |
+| 14 | edge | Réponses `problem+json` inline sous un chemin, ou acronymes dans les noms de réponse, hors couverture | low : aucune n'existe, convention du README | rejeté |
+| 15 | edge | `BadRequest` sans `code` requis | false : décision de conception du bloc gelé | rejeté |
+| 16 | blind | Pas de CI qui lance la validation | medium : prévu par la story 1.2 | defer |
+| 17 | blind | Évolution par ajout seul (AD-13) non vérifiée automatiquement | medium : demande une version de référence publiée | defer |
+| 18 | blind | Statut du sprint resté `in-progress` | false : mis à `review` à la présentation (étape 5) | rejeté |
+| 19 | blind | Validé sous Node 22 alors que `engines` exige 24.15 | low : la CI de la story 1.2 tournera en Node 24 | rejeté |
 
 ## Verification
 
 **Commands :**
 - `cd contract && npm ci && npm run validate` -- attendu : sortie 0, avec un résumé des documents et des exemples validés.
-- `cd contract && npm test` -- attendu : 13 tests verts (cas de la matrice I/O).
+- `cd contract && npm test` -- attendu : 30 tests verts (cas de la matrice I/O et une règle faussée par test).

@@ -42,6 +42,17 @@ channels:
       `tick` every 5 s; the client declares the connection lost after 12 s
       without any message. The client sends `heartbeat` every 5 s.
 
+      Protocol rules:
+      - Before a successful `hello`, any other message, or a `hello` that
+        does not match its schema, closes the connection with `1008`.
+      - A second `hello` on an open conversation changes nothing and gets
+        `error INVALID_MESSAGE`.
+      - After the handshake, a message that is not valid JSON, has an
+        unknown `type`, or breaks its schema (including its length bounds)
+        changes nothing and gets `error INVALID_MESSAGE`.
+      - `vote` checks, in this order: stale `roundId` (silently ignored),
+        `NOT_A_VOTER`, `ROUND_REVEALED`, then `INVALID_CARD`.
+
       WebSocket error codes (`error.code`):
       - `ROUND_REVEALED`: `vote` on a revealed round;
       - `NOT_A_VOTER`: `vote` from an observer;
@@ -83,7 +94,7 @@ channels:
       - code: 4404
         reason: Session does not exist or has expired. The client shows the "session not found" screen.
       - code: 1008
-        reason: First message is not hello, or hello did not arrive within 5 s.
+        reason: First message is not a valid hello, or hello did not arrive within 5 s.
 
 operations:
   receiveHello:

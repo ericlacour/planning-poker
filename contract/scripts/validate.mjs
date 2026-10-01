@@ -4,6 +4,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { isDeepStrictEqual } from 'node:util';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Parser, fromFile } from '@asyncapi/parser';
@@ -20,10 +21,11 @@ const EXPECTED_OPERATIONS = [
   'GET /api/sessions/{sessionId}',
   'POST /api/sessions/{sessionId}/participants',
 ];
-const EXPECTED_MESSAGES = [
-  'hello', 'heartbeat', 'vote', 'reveal', 'hide', 'clear', 'changeRole',
-  'sessionState', 'tick', 'error',
-];
+// Message → action de l'opération, du point de vue du webservice.
+const EXPECTED_MESSAGES = {
+  hello: 'receive', heartbeat: 'receive', vote: 'receive', reveal: 'receive', hide: 'receive',
+  clear: 'receive', changeRole: 'receive', sessionState: 'send', tick: 'send', error: 'send',
+};
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace', 'query'];
 const SCHEMA_REF = /^\.\/schemas\/([a-z0-9-]+)\.json$/;
 
@@ -85,13 +87,15 @@ export async function validateContract(root) {
       const data = readJson(path, errors, rel);
       if (data === undefined) continue;
       stats.examples++;
-      (examples[dir] ??= []).push({ path: rel(path), file, data });
-      if (!validate(data)) errors.push(...formatAjv(rel(path), validate.errors));
+      const valid = validate(data);
+      if (!valid) errors.push(...formatAjv(rel(path), validate.errors));
+      (examples[dir] ??= []).push({ path: rel(path), file, data, valid });
     }
   }
 
   errors.push(...checkProblemResponses(openapi, ajv, examples.problem ?? []));
-  errors.push(...checkSessionStates(examples['session-state'] ?? []));
+  // Les règles d'AD-5 ne portent que sur des exemples déjà conformes à leur schéma.
+  errors.push(...checkSessionStates((examples['session-state'] ?? []).filter((e) => e.valid)));
   return { errors, stats };
 }
 
@@ -115,14 +119,32 @@ async function lintAsyncapi(path, rel) {
 
 function checkSurface(openapi, asyncapi) {
   const errors = [];
-  const operations = Object.entries(openapi.paths ?? {}).flatMap(([path, item]) =>
-    Object.keys(item).filter((m) => HTTP_METHODS.includes(m)).map((m) => `${m.toUpperCase()} ${path}`));
+  const operations = Object.entries(openapi.paths ?? {}).flatMap(([path, item]) => [
+    ...Object.keys(item).filter((m) => HTTP_METHODS.includes(m)),
+    ...Object.keys(item.additionalOperations ?? {}),
+  ].map((m) => `${m.toUpperCase()} ${path}`));
   if (!sameSet(operations, EXPECTED_OPERATIONS)) {
     errors.push(`openapi.yaml : la surface REST doit être exactement ${EXPECTED_OPERATIONS.join(', ')} (trouvé : ${operations.join(', ')})`);
   }
-  const messages = Object.values(asyncapi.components?.messages ?? {}).map((m) => m.name);
-  if (!sameSet(messages, EXPECTED_MESSAGES)) {
-    errors.push(`asyncapi.yaml : les messages doivent être exactement ${EXPECTED_MESSAGES.join(', ')} (trouvé : ${messages.join(', ')})`);
+  const expected = Object.keys(EXPECTED_MESSAGES);
+  const components = Object.entries(asyncapi.components?.messages ?? {});
+  const names = components.map(([, m]) => m.name);
+  if (!sameSet(names, expected) || components.some(([key, m]) => key !== m.name)) {
+    errors.push(`asyncapi.yaml : les messages doivent être exactement ${expected.join(', ')}, chacun sous sa propre clé (trouvé : ${names.join(', ')})`);
+  }
+  const channelMessages = Object.values(asyncapi.channels ?? {}).flatMap((c) => Object.keys(c.messages ?? {}));
+  if (!sameSet(channelMessages, expected)) {
+    errors.push(`asyncapi.yaml : le canal doit porter exactement ${expected.join(', ')} (trouvé : ${channelMessages.join(', ')})`);
+  }
+  // Chaque message a exactement une opération, dans le bon sens.
+  const actions = {};
+  for (const op of Object.values(asyncapi.operations ?? {})) {
+    for (const ref of op.messages ?? []) (actions[ref.$ref?.split('/').at(-1)] ??= []).push(op.action);
+  }
+  for (const [name, action] of Object.entries(EXPECTED_MESSAGES)) {
+    if (actions[name]?.length !== 1 || actions[name][0] !== action) {
+      errors.push(`asyncapi.yaml : ${name} doit avoir exactement une opération ${action} (trouvé : ${actions[name]?.join(', ') ?? 'aucune'})`);
+    }
   }
   return errors;
 }
@@ -170,6 +192,8 @@ function checkSessionStates(states) {
     }
     for (const p of ps) {
       if (p.role === 'OBSERVER' && p.canVoteThisRound) fail(`${p.pseudo} : un observateur ne peut pas voter`);
+      if (p.role === 'OBSERVER' && s.round?.status === 'HIDDEN' && p.hasVoted) fail(`${p.pseudo} : un observateur n'a pas de vote pendant un tour caché`);
+      if (!p.canVoteThisRound && s.round?.status === 'HIDDEN' && p.hasVoted) fail(`${p.pseudo} : vote d'un participant qui ne peut pas voter à ce tour`);
       const visible = s.round?.status === 'REVEALED' || p.participantId === s.selfParticipantId;
       if (visible && (p.vote !== null) !== p.hasVoted) fail(`${p.pseudo} : vote et hasVoted incohérents`);
       if (!visible && p.vote !== null) fail(`${p.pseudo} : vote d'un autre participant visible pendant un tour caché`);
@@ -182,7 +206,7 @@ function checkSessionStates(states) {
     if (s.round?.status === 'HIDDEN' && s.summary !== null) fail('summary doit valoir null pendant un tour caché');
     if (s.round?.status === 'REVEALED') {
       const expected = summarize(ps.map((p) => p.vote));
-      if (JSON.stringify(s.summary) !== JSON.stringify(expected)) {
+      if (!isDeepStrictEqual(s.summary, expected)) {
         fail(`summary incohérent avec les votes : attendu ${JSON.stringify(expected)}`);
       }
     }

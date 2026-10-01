@@ -13,6 +13,9 @@ info:
       is a `400` problem **without** `code`.
     - A `sessionId` of the wrong shape is a session that does not exist
       (`404 SESSION_NOT_FOUND`).
+    - Any other status (5xx, or a 502/503 from the host's proxy during a
+      cold start) is `default`: its body is not guaranteed. The front treats
+      it as "server not available yet" and keeps polling `/api/health`.
     - The contract only evolves by addition (AD-13).
   license:
     name: Proprietary
@@ -47,6 +50,8 @@ paths:
             application/json:
               schema:
                 $ref: './schemas/health-response.json'
+        default:
+          $ref: '#/components/responses/Unexpected'
 
   /api/sessions:
     post:
@@ -69,6 +74,8 @@ paths:
                 $ref: './schemas/create-session-response.json'
         '400':
           $ref: '#/components/responses/BadRequest'
+        default:
+          $ref: '#/components/responses/Unexpected'
 
   /api/sessions/{sessionId}:
     parameters:
@@ -83,6 +90,8 @@ paths:
           description: The session exists.
         '404':
           $ref: '#/components/responses/SessionNotFound'
+        default:
+          $ref: '#/components/responses/Unexpected'
 
   /api/sessions/{sessionId}/participants:
     parameters:
@@ -116,6 +125,8 @@ paths:
           $ref: '#/components/responses/SessionNotFound'
         '409':
           $ref: '#/components/responses/PseudoTaken'
+        default:
+          $ref: '#/components/responses/Unexpected'
 
 components:
   parameters:
@@ -123,13 +134,15 @@ components:
       name: sessionId
       in: path
       required: true
-      description: 128 random bits, base64url without padding.
+      description: "Normally 128 random bits, base64url without padding (22 characters). The parameter is deliberately not constrained: an id of the wrong shape is an unknown session (404 SESSION_NOT_FOUND), never a 400."
       schema:
-        $ref: './schemas/common.json#/$defs/sessionId'
+        type: string
 
   responses:
+    Unexpected:
+      description: Server error, or a host proxy answer during a cold start. The body is not guaranteed and must not be relied upon.
     BadRequest:
-      description: Invalid pseudo (`INVALID_PSEUDO`), or malformed body (no `code`).
+      description: Invalid pseudo (`INVALID_PSEUDO`), or malformed body (no `code`), including a body that breaks the schema bounds (e.g. a raw pseudo over 200 characters).
       content:
         application/problem+json:
           schema:

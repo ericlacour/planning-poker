@@ -2,7 +2,8 @@
 title: 'Story 1.2 : ouvrir l''outil, même quand le serveur dort'
 type: 'feature'
 created: '2026-10-01'
-status: 'draft'
+status: 'in-review'
+baseline_commit: 'eb855b769f36357b5df28254f9b12aeeac5df40c'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -81,29 +82,53 @@ Story gardée entière, à la demande de l'utilisateur.
 ## Tasks & Acceptance
 
 **Execution :**
-- [ ] `backend/pom.xml`, `backend/mvnw*` et `backend/.mvn/` -- parent `spring-boot-starter-parent` 4.1.1, `java.version` 25, `spring-boot-starter-webmvc`, `spring-boot-starter-websocket`, tests et `archunit-junit5` 1.5.1 ; wrapper épinglé sur Maven 3.9.16.
-- [ ] `backend/src/main/java/com/planningpoker/` -- `PlanningPokerApplication` ; un `package-info.java` par couche (`domain`, `application`, `adapter.in.rest`, `adapter.in.ws`, `adapter.out.memory`, `config`) ; `adapter.in.rest.HealthController` ; `adapter.in.ws.SessionSocketHandler`, avec la poignée de main minimale ; `config.AllowedOrigins`, `config.WebConfig` (CORS) et `config.WebSocketConfig` (origines) ; `Clock` UTC en bean.
-- [ ] `backend/src/main/resources/application.properties` -- `server.port=${PORT:8080}`, origines, `problemdetails`, `logging.structured.format.console=logstash`, et un arrêt qui n'écrit nulle part ailleurs que dans `/tmp`.
-- [ ] `backend/src/test/java/com/planningpoker/` -- `ArchitectureTest` (domaine pur et sens des dépendances AD-1), `HealthControllerTest` (corps égal à l'exemple du contrat), `CorsTest`, `SessionSocketHandlerTest` (403, 1008 en horloge réduite, 4404) et un test de journal JSON.
-- [ ] `backend/Dockerfile` et `backend/.dockerignore` -- build multi-étape, image d'exécution non root, groupe 0, `-Djava.io.tmpdir=/tmp`, `EXPOSE 8080`.
-- [ ] `frontend/` -- projet Angular 22 généré par la CLI (CSS, routage, sans SSR), avec `inlineCritical: false` ; `src/index.html` en `lang="fr"` ; `LOCALE_ID` à `fr`.
-- [ ] `frontend/scripts/write-config.mjs` et `frontend/scripts/inject-csp.mjs` -- `public/config.json` et la balise CSP dans `dist/…/index.html` ; scripts npm `start` (`--dev`) et `build`.
-- [ ] `frontend/src/styles/tokens.css` et `frontend/src/styles/*.css` -- tous les jetons de DESIGN, le thème sombre, la base, l'écran d'état et le dos de carte.
-- [ ] `frontend/src/app/` -- `config/app-config.ts` (chargement au démarrage), `wake/server-wake.service.ts` (cycle d'interrogation de la santé, horloge injectable) et `wake/wake-screen.component.ts` ; un `home/home.component.ts` provisoire ; le routage.
-- [ ] `frontend/src/**/*.spec.ts` (Vitest) -- les règles de `ServerWakeService` en faux temps (1 s, 3 s, 3 min, Réessayer), les libellés de l'écran et la présence de chaque jeton de DESIGN dans `tokens.css`.
-- [ ] `frontend/e2e/` et `playwright.config.ts` -- sur Chromium, servir `dist` avec la CSP et une santé simulée : écran de réveil, puis accueil, sans violation de CSP ni requête tierce.
-- [ ] `.github/workflows/ci.yml` -- sur push vers `main` et sur pull request : les tâches `contract`, `backend` (`./mvnw verify` puis `docker build`) et `frontend` (tests, build, e2e), en Node 24 et Temurin 25.
-- [ ] `.github/workflows/deploy.yml` -- sur une étiquette `v*` : Deploy Hook du webservice, attente du statut `live` par l'API Render, puis Deploy Hook du front.
-- [ ] `deploy/render.yaml` et `deploy/README.md` -- web service Docker (plan free, `PORT=8080`, `healthCheckPath`, sans déploiement automatique) et site statique (réécriture SPA, `API_BASE_URL`, `NODE_VERSION`) ; le README documente la CSP par `<meta>` et les secrets.
-- [ ] `README.md` et `.gitignore` -- lancement local (`./mvnw spring-boot:run` avec `ALLOWED_ORIGINS=http://localhost:4200`, et `npm start`).
+- [x] `backend/pom.xml`, `backend/mvnw*` et `backend/.mvn/` -- parent `spring-boot-starter-parent` 4.1.1, `java.version` 25, `spring-boot-starter-webmvc`, `spring-boot-starter-websocket`, tests et `archunit-junit5` 1.5.1 ; wrapper épinglé sur Maven 3.9.16.
+- [x] `backend/src/main/java/com/planningpoker/` -- `PlanningPokerApplication` ; un `package-info.java` par couche (`domain`, `application`, `adapter.in.rest`, `adapter.in.ws`, `adapter.out.memory`, `config`) ; `adapter.in.rest.HealthController` ; `adapter.in.ws.SessionSocketHandler`, avec la poignée de main minimale ; `config.AllowedOrigins`, `config.WebConfig` (CORS) et `config.WebSocketConfig` (origines) ; `Clock` UTC en bean.
+- [x] `backend/src/main/resources/application.properties` -- `server.port=${PORT:8080}`, origines, `problemdetails`, `logging.structured.format.console=logstash`, et un arrêt qui n'écrit nulle part ailleurs que dans `/tmp`.
+- [x] `backend/src/test/java/com/planningpoker/` -- `ArchitectureTest` (domaine pur et sens des dépendances AD-1), `HealthControllerTest` (corps égal à l'exemple du contrat), `CorsTest`, `SessionSocketHandlerTest` (403, 1008 en horloge réduite, 4404) et un test de journal JSON.
+- [x] `backend/Dockerfile` et `backend/.dockerignore` -- build multi-étape, image d'exécution non root, groupe 0, `-Djava.io.tmpdir=/tmp`, `EXPOSE 8080`.
+- [x] `frontend/` -- projet Angular 22 généré par la CLI (CSS, routage, sans SSR), avec `inlineCritical: false` ; `src/index.html` en `lang="fr"` ; `LOCALE_ID` à `fr`.
+- [x] `frontend/scripts/write-config.mjs` et `frontend/scripts/inject-csp.mjs` -- `public/config.json` et la balise CSP dans `dist/…/index.html` ; scripts npm `start` (`--dev`) et `build`.
+- [x] `frontend/src/styles/tokens.css` et `frontend/src/styles/*.css` -- tous les jetons de DESIGN, le thème sombre, la base, l'écran d'état et le dos de carte.
+- [x] `frontend/src/app/` -- `config/app-config.ts` (chargement au démarrage), `wake/server-wake.service.ts` (cycle d'interrogation de la santé, horloge injectable) et `wake/wake-screen.component.ts` ; un `home/home.component.ts` provisoire ; le routage.
+- [x] `frontend/src/**/*.spec.ts` (Vitest) -- les règles de `ServerWakeService` en faux temps (1 s, 3 s, 3 min, Réessayer), les libellés de l'écran et la présence de chaque jeton de DESIGN dans `tokens.css`.
+- [x] `frontend/e2e/` et `playwright.config.ts` -- sur Chromium, servir `dist` avec la CSP et une santé simulée : écran de réveil, puis accueil, sans violation de CSP ni requête tierce.
+- [x] `.github/workflows/ci.yml` -- sur push vers `main` et sur pull request : les tâches `contract`, `backend` (`./mvnw verify` puis `docker build`) et `frontend` (tests, build, e2e), en Node 24 et Temurin 25.
+- [x] `.github/workflows/deploy.yml` -- sur une étiquette `v*` : Deploy Hook du webservice, attente du statut `live` par l'API Render, puis Deploy Hook du front.
+- [x] `deploy/render.yaml` et `deploy/README.md` -- web service Docker (plan free, `PORT=8080`, `healthCheckPath`, sans déploiement automatique) et site statique (réécriture SPA, `API_BASE_URL`, `NODE_VERSION`) ; le README documente la CSP par `<meta>` et les secrets.
+- [x] `README.md` et `.gitignore` -- lancement local (`./mvnw spring-boot:run` avec `ALLOWED_ORIGINS=http://localhost:4200`, et `npm start`).
 
 **Acceptance Criteria :**
 - Étant donné le dépôt, quand la CI tourne, alors les tâches contrat, backend (image Docker comprise) et frontend (e2e compris) sont vertes.
 - Étant donné une étiquette `v0.1` et un compte Render configuré, quand le déploiement se lance, alors le webservice puis le front sont en ligne, et l'écran de réveil s'observe après une mise en veille. Ce critère est vérifié manuellement par l'utilisateur.
 
+## Implementation Notes
+
+- **Backend** : 13 tests JUnit verts sous Java 25. ArchUnit couvre le domaine pur, le sens des couches et une classe fautive, `archfixture`, qui prouve que la règle échoue. La santé est comparée à l'exemple du contrat. Les tests couvrent aussi CORS (autorisé, normalisé, refusé, aucune origine par défaut), le WebSocket (403, `1008` sans `hello`, `1008` sur un autre message, `4404` sur un `hello`) et des journaux JSON (`logstash`).
+- `planning-poker.hello-timeout` (5 s par défaut) n'existe que pour accélérer les tests.
+- **Image** : construite localement à partir du jar, puisque le build Maven dans Docker échoue ici à cause de l'autorité de certification du proxy du bac à sable, pas du Dockerfile. Lancée avec `--read-only --tmpfs /tmp -u 54321:0 -e PORT=9090` : santé `{"status":"UP"}`, journaux JSON. La CI refait ce contrôle sur l'image complète.
+- Les options JVM sont placées dans `ENTRYPOINT`, pas dans `JAVA_TOOL_OPTIONS`, dont le message « Picked up » casserait les journaux JSON.
+- **Front** :
+  - 10 tests Vitest : cycle de réveil en faux temps, libellés, `loadAppConfig`.
+  - 6 tests `node:test` : `API_BASE_URL`, CSP, et chaque jeton de DESIGN.md présent dans `tokens.css`, en clair et en sombre.
+  - 6 tests e2e Playwright sur le build réel avec sa CSP : éveillé, endormi, 3 min avec `Réessayer` sous horloge simulée, mouvement réduit, animation, et une preuve que la CSP bloque un `<style>` injecté. Aucune violation de CSP ni requête tierce.
+  - Essai manuel du build contre le vrai webservice (CORS réel) : accueil affiché, aucune erreur en console.
+- `tokens.css` est généré une fois à partir du front matter de DESIGN.md. Nommage :
+  - couleurs : `--<nom>` ;
+  - typographie : `--typography-<nom>-<propriété>` ;
+  - arrondis : `--rounded-<nom>` ;
+  - espacements : `--spacing-<nom>`.
+- Le build de production refuse de se lancer sans `API_BASE_URL` en HTTPS (sortie 1). `build:e2e` utilise `--dev`.
+- `PLAYWRIGHT_CHROMIUM_PATH` (facultatif) permet d'utiliser un Chromium déjà installé. La CI fait `npx playwright install --with-deps chromium`.
+- **Déploiement** :
+  - `deploy.yml` refuse une étiquette qui ne pointe pas sur la tête de `main`, puisque Render déploie `main`.
+  - Il déclenche le Deploy Hook du webservice et attend qu'il soit `live` en interrogeant `GET /v1/services/{id}/deploys?limit=1`, avec la variable `RENDER_BACKEND_SERVICE_ID` et le secret `RENDER_API_KEY`. Il déclenche ensuite le Deploy Hook du front.
+  - **Non vérifié ici** : la forme exacte de la réponse de l'API Render, et le blueprint lui-même. Ce sera fait lors du premier déploiement `v0.1`.
+- Versions des actions GitHub : `checkout`, `setup-node` et `setup-java` en v5.
+
 ## Verification
 
 **Commands :**
 - `cd backend && JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw -q verify` -- attendu : build et tests verts.
-- `cd frontend && npm ci && npm test && npm run build && npm run e2e` -- attendu : tests verts, build sans avertissement de budget, e2e vert.
+- `cd frontend && npm ci && npm test && API_BASE_URL=https://api.example.invalid npm run build && API_BASE_URL=http://127.0.0.1:4310 npm run build:e2e && PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium npm run e2e` -- attendu : 16 tests verts, build avec CSP injectée, 6 e2e verts.
 - `cd contract && npm run validate && npm test` -- attendu : inchangé, vert.

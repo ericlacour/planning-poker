@@ -1,0 +1,75 @@
+# CI V1 (AR15) : contrat, webservice et front à chaque push sur main et sur chaque pull request.
+# Aucun déploiement ici : il se fait sur étiquette v* (deploy.yml, AD-13).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contract
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: contract/package-lock.json
+      - run: npm ci
+      - run: npm run validate
+      - run: npm test
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+      - run: ./mvnw -B verify
+      - name: Image Docker (AD-12)
+        run: docker build -t planning-poker-api:ci .
+      - name: L'image démarre sous un UID arbitraire, en lecture seule hors /tmp
+        run: |
+          docker run -d --name api --read-only --tmpfs /tmp -u 54321:0 -e PORT=9090 -p 9090:9090 planning-poker-api:ci
+          for i in $(seq 1 60); do curl -sf http://localhost:9090/api/health && exit 0; sleep 1; done
+          docker logs api
+          exit 1
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Build de production
+        run: npm run build
+        env:
+          API_BASE_URL: https://api.example.invalid
+      - name: Build e2e
+        run: npm run build:e2e
+        env:
+          API_BASE_URL: http://127.0.0.1:4310
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e

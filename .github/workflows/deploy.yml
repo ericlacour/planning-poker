@@ -1,0 +1,69 @@
+# Déploiement Render sur étiquette v* uniquement, en dehors des ateliers (AD-13) :
+# le webservice d'abord, puis le front une fois le webservice « live ».
+#
+# Secrets du dépôt : RENDER_DEPLOY_HOOK_BACKEND, RENDER_DEPLOY_HOOK_FRONTEND, RENDER_API_KEY.
+# Variable du dépôt : RENDER_BACKEND_SERVICE_ID (srv-…). Voir deploy/README.md.
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: L'étiquette doit pointer sur la tête de main (Render déploie main)
+        run: |
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "::error::L'étiquette ${GITHUB_REF_NAME} ne pointe pas sur la tête de main."
+            exit 1
+          fi
+
+      - name: Webservice
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SERVICE_ID: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
+        run: |
+          for v in HOOK RENDER_API_KEY SERVICE_ID; do
+            [ -n "${!v}" ] || { echo "::error::$v n'est pas configuré (voir deploy/README.md)."; exit 1; }
+          done
+          started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "Déploiement du webservice demandé ; attente du statut live…"
+          for i in $(seq 1 120); do
+            sleep 15
+            deploy=$(curl -fsS -H "Authorization: Bearer $RENDER_API_KEY" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/$SERVICE_ID/deploys?limit=1" | jq -r '.[0].deploy')
+            created=$(echo "$deploy" | jq -r '.createdAt')
+            status=$(echo "$deploy" | jq -r '.status')
+            if [[ "$created" < "$started" ]]; then continue; fi
+            echo "statut : $status"
+            case "$status" in
+              live) exit 0 ;;
+              build_failed|update_failed|canceled|deactivated|pre_deploy_failed) exit 1 ;;
+            esac
+          done
+          echo "::error::Le webservice n'est pas live au bout de 30 minutes."
+          exit 1
+
+      - name: Front
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
+        run: |
+          [ -n "$HOOK" ] || { echo "::error::RENDER_DEPLOY_HOOK_FRONTEND n'est pas configuré."; exit 1; }
+          curl -fsS -X POST "$HOOK" > /dev/null
+          echo "Déploiement du front demandé."

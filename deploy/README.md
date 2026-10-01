@@ -1,11 +1,11 @@
 # Déploiement V1 sur Render
 
-Ce document est la référence du déploiement V1 sur Render Free. La story 1.2 (`bmad-build`) crée le blueprint `deploy/render.yaml` à partir de ces réglages. Si le blueprint et ce document divergent, c'est la spine d'architecture qui fait foi (`_bmad-output/planning-artifacts/architecture/architecture-planning-poker-2026-09-29/ARCHITECTURE-SPINE.md`, AD-11 à AD-13).
+Ce document est la référence du déploiement V1 sur Render Free. Le blueprint `deploy/render.yaml` applique ces réglages. Si le blueprint et ce document divergent, c'est la spine d'architecture qui fait foi (`_bmad-output/planning-artifacts/architecture/architecture-planning-poker-2026-09-29/ARCHITECTURE-SPINE.md`, AD-11 à AD-13).
 
 ## Méthode recommandée : le blueprint
 
 1. Crée un compte Render et relie-le au dépôt GitHub `ericlacour/planning-poker`.
-2. Attends que la story 1.2 ait livré `backend/`, `frontend/` et `deploy/render.yaml`.
+2. Vérifie que `backend/`, `frontend/` et `deploy/render.yaml` sont sur la branche `main`.
 3. Dans Render, choisis **New → Blueprint**, sélectionne le dépôt, puis renseigne le **Blueprint Path** : `deploy/render.yaml`.
 4. Complète les deux variables qui dépendent des URL (voir « Ordre de création »).
 
@@ -22,6 +22,7 @@ La création manuelle, décrite plus bas, reste possible si le blueprint n'est p
 | Build Command / Start Command | aucune : le `Dockerfile` s'en charge |
 | Instance Type | Free |
 | Health Check Path | `/api/health` |
+| Region | Frankfurt (la plus proche des participants) |
 | Auto-Deploy | **Off** (AD-13) |
 
 | Variable d'environnement | Valeur |
@@ -35,15 +36,16 @@ La création manuelle, décrite plus bas, reste possible si le blueprint n'est p
 | --- | --- |
 | Branch | `main` |
 | Root Directory | `frontend` |
-| Build Command | `npm ci && node scripts/write-config.mjs && npm run build` (provisoire : la story 1.2 fixe les commandes exactes) |
-| Publish Directory | `dist/<nom-du-projet>/browser` (le nom exact sera fixé par la story 1.2) |
+| Build Command | `npm ci && npm run build` (écrit `config.json`, construit l'application, puis injecte la CSP dans `index.html`) |
+| Publish Directory | `dist/frontend/browser` |
 | Auto-Deploy | **Off** (AD-13) |
 | Redirects/Rewrites | Source `/*`, Destination `/index.html`, Action **Rewrite**. Sans cette règle, les liens de session directs répondent « Not Found ». |
-| Headers | Path `/*`, `Content-Security-Policy` : `default-src 'self'; connect-src 'self' https://<url-webservice> wss://<url-webservice>` (AD-11) |
+| Headers | `X-Content-Type-Options: nosniff` et `Referrer-Policy: no-referrer` sur `/*` ; `Cache-Control: no-cache` sur `/config.json` et `/index.html`. |
+| CSP | **Aucun réglage dans Render.** Le build injecte dans `index.html` la balise `<meta http-equiv="Content-Security-Policy">` avec `default-src 'self'; connect-src 'self' https://<url-webservice> wss://<url-webservice>`, à partir de `API_BASE_URL` (AD-11). Elle suit donc toujours l'URL du webservice. |
 
 | Variable d'environnement | Valeur |
 | --- | --- |
-| `API_BASE_URL` | l'URL du webservice, par exemple `https://planning-poker-api.onrender.com`. `scripts/write-config.mjs` l'écrit dans `config.json` pendant le build. |
+| `API_BASE_URL` | l'URL du webservice, en `https://` et sans chemin, par exemple `https://planning-poker-api.onrender.com`. Le build échoue si elle manque. Elle produit `config.json` et la CSP. |
 | `NODE_VERSION` | `24` (Angular 22 demande au moins Node 24.15) |
 
 ## Ordre de création
@@ -52,15 +54,29 @@ Les deux services dépendent chacun de l'URL de l'autre :
 
 1. Crée les deux services. Render leur attribue leur URL `*.onrender.com`.
 2. Renseigne `API_BASE_URL` (front) avec l'URL du webservice, et `ALLOWED_ORIGINS` (webservice) avec l'URL du front.
-3. Mets à jour l'en-tête CSP du front avec l'URL du webservice, en `https://` et en `wss://`.
-4. Redéploie les deux services.
+3. Redéploie les deux services : le webservice d'abord, puis le front (sa CSP est calculée au build).
 
 ## Déclencher un déploiement (AD-13)
 
 - Aucun déploiement automatique à chaque push.
 - On déploie en posant une étiquette Git `v*` (par exemple `v0.1`), **en dehors des ateliers**, puisqu'un déploiement efface les sessions en cours.
-- La story 1.2 met en place un workflow GitHub Actions déclenché par l'étiquette. Il appelle les **Deploy Hooks** Render, le webservice d'abord, puis le front.
-- Les URL des deux Deploy Hooks sont des secrets : on les copie depuis Render (onglet Settings de chaque service) dans les secrets GitHub du dépôt, sous les noms `RENDER_DEPLOY_HOOK_BACKEND` et `RENDER_DEPLOY_HOOK_FRONTEND`. Elles ne doivent jamais être commitées.
+- L'étiquette doit pointer sur la tête de `main`, puisque Render déploie la branche `main`. Le workflow refuse sinon.
+- Le workflow `.github/workflows/deploy.yml` appelle le **Deploy Hook** du webservice, attend par l'API Render que ce déploiement soit `live` (30 minutes au plus), puis appelle le Deploy Hook du front.
+- Réglages GitHub du dépôt (Settings → Secrets and variables → Actions) :
+
+| Nom | Type | Où le trouver |
+| --- | --- | --- |
+| `RENDER_DEPLOY_HOOK_BACKEND` | secret | Render, webservice, Settings → Deploy Hook |
+| `RENDER_DEPLOY_HOOK_FRONTEND` | secret | Render, site statique, Settings → Deploy Hook |
+| `RENDER_API_KEY` | secret | Render, Account Settings → API Keys |
+| `RENDER_BACKEND_SERVICE_ID` | variable | identifiant `srv-…` du webservice, visible dans son URL Render |
+
+- Ces valeurs ne doivent jamais être commitées.
+
+```bash
+git checkout main && git pull
+git tag v0.1 && git push origin v0.1
+```
 
 ## À savoir sur Render Free
 

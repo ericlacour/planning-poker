@@ -1,0 +1,9 @@
+/*
+ * Feuilles globales uniquement : la CSP du front (AD-11) interdit les styles injectés en ligne.
+ * Les composants Angular ne déclarent donc ni `styles` ni `styleUrl`.
+ */
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/card-back.css';
+@import './styles/top-bar.css';
+@import './styles/state-screen.css';

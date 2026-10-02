@@ -2,7 +2,8 @@
 title: 'Story 1.7 : révéler, lire le résultat, passer au ticket suivant'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_commit: '67ceca091646aa6740b3650f08d55a949ecd65f7'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

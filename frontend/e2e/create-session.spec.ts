@@ -1,5 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
+import { aloneSnapshot, fakeSessionSocket } from './fake-session-socket';
+
 const API = 'http://127.0.0.1:4310';
 const APP = 'http://127.0.0.1:4300';
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
@@ -27,6 +29,10 @@ async function mockApi(page: Page, answer: () => Answer) {
   );
   // Story 1.4 : la page du lien vérifie d'abord que la session existe.
   await page.route(`${API}/api/sessions/*`, (route) => route.fulfill({ status: 204, headers: CORS }));
+  // Story 1.5 : la page de session ouvre le WebSocket ; le créateur y est seul.
+  await fakeSessionSocket(page, SESSION_ID, (ws) =>
+    ws.send(JSON.stringify(aloneSnapshot(CREATED.participantId, 'Eric', 'OBSERVER'))),
+  );
   await page.route(`${API}/api/sessions`, async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') {

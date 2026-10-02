@@ -43,9 +43,11 @@ public class SessionConnectionUseCase {
             if (participant == null) {
                 return new ConnectResult.UnknownToken();
             }
+            if (!broadcaster.attach(connectionId, sessionId, participant.id())) {
+                return new ConnectResult.ConnectionClosed();
+            }
             Session connected = session.connect(participant.id());
             store.save(connected);
-            broadcaster.attach(connectionId, sessionId, participant.id());
             if (connected.version() != session.version()) {
                 broadcaster.publish(connected);
             } else {

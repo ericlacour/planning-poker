@@ -3,10 +3,36 @@ import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angul
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import joined from '../../../../contract/examples/join-session-response/joined.json';
+import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import { JoinSessionRequest } from '../api/contract';
 import { SessionApi, SessionApiError } from '../api/session-api';
+import { APP_CONFIG } from '../config/app-config';
 import { LOCAL_STORAGE } from '../storage/browser-storage';
 import { SessionEntryComponent } from './session-entry.component';
+import { WEB_SOCKET_FACTORY } from './session.service';
+
+/** Faux WebSocket minimal : le test joue le serveur. */
+class FakeSocket {
+  readyState = 0;
+  readonly sent: unknown[] = [];
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: ((event: { code: number }) => void) | null = null;
+  send(data: string) {
+    this.sent.push(JSON.parse(data));
+  }
+  close() {
+    this.readyState = 3;
+  }
+  open() {
+    this.readyState = 1;
+    this.onopen?.();
+  }
+  closeWith(code: number) {
+    this.readyState = 3;
+    this.onclose?.({ code });
+  }
+}
 
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
 const TOKEN_KEY = `pp.token.${SESSION_ID}`;
@@ -18,9 +44,11 @@ const fail = (kind: SessionApiError['kind']) => () => Promise.reject(new Session
 
 describe('SessionEntryComponent', () => {
   let stored: Map<string, string>;
+  let sockets: FakeSocket[];
 
   function render(checkSession: Check, joinSession: Join = async () => joined) {
     stored = new Map();
+    sockets = [];
     const storage = {
       getItem: (key: string) => stored.get(key) ?? null,
       setItem: (key: string, value: string) => void stored.set(key, value),
@@ -32,6 +60,15 @@ describe('SessionEntryComponent', () => {
         provideRouter([]),
         { provide: SessionApi, useValue: api },
         { provide: LOCAL_STORAGE, useValue: () => storage },
+        { provide: APP_CONFIG, useValue: { apiBaseUrl: 'http://127.0.0.1:4310' } },
+        {
+          provide: WEB_SOCKET_FACTORY,
+          useValue: () => {
+            const socket = new FakeSocket();
+            sockets.push(socket);
+            return socket as unknown as WebSocket;
+          },
+        },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ sessionId: SESSION_ID }) } },
@@ -130,14 +167,75 @@ describe('SessionEntryComponent', () => {
     });
   });
 
-  it('opens the session page directly when a token is already stored', async () => {
+  it('opens the session page directly when a token is already stored, then says hello with it', async () => {
     const { api } = render(async () => undefined);
     stored.set(TOKEN_KEY, 'token');
-    const { element } = await mount();
+    const { element, fixture } = await mount();
     expect(element.querySelector('app-session-page')).not.toBeNull();
-    expect(element.querySelector('.invite-text')?.textContent).toBe('Partage le lien pour inviter ton équipe');
     expect(element.querySelector('form')).toBeNull();
     expect(api.joinSession).not.toHaveBeenCalled();
+    expect(sockets).toHaveLength(1);
+
+    sockets[0].open();
+    expect(sockets[0].sent).toEqual([{ type: 'hello', participantToken: 'token' }]);
+    sockets[0].onmessage?.({ data: JSON.stringify(alone) });
+    fixture.detectChanges();
+    expect(element.querySelector('.invite-text')?.textContent).toBe('Partage le lien pour inviter ton équipe');
+  });
+
+  describe('WebSocket closed by the server', () => {
+    it('4404 shows « Session introuvable » and clears the token', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle } = await mount();
+      sockets[0].open();
+      sockets[0].closeWith(4404);
+      await settle();
+      expect(element.querySelector('h1')?.textContent?.trim()).toBe("Cette session n'existe plus.");
+      expect(element.querySelector('app-session-page')).toBeNull();
+      expect(stored.has(TOKEN_KEY)).toBe(false);
+    });
+
+    it('4401 shows the Join screen with pp.pseudo prefilled and clears the token', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle, input, submit } = await mount();
+      stored.set('pp.pseudo', 'Sofia');
+      sockets[0].open();
+      sockets[0].closeWith(4401);
+      await settle();
+      expect(submit().textContent?.trim()).toBe('Rejoindre');
+      expect(input().value).toBe('Sofia');
+      expect(element.querySelector('app-session-page')).toBeNull();
+      expect(stored.has(TOKEN_KEY)).toBe(false);
+    });
+
+    it('rejoining after 4401 opens a new connection with the new token', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle, submit, type } = await mount();
+      sockets[0].open();
+      sockets[0].closeWith(4401);
+      await settle();
+      type('Bob');
+      submit().click();
+      await settle();
+      expect(element.querySelector('app-session-page')).not.toBeNull();
+      expect(sockets).toHaveLength(2);
+      sockets[1].open();
+      expect(sockets[1].sent).toEqual([{ type: 'hello', participantToken: joined.participantToken }]);
+    });
+
+    it('any other close keeps the session page', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle } = await mount();
+      sockets[0].open();
+      sockets[0].closeWith(1006);
+      await settle();
+      expect(element.querySelector('app-session-page')).not.toBeNull();
+      expect(stored.get(TOKEN_KEY)).toBe('token');
+    });
   });
 
   describe('Join screen', () => {

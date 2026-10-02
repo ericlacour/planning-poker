@@ -1,5 +1,7 @@
 import { expect, Page, test } from '@playwright/test';
 
+import { aloneSnapshot, fakeSessionSocket } from './fake-session-socket';
+
 const API = 'http://127.0.0.1:4310';
 const APP = 'http://127.0.0.1:4300';
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
@@ -22,6 +24,8 @@ type JoinAnswer = 'joined' | 'pseudoTaken' | 'notFound' | 'abort';
  */
 async function mockApi(page: Page, check: () => CheckAnswer, join: () => JoinAnswer = () => 'joined') {
   const calls = { checks: 0, joins: [] as unknown[] };
+  // Story 1.5 : la page de session ouvre le WebSocket ; on y est seul.
+  await fakeSessionSocket(page, SESSION_ID, (ws) => ws.send(JSON.stringify(aloneSnapshot(JOINED.participantId, 'Bob'))));
   await page.route(`${API}/api/health`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: '{"status":"UP"}' }),
   );

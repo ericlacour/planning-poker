@@ -2,7 +2,7 @@
 title: 'Story 1.5 : voir la table en direct'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '3622286d5c8576c8bd6cdac3aff818bbb07a9752'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -82,19 +82,52 @@ context:
 ## Tasks & Acceptance
 
 **Execution :**
-- [ ] `backend/.../domain/` -- présence (compteur de connexions par participant), `lastChange`, `SessionSnapshot.forRecipient(session, participantId)` ; tests JUnit (ordre, progress, filtrage, présence multi-onglets).
-- [ ] `backend/.../application/` -- `SessionBroadcaster`, cas d'usage de connexion (`hello` → 4404/4401/instantané) et de déconnexion ; `JoinSessionUseCase` publie.
-- [ ] `backend/.../adapter/in/ws/` -- gestionnaire WebSocket (poignée de main, messages, `tick` 5 s), registre des connexions, diffusion non bloquante (`ConcurrentWebSocketSessionDecorator` 2 s / 64 Ko, envoi hors verrou), types JSON des messages ; tests d'intégration couvrant la matrice serveur et l'aller-retour des exemples.
-- [ ] `frontend/src/app/session/session.service.ts` -- seul propriétaire du WebSocket ; tests Vitest avec un faux WebSocket (hello, heartbeat, version, 4401/4404).
-- [ ] `frontend/src/app/session/` -- table des participants et page de session (attente, seul, table), aiguillage 4401/4404 ; `styles/table.css` ; tests.
-- [ ] `frontend/e2e/table.spec.ts` -- faux serveur WebSocket (Playwright `routeWebSocket`) : table, seul, 4404 ; sans violation de CSP.
-- [ ] `deploy/load-test.mjs` + section dans `deploy/README.md` -- script de charge ; exécution locale consignée dans les Implementation Notes.
+- [x] `backend/.../domain/` -- présence (compteur de connexions par participant), `lastChange`, `SessionSnapshot.forRecipient(session, participantId)` ; tests JUnit (ordre, progress, filtrage, présence multi-onglets).
+- [x] `backend/.../application/` -- `SessionBroadcaster`, cas d'usage de connexion (`hello` → 4404/4401/instantané) et de déconnexion ; `JoinSessionUseCase` publie.
+- [x] `backend/.../adapter/in/ws/` -- gestionnaire WebSocket (poignée de main, messages, `tick` 5 s), registre des connexions, diffusion non bloquante (`ConcurrentWebSocketSessionDecorator` 2 s / 64 Ko, envoi hors verrou), types JSON des messages ; tests d'intégration couvrant la matrice serveur et l'aller-retour des exemples.
+- [x] `frontend/src/app/session/session.service.ts` -- seul propriétaire du WebSocket ; tests Vitest avec un faux WebSocket (hello, heartbeat, version, 4401/4404).
+- [x] `frontend/src/app/session/` -- table des participants et page de session (attente, seul, table), aiguillage 4401/4404 ; `styles/table.css` ; tests.
+- [x] `frontend/e2e/table.spec.ts` -- faux serveur WebSocket (Playwright `routeWebSocket`) : table, seul, 4404 ; sans violation de CSP.
+- [x] `deploy/load-test.mjs` + section dans `deploy/README.md` -- script de charge ; exécution locale consignée dans les Implementation Notes.
 
 **Acceptance Criteria :**
 - Étant donné le webservice réel en local, quand deux contextes de navigateur créent puis rejoignent la même session, alors chacun voit les deux places en moins d'une seconde, et un rafraîchissement ramène chacun à sa place.
 - Étant donné le script de charge contre le webservice local (5 × 13, au moins 2 min), quand il s'exécute, alors aucune diffusion ne dépasse 1 s et aucune connexion ne tombe.
 
 ## Implementation Notes
+
+Reprise du commit WIP df88869 (domaine, `SessionBroadcaster`, `SessionConnectionUseCase`), complétée sans repartir de zéro.
+
+**Webservice**
+- `SessionBroadcaster.attach` renvoie désormais un booléen, et le cas d'usage rattache la connexion **avant** de modifier la session : une connexion fermée pendant le traitement de son `hello` n'est jamais comptée comme ouverte (`ConnectResult.ConnectionClosed`). L'adaptateur note la fermeture (`WsConnection.markClosed`) avant d'appeler `disconnect`, sous le même moniteur que `attach`, ce qui exclut toute connexion fantôme.
+- Adaptateur `adapter/in/ws` : `SessionSocketHandler` (poignée de main de la story 1.2 conservée : `pendingHellos`, délai, 1008), `WebSocketBroadcaster` (registre des connexions, implémente le port, `tick` toutes les `planning-poker.tick-interval`, 5 s par défaut, 200 ms en test), `WsConnection` (file d'envoi par connexion), `ClientMessages` / `ServerMessages` (types écrits à la main et lecture stricte : clés exactes, bornes en points de code).
+- Diffusion non bloquante : sous le verrou, `publish` construit et sérialise un instantané par participant destinataire et le range dans la file de chaque connexion (`ConcurrentLinkedQueue`). Une seule tâche (thread virtuel) à la fois vide la file d'une connexion, dans l'ordre, à travers le `ConcurrentWebSocketSessionDecorator(2 s, 64 Ko, TERMINATE)`. Comme cette tâche est le seul émetteur, les limites du décorateur ne se déclenchent jamais d'elles-mêmes ; elles sont donc aussi appliquées à l'entrée de la file : plus de 64 Ko en attente, ou un envoi bloqué depuis plus de 2 s, ferme la connexion (`4500 SESSION_NOT_RELIABLE`, journal « send buffer overflow »). Les réponses `error`, l'instantané initial et les `tick` passent par la même file.
+- Identifiant de session de forme invalide : traité comme inconnu (4404) dès l'adaptateur. Message binaire après la poignée de main : `error INVALID_MESSAGE`.
+- Journaux : seuls `participantId` et l'identifiant technique de connexion (UUID Spring) apparaissent ; vérifié dans les journaux du test de charge (aucun pseudo, jeton ni `sessionId`) et par `helloWithTheCreatorTokenAttachesAndSendsTheSnapshot`.
+- Pendant le test de charge, la fermeture simultanée des 65 connexions par le script faisait échouer quelques envois en cours, journalisés à tort comme débordements. Un envoi qui échoue arrête désormais la file et ferme la connexion avec un journal DEBUG ; seul un vrai débordement est journalisé en INFO.
+
+**Front**
+- `SessionService` est fourni par `SessionEntryComponent` (il vit et meurt avec la page du lien) ; `WEB_SOCKET_FACTORY` permet de le tester avec un faux WebSocket. Fermeture `4401` (ou aucun jeton) : écran Rejoindre, avec `pp.pseudo` relu au moment de la fermeture.
+- `ParticipantTableComponent` + `seatsOf` (ordre du serveur, ma place en tête de son groupe). Places en attente : 3 cartes vides sans pseudo. Les styles de la page de session ont quitté `copy-link.css` pour `styles/table.css` (grille de 7, 5 puis 3 places).
+- Les e2e existants qui atteignent la page de session (création, rejoindre, déjà membre) branchent le faux serveur WebSocket partagé `e2e/fake-session-socket.ts` : sans lui, « Partage le lien… » n'apparaît plus (il attend l'instantané) et la connexion refusée produirait une erreur de console.
+
+**Vérification**
+- `./mvnw verify` : 202 tests verts (matrice serveur de bout en bout dans `SessionSocketHandlerTest`, aller-retour des exemples WS dans `WsContractRoundTripTest`). `npm test` : 139 tests Vitest + 6 tests de scripts verts. `npm run e2e` : 25 tests verts, dont 6 dans `table.spec.ts`, sans violation de CSP. Contrat : `validate` et `test` verts, aucun fichier modifié.
+- Critère 1 (webservice réel en local, front construit avec `API_BASE_URL=http://127.0.0.1:8080`, deux contextes Chromium) : après « Rejoindre », chacun voit les deux places en 126 ms (requête REST comprise) ; après un rafraîchissement, chacun retrouve sa place avec « (toi) », sans écran Rejoindre ; quand B ferme son onglet, A voit sa pastille passer au gris en moins d'une seconde.
+- Critère 2, test de charge contre le webservice local (`java -jar`, `ALLOWED_ORIGINS=http://127.0.0.1:4300`), `node deploy/load-test.mjs --url http://localhost:8080 --minutes 2` :
+  ```
+  Charge : 5 sessions × 13 participants, 2 min, départ / retour toutes les 10 s, contre http://localhost:8080
+  65 connexions ouvertes en 672 ms
+  Diffusions mesurées : 1500 ; latence p50 11.7 ms, p95 28.2 ms, p99 38.5 ms, max 65.2 ms
+  tick reçus : 1630 (≈ 25.1 par connexion)
+  OK : aucune diffusion au-delà de 1 s, aucune connexion tombée.
+  ```
+  Sortie 0. L'option `--origin` est vérifiée : avec une origine hors `ALLOWED_ORIGINS`, le script sort en 1 (« connexion impossible »).
+- Reste à faire par l'utilisateur : l'exécution de 10 min contre Render (commande dans `deploy/README.md`, résultat à consigner dans son tableau).
+
+**Points d'attention**
+- Mesure de latence du script : depuis l'envoi de la requête REST, du `hello` ou de la fermeture côté client, jusqu'à la réception ; elle inclut donc le réseau aller-retour, ce qui est pessimiste et voulu.
+- Le participant « mobile » du test de charge part et revient par fermeture et réouverture de sa connexion (PRESENCE), puisque le départ définitif (LEAVE, balayeur) appartient à l'epic 2.
 
 ## Spec Change Log
 

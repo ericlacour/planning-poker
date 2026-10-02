@@ -11,8 +11,12 @@ import com.planningpoker.domain.Session;
  */
 public interface SessionBroadcaster {
 
-    /** Rattache la connexion au participant : elle recevra désormais les instantanés de la session. */
-    void attach(String connectionId, String sessionId, UUID participantId);
+    /**
+     * Rattache la connexion au participant : elle recevra désormais les instantanés de la session.
+     *
+     * @return faux si la connexion est déjà fermée (ou inconnue) : rien n'est rattaché
+     */
+    boolean attach(String connectionId, String sessionId, UUID participantId);
 
     /** Détache la connexion ; renvoie vrai si elle était rattachée (une seule fois par connexion). */
     boolean detach(String connectionId);

@@ -13,6 +13,10 @@ public sealed interface ConnectResult {
     record UnknownToken() implements ConnectResult {
     }
 
+    /** La connexion s'est fermée avant d'être rattachée : rien n'a changé. */
+    record ConnectionClosed() implements ConnectResult {
+    }
+
     /** Connexion rattachée au participant, qui a reçu son instantané. */
     record Connected(UUID participantId) implements ConnectResult {
     }

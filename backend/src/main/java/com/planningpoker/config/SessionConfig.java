@@ -10,11 +10,13 @@ import com.planningpoker.adapter.out.memory.InMemorySessionStore;
 import com.planningpoker.application.CheckSessionUseCase;
 import com.planningpoker.application.CreateSessionUseCase;
 import com.planningpoker.application.JoinSessionUseCase;
+import com.planningpoker.application.SessionBroadcaster;
+import com.planningpoker.application.SessionConnectionUseCase;
 import com.planningpoker.application.SessionLocks;
 import com.planningpoker.application.SessionStore;
 import com.planningpoker.domain.IdGenerator;
 
-/** Assemblage des sessions : aléa sûr, stockage en mémoire, verrous et cas d'usage. */
+/** Assemblage des sessions : aléa sûr, stockage en mémoire, verrous et cas d'usage (diffusion : adaptateur WS). */
 @Configuration
 public class SessionConfig {
 
@@ -50,7 +52,14 @@ public class SessionConfig {
     }
 
     @Bean
-    public JoinSessionUseCase joinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids) {
-        return new JoinSessionUseCase(store, locks, ids);
+    public JoinSessionUseCase joinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
+            SessionBroadcaster broadcaster) {
+        return new JoinSessionUseCase(store, locks, ids, broadcaster);
+    }
+
+    @Bean
+    public SessionConnectionUseCase sessionConnectionUseCase(SessionStore store, SessionLocks locks,
+            SessionBroadcaster broadcaster) {
+        return new SessionConnectionUseCase(store, locks, broadcaster);
     }
 }

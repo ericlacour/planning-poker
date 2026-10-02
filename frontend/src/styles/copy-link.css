@@ -1,4 +1,4 @@
-/* Bouton « Copier le lien » (copy-link-button) et état « Session vide » de la page de session provisoire. */
+/* Bouton « Copier le lien » (copy-link-button). */
 .top-actions {
   display: flex;
   gap: var(--spacing-2);
@@ -8,43 +8,6 @@
   flex: none;
   width: 18px;
   height: 18px;
-}
-
-.session-page {
-  flex: 1;
-  width: var(--spacing-content-max);
-  max-width: 100%;
-  margin: 0 auto;
-  padding: var(--spacing-6) var(--spacing-margin-mobile);
-}
-
-.session-table {
-  padding: var(--spacing-5);
-  background: var(--surface);
-  border-radius: var(--rounded-lg);
-  box-shadow: 0 1px 3px rgb(31 35 48 / 6%);
-}
-
-.invite {
-  padding: var(--spacing-6) var(--spacing-4);
-  border-radius: var(--rounded-lg);
-  background: var(--surface-muted);
-  text-align: center;
-}
-
-.invite-text {
-  margin-bottom: var(--spacing-2);
-}
-
-.invite-url {
-  margin-bottom: var(--spacing-4);
-  color: var(--muted-foreground);
-  font-family: var(--typography-label-font-family);
-  font-size: var(--typography-label-font-size);
-  font-weight: var(--typography-label-font-weight);
-  line-height: var(--typography-label-line-height);
-  overflow-wrap: anywhere;
-  user-select: all;
 }
 
 /* Téléphone : « Copier le lien » de la barre du haut devient une icône, avec son libellé accessible. */
@@ -60,9 +23,5 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  .session-table {
-    padding: var(--spacing-4);
   }
 }

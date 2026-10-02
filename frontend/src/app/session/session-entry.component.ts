@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { joinSessionRequest } from '../api/contract';
@@ -7,6 +7,7 @@ import { EntryFormComponent, EntryFormValue } from '../entry-form/entry-form.com
 import { INVALID_PSEUDO_MESSAGE, NETWORK_MESSAGE, PSEUDO_TAKEN_MESSAGE } from '../entry-form/entry-messages';
 import { BrowserStorage } from '../storage/browser-storage';
 import { SessionPageComponent } from './session-page.component';
+import { SessionService } from './session.service';
 
 
 /**
@@ -14,17 +15,19 @@ import { SessionPageComponent } from './session-page.component';
  * - `notFound` : « Session introuvable » ;
  * - `unreachable` : échec réseau de la vérification, « Réessayer » ;
  * - `join` : écran Rejoindre ;
- * - `session` : page de session.
+ * - `session` : page de session (WebSocket ouvert par {@link SessionService}).
  */
 export type SessionEntryState = 'checking' | 'notFound' | 'unreachable' | 'join' | 'session';
 
 /**
  * Ouverture d'un lien de session `/s/{sessionId}` (FR-2, FR-3) : vérifie d'abord la session, puis aiguille vers
- * « Session introuvable », l'écran Rejoindre, ou la page de session si un jeton est déjà rangé.
+ * « Session introuvable », l'écran Rejoindre, ou la page de session si un jeton est déjà rangé. Une fermeture
+ * `4404` du WebSocket ramène à « Session introuvable », une fermeture `4401` à l'écran Rejoindre prérempli.
  */
 @Component({
   selector: 'app-session-entry',
   imports: [EntryFormComponent, SessionPageComponent],
+  providers: [SessionService],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @switch (state()) {
@@ -58,7 +61,7 @@ export type SessionEntryState = 'checking' | 'notFound' | 'unreachable' | 'join'
         <main class="entry-screen">
           <app-entry-form
             submitLabel="Rejoindre"
-            [initialPseudo]="initialPseudo"
+            [initialPseudo]="initialPseudo()"
             [busy]="busy()"
             [pseudoError]="pseudoError()"
             [submitError]="submitError()"
@@ -79,10 +82,28 @@ export class SessionEntryComponent implements OnInit {
   private readonly sessionId = inject(ActivatedRoute).snapshot.paramMap.get('sessionId') ?? '';
 
   protected readonly state = signal<SessionEntryState>('checking');
-  protected readonly initialPseudo = this.storage.readPseudo() ?? '';
+  private readonly session = inject(SessionService);
+
+  protected readonly initialPseudo = signal(this.storage.readPseudo() ?? '');
   protected readonly busy = signal(false);
   protected readonly pseudoError = signal<string | null>(null);
   protected readonly submitError = signal<string | null>(null);
+
+  constructor() {
+    // Le jeton est déjà effacé par le service.
+    effect(() => {
+      const end = this.session.end();
+      if (!end) return;
+      untracked(() => {
+        if (end === 'notFound') {
+          this.state.set('notFound');
+        } else {
+          this.initialPseudo.set(this.storage.readPseudo() ?? '');
+          this.state.set('join');
+        }
+      });
+    });
+  }
 
   ngOnInit(): void {
     void this.check();

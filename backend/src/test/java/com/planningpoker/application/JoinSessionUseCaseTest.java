@@ -33,7 +33,8 @@ class JoinSessionUseCaseTest {
     private final IdGenerator ids = new IdGenerator(new SplittableRandom(11));
     private final CreateSessionUseCase create = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC));
-    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids);
+    private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
+    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster);
     private final CheckSessionUseCase check = new CheckSessionUseCase(store);
 
     private String sessionOf(String creator) {
@@ -58,6 +59,12 @@ class JoinSessionUseCaseTest {
             assertThat(p.token().matches(result.participantToken())).isTrue();
         });
         assertThat(store.calls).containsExactly("find", "save");
+        assertThat(broadcaster.published).singleElement()
+                .satisfies(p -> assertThat(p.session()).isSameAs(session))
+                .satisfies(p -> assertThat(p.onlyTo()).isNull());
+        assertThat(session.lastChange()).isEqualTo(
+                com.planningpoker.domain.LastChange.of(com.planningpoker.domain.ChangeAction.JOIN,
+                        result.participantId()));
         assertThat(result.toString()).doesNotContain(result.participantToken());
     }
 
@@ -96,6 +103,7 @@ class JoinSessionUseCaseTest {
                 .isInstanceOf(PseudoTakenException.class);
         assertThat(store.calls).containsExactly("find");
         assertThat(store.sessions.get(sessionId).version()).isEqualTo(1);
+        assertThat(broadcaster.published).isEmpty();
     }
 
     @Test
@@ -112,7 +120,8 @@ class JoinSessionUseCaseTest {
         IdGenerator secureIds = new IdGenerator(new java.security.SecureRandom());
         String sessionId = new CreateSessionUseCase(memory, locks, secureIds, Clock.fixed(NOW, ZoneOffset.UTC))
                 .create("Sofia", Role.VOTER).sessionId();
-        JoinSessionUseCase concurrentJoin = new JoinSessionUseCase(memory, locks, secureIds);
+        JoinSessionUseCase concurrentJoin = new JoinSessionUseCase(memory, locks, secureIds,
+                new RecordingBroadcaster());
 
         int arrivals = 20;
         ExecutorService pool = Executors.newFixedThreadPool(arrivals);

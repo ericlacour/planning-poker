@@ -90,3 +90,26 @@ Pour vérifier un déploiement, Render n'affiche pas l'étiquette mais le **comm
 - Pendant une séance, le `heartbeat` envoyé toutes les 5 s garde le webservice éveillé (AD-8).
 - Un seul web service gratuit est prévu (AD-13) : 750 h par mois, pas d'environnement de préproduction.
 - Les libellés de l'interface Render peuvent évoluer. Les réglages ci-dessus décrivent l'intention ; adapte-les aux noms de champs du moment.
+
+## Test de charge (story 1.5)
+
+Le script `deploy/load-test.mjs` vérifie la capacité visée : 5 sessions de 13 participants, soit 65 connexions WebSocket. Il n'a aucune dépendance (Node 24 et son WebSocket natif suffisent).
+
+- Il crée N sessions (`--sessions`, 5 par défaut) de M participants (`--participants`, 13 par défaut), un participant sur quatre en observateur, et mesure la diffusion de chaque arrivée.
+- Il garde les connexions ouvertes pendant D minutes (`--minutes`, 10 par défaut) en envoyant `heartbeat` toutes les 5 s.
+- Dans chaque session, un participant quitte la table puis revient (fermeture puis réouverture de sa connexion) toutes les `--churn-seconds` (10 par défaut).
+- Pour chaque changement, il mesure le délai entre la mutation et la réception de l'instantané par chaque participant connecté.
+- Il sort en erreur (code 1) si une diffusion dépasse 1 s ou n'arrive pas, ou si une connexion tombe. Sinon il affiche les latences p50, p95, p99 et max, et sort avec le code 0.
+
+`ALLOWED_ORIGINS` filtre l'en-tête `Origin` des WebSocket. Le script n'en envoie aucun par défaut ; si le webservice le refuse, passe l'URL du front avec `--origin`.
+
+```bash
+# Contre Render : réveille d'abord le webservice (ouvre le front), hors atelier.
+node deploy/load-test.mjs --url https://planning-poker-api.onrender.com \
+  --origin https://planning-poker.onrender.com --minutes 10
+```
+
+| Date | Cible | Paramètres | Résultat |
+| --- | --- | --- | --- |
+| 2026-10-02 | webservice local (`java -jar`, poste de développement) | 5 × 13, 2 min, départ / retour toutes les 10 s | OK : 1 500 diffusions mesurées, p50 11,7 ms, p95 28,2 ms, p99 38,5 ms, max 65,2 ms ; aucune connexion tombée |
+| à faire | Render Free | 5 × 13, 10 min | à consigner ici après l'exécution |

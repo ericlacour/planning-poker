@@ -80,12 +80,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution :**
-- [ ] `backend/.../domain/` -- règles `reveal` et `clear`, `Summary` (calculs), `canVoteThisRound` des arrivées tardives, instantané révélé ; tests JUnit de toute la matrice domaine (égalités, un seul vote, uniquement `?`, 5,25 → 5,3).
-- [ ] `backend/.../application/` -- cas d'usage `reveal` et `clear` (verrou, diffusion si `version` change).
-- [ ] `backend/.../adapter/in/ws/` -- traitement des messages ; tests d'intégration (révélation vue par deux clients, `clear` concurrents, périmés) et aller-retour des exemples.
-- [ ] `frontend/src/app/session/session.service.ts` -- intentions `reveal()` et `clear()`.
-- [ ] `frontend/src/app/session/` -- boutons de la barre d'action, blocage de 1 s, panneau de résultat, faces révélées, « n'a pas voté », « votera au prochain tour », main grisée, région `aria-live` ; styles globaux ; tests Vitest (formatage, libellés, blocage en faux temps, annonce).
-- [ ] `frontend/e2e/reveal.spec.ts` -- faux serveur WebSocket : révéler, résultat, nouveau tour, blocage ; sans violation de CSP.
+- [x] `backend/.../domain/` -- règles `reveal` et `clear`, `Summary` (calculs), `canVoteThisRound` des arrivées tardives, instantané révélé ; tests JUnit de toute la matrice domaine (égalités, un seul vote, uniquement `?`, 5,25 → 5,3).
+- [x] `backend/.../application/` -- cas d'usage `reveal` et `clear` (verrou, diffusion si `version` change).
+- [x] `backend/.../adapter/in/ws/` -- traitement des messages ; tests d'intégration (révélation vue par deux clients, `clear` concurrents, périmés) et aller-retour des exemples.
+- [x] `frontend/src/app/session/session.service.ts` -- intentions `reveal()` et `clear()`.
+- [x] `frontend/src/app/session/` -- boutons de la barre d'action, blocage de 1 s, panneau de résultat, faces révélées, « n'a pas voté », « votera au prochain tour », main grisée, région `aria-live` ; styles globaux ; tests Vitest (formatage, libellés, blocage en faux temps, annonce).
+- [x] `frontend/e2e/reveal.spec.ts` -- faux serveur WebSocket : révéler, résultat, nouveau tour, blocage ; sans violation de CSP.
 
 **Acceptance Criteria :**
 - Étant donné le webservice réel en local et trois participants (deux votants, un observateur), quand les votants choisissent 5 et 8 puis que l'observateur révèle, alors tous voient les faces, « 6,5 », « 5 et 8 · 1 vote chacune », « Min 5 », « Max 8 » en moins d'une seconde ; « Nouveau tour » ramène tout le monde à un tour caché sans vote.

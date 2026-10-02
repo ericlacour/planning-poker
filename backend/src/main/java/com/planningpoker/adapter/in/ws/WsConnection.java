@@ -56,6 +56,12 @@ final class WsConnection {
         return session.getId();
     }
 
+    /** Désignation pour les journaux : le participant une fois rattaché, sinon la connexion (jamais la session). */
+    private String who() {
+        Attachment current = attachment();
+        return current == null ? "connection " + id() : "participant " + current.participantId();
+    }
+
     /** Rattache la connexion, sauf si elle est déjà fermée. */
     synchronized boolean attach(String sessionId, UUID participantId) {
         if (closed || attachment != null) {
@@ -117,7 +123,7 @@ final class WsConnection {
     /** File pleine ou envoi bloqué trop longtemps : la connexion est fermée. */
     private void overflow() {
         if (stop()) {
-            LOG.info("Closing connection {}: send buffer overflow", id());
+            LOG.info("Closing connection of {}: send buffer overflow", who());
             senders.execute(() -> close(CloseStatus.SESSION_NOT_RELIABLE));
         }
     }
@@ -128,7 +134,7 @@ final class WsConnection {
      */
     private void sendFailed(Exception e) {
         if (stop()) {
-            LOG.debug("WebSocket send failed for connection {}", id(), e);
+            LOG.debug("WebSocket send failed for {}", who(), e);
             senders.execute(() -> close(CloseStatus.SESSION_NOT_RELIABLE));
         }
     }
@@ -149,7 +155,7 @@ final class WsConnection {
                 session.close(status);
             }
         } catch (IOException | IllegalStateException e) {
-            LOG.debug("WebSocket close failed for connection {}", id(), e);
+            LOG.debug("WebSocket close failed for {}", who(), e);
         }
     }
 }

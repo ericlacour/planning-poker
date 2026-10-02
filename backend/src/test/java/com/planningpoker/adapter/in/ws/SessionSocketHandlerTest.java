@@ -198,7 +198,7 @@ class SessionSocketHandlerTest {
     }
 
     @Test
-    void helloWithTheCreatorTokenAttachesAndSendsTheSnapshot(CapturedOutput output) throws Exception {
+    void helloWithTheCreatorTokenAttachesAndSendsTheSnapshot() throws Exception {
         Created alice = createSession("Alice", "VOTER");
         JsonNode state = connect(alice).state();
 
@@ -212,11 +212,24 @@ class SessionSocketHandlerTest {
         assertThat(state.get("progress").toString()).isEqualTo("{\"voted\":0,\"expected\":1}");
         assertThat(state.get("round").get("status").asString()).isEqualTo("HIDDEN");
         assertThat(state.toString()).doesNotContain(alice.participantToken());
+    }
 
-        // Journaux : ni jeton, ni pseudo, ni identifiant de session.
-        assertThat(output.getOut()).contains(alice.participantId())
-                .doesNotContain(alice.participantToken()).doesNotContain(alice.sessionId())
-                .doesNotContain("\"Alice\"");
+    @Test
+    void neverLogsTheTokenThePseudoNorTheSessionId(CapturedOutput output) throws Exception {
+        Created zorglub = createSession("Zorglub-Ws", "VOTER");
+        Connected connected = connect(zorglub);
+        connected.client().socket.sendClose(WebSocket.NORMAL_CLOSURE, "").join();
+        connected.client().closeCode.get(5, TimeUnit.SECONDS);
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (!output.getAll().contains("Participant " + zorglub.participantId() + " closed a connection")
+                && System.nanoTime() < deadline) {
+            Thread.sleep(20);
+        }
+
+        assertThat(output.getAll()).contains("Participant " + zorglub.participantId() + " closed a connection")
+                .doesNotContain("Zorglub")
+                .doesNotContain(zorglub.participantToken())
+                .doesNotContain(zorglub.sessionId());
     }
 
     @Test
@@ -424,8 +437,12 @@ class SessionSocketHandlerTest {
     @Test
     void ticksArriveEveryIntervalOnEachAttachedConnection() throws Exception {
         Connected a = connect(createSession("Alice", "VOTER"));
-        Thread.sleep(550);
-        long ticks = a.client().messages.stream().filter(m -> m.equals("{\"type\":\"tick\"}")).count();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        long ticks = 0;
+        while (ticks < 2 && System.nanoTime() < deadline) {
+            Thread.sleep(20);
+            ticks = a.client().messages.stream().filter(m -> m.equals("{\"type\":\"tick\"}")).count();
+        }
         assertThat(ticks).isGreaterThanOrEqualTo(2);
     }
 

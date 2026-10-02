@@ -57,6 +57,27 @@ describe('BrowserStorage', () => {
     expect(() => storage.removeToken('id')).not.toThrow();
   });
 
+  it('keeps the token in memory when the storage is unavailable, so that joining still works', () => {
+    const storage = storageWith(() => null);
+    storage.saveToken('k3Jx9QvT2mLpZ8wR4nYb7A', 'Xb4Rt9LmQ2vN7cZp1HsK0w');
+    storage.savePseudo('Eric');
+    expect(storage.readToken('k3Jx9QvT2mLpZ8wR4nYb7A')).toBe('Xb4Rt9LmQ2vN7cZp1HsK0w');
+    expect(storage.readPseudo()).toBe('Eric');
+    storage.removeToken('k3Jx9QvT2mLpZ8wR4nYb7A');
+    expect(storage.readToken('k3Jx9QvT2mLpZ8wR4nYb7A')).toBeNull();
+  });
+
+  it('keeps the token in memory when every write throws', () => {
+    const throwing = new Proxy({} as Storage, {
+      get: () => () => {
+        throw new DOMException('denied', 'SecurityError');
+      },
+    });
+    const storage = storageWith(() => throwing);
+    storage.saveToken('id', 'token');
+    expect(storage.readToken('id')).toBe('token');
+  });
+
   it('never throws when every access throws', () => {
     const throwing = new Proxy({} as Storage, {
       get: () => () => {

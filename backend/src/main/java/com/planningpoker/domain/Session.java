@@ -9,7 +9,8 @@ import java.util.UUID;
 
 /**
  * Session de Planning Poker, immuable : chaque règle renvoie une nouvelle session, que le cas d'usage enregistre
- * sous le verrou de la session (AD-3). Une règle sans effet observable renvoie la même instance.
+ * sous le verrou de la session (AD-3). Une règle sans aucun effet renvoie la même instance ; un changement caché
+ * (comme le nombre de connexions d'un participant) donne une nouvelle instance de même {@code version}.
  *
  * @param version        incrémentée à chaque changement observable ; 1 à la création
  * @param nextJoinOrder  ordre d'arrivée du prochain participant

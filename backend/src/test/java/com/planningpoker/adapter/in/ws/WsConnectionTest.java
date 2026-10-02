@@ -3,12 +3,15 @@ package com.planningpoker.adapter.in.ws;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -73,6 +76,33 @@ class WsConnectionTest {
         }
         verify(session, timeout(2_000)).close(CloseStatus.SESSION_NOT_RELIABLE);
         release.countDown();
+    }
+
+    @Test
+    void aSendBlockedOverTheTimeLimitIsClosed() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        WsConnection connection = connection(release);
+        connection.enqueue(new TextMessage("blocked"));
+        verify(session, timeout(1_000)).sendMessage(any());
+        Thread.sleep(WsConnection.SEND_TIME_LIMIT_MS + 200);
+
+        connection.enqueue(new TextMessage("small"));
+        verify(session, timeout(2_000)).close(CloseStatus.SESSION_NOT_RELIABLE);
+        release.countDown();
+    }
+
+    @Test
+    void aFailedSendStopsAndClosesTheConnection() throws Exception {
+        when(session.getId()).thenReturn("c1");
+        when(session.isOpen()).thenReturn(true);
+        doThrow(new IOException("broken pipe")).when(session).sendMessage(any());
+        WsConnection connection = new WsConnection(session, senders);
+
+        connection.enqueue(new TextMessage("first"));
+        verify(session, timeout(2_000)).close(CloseStatus.SESSION_NOT_RELIABLE);
+        connection.enqueue(new TextMessage("second"));
+        Thread.sleep(200);
+        verify(session, times(1)).sendMessage(any());
     }
 
     @Test

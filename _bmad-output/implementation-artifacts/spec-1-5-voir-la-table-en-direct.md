@@ -2,7 +2,7 @@
 title: 'Story 1.5 : voir la table en direct'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-review'
+status: 'done'
 baseline_commit: '3622286d5c8576c8bd6cdac3aff818bbb07a9752'
 route: 'dispatch'
 review_loop_iteration: 0

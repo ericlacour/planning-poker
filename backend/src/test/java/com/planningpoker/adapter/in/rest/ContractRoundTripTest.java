@@ -43,8 +43,19 @@ class ContractRoundTripTest {
         assertRoundTrip("create-session-response", "created", CreateSessionResponse.class);
     }
 
+    @Test
+    void joinSessionRequest() throws Exception {
+        assertRoundTrip("join-session-request", "voter", JoinSessionRequest.class);
+    }
+
+    @Test
+    void joinSessionResponse() throws Exception {
+        assertRoundTrip("join-session-response", "joined", JoinSessionResponse.class);
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = { "bad-request-invalid-pseudo", "bad-request-malformed-body" })
+    @ValueSource(strings = { "bad-request-invalid-pseudo", "bad-request-malformed-body", "pseudo-taken",
+            "session-not-found" })
     void problems(String example) throws Exception {
         JsonNode json = jsonMapper.readTree(ContractExamples.read("problem", example));
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

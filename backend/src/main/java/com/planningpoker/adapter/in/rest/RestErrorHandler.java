@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import com.planningpoker.application.SessionNotFoundException;
 import com.planningpoker.domain.InvalidPseudoException;
+import com.planningpoker.domain.PseudoTakenException;
 
 /**
  * Erreurs REST en {@code application/problem+json} (RFC 9457), conformes à {@code problem.json} :
@@ -31,6 +33,20 @@ public class RestErrorHandler extends ResponseEntityExceptionHandler {
     ProblemDetail invalidPseudo() {
         ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Invalid pseudo.");
         problem.setProperty(CODE, "INVALID_PSEUDO");
+        return problem;
+    }
+
+    @ExceptionHandler(SessionNotFoundException.class)
+    ProblemDetail sessionNotFound(SessionNotFoundException e) {
+        ProblemDetail problem = problem(HttpStatus.NOT_FOUND, e.getMessage());
+        problem.setProperty(CODE, "SESSION_NOT_FOUND");
+        return problem;
+    }
+
+    @ExceptionHandler(PseudoTakenException.class)
+    ProblemDetail pseudoTaken(PseudoTakenException e) {
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, e.getMessage());
+        problem.setProperty(CODE, "PSEUDO_TAKEN");
         return problem;
     }
 

@@ -7,7 +7,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.planningpoker.adapter.out.memory.InMemorySessionStore;
+import com.planningpoker.application.CheckSessionUseCase;
 import com.planningpoker.application.CreateSessionUseCase;
+import com.planningpoker.application.JoinSessionUseCase;
 import com.planningpoker.application.SessionLocks;
 import com.planningpoker.application.SessionStore;
 import com.planningpoker.domain.IdGenerator;
@@ -40,5 +42,15 @@ public class SessionConfig {
     public CreateSessionUseCase createSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
             Clock clock) {
         return new CreateSessionUseCase(store, locks, ids, clock);
+    }
+
+    @Bean
+    public CheckSessionUseCase checkSessionUseCase(SessionStore store) {
+        return new CheckSessionUseCase(store);
+    }
+
+    @Bean
+    public JoinSessionUseCase joinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids) {
+        return new JoinSessionUseCase(store, locks, ids);
     }
 }

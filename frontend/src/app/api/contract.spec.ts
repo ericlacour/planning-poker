@@ -5,7 +5,18 @@ import voter from '../../../../contract/examples/create-session-request/voter.js
 import created from '../../../../contract/examples/create-session-response/created.json';
 import invalidPseudo from '../../../../contract/examples/problem/bad-request-invalid-pseudo.json';
 import malformedBody from '../../../../contract/examples/problem/bad-request-malformed-body.json';
-import { createSessionRequest, parseCreateSessionResponse, parseProblem, Role } from './contract';
+import pseudoTaken from '../../../../contract/examples/problem/pseudo-taken.json';
+import sessionNotFound from '../../../../contract/examples/problem/session-not-found.json';
+import joinVoter from '../../../../contract/examples/join-session-request/voter.json';
+import joined from '../../../../contract/examples/join-session-response/joined.json';
+import {
+  createSessionRequest,
+  joinSessionRequest,
+  parseCreateSessionResponse,
+  parseJoinSessionResponse,
+  parseProblem,
+  Role,
+} from './contract';
 
 /** Les exemples du contrat font l'aller-retour à travers les types écrits à la main, sans perte ni ajout. */
 describe('contract round trip', () => {
@@ -18,7 +29,16 @@ describe('contract round trip', () => {
     expect(JSON.parse(JSON.stringify(parseCreateSessionResponse(created)))).toEqual(created);
   });
 
-  it.each([invalidPseudo, malformedBody])('problem %j', (example) => {
+  it('join-session-request/voter', () => {
+    const request = joinSessionRequest(joinVoter.pseudo, joinVoter.role as Role);
+    expect(JSON.parse(JSON.stringify(request))).toEqual(joinVoter);
+  });
+
+  it('join-session-response/joined', () => {
+    expect(JSON.parse(JSON.stringify(parseJoinSessionResponse(joined)))).toEqual(joined);
+  });
+
+  it.each([invalidPseudo, malformedBody, pseudoTaken, sessionNotFound])('problem %j', (example) => {
     expect(JSON.parse(JSON.stringify(parseProblem(example)))).toEqual(example);
   });
 });
@@ -33,6 +53,22 @@ describe('parseCreateSessionResponse', () => {
   it('keeps only the contract fields', () => {
     expect(Object.keys(parseCreateSessionResponse({ ...created, extra: 1 }))).toEqual([
       'sessionId',
+      'participantId',
+      'participantToken',
+    ]);
+  });
+});
+
+describe('parseJoinSessionResponse', () => {
+  it('rejects a response that breaks the contract', () => {
+    expect(() => parseJoinSessionResponse({ ...joined, participantToken: 'short' })).toThrow();
+    expect(() => parseJoinSessionResponse({ ...joined, participantId: 'not-a-uuid' })).toThrow();
+    expect(() => parseJoinSessionResponse({ participantId: joined.participantId })).toThrow();
+    expect(() => parseJoinSessionResponse([])).toThrow();
+  });
+
+  it('keeps only the contract fields', () => {
+    expect(Object.keys(parseJoinSessionResponse({ ...joined, sessionId: 'x' }))).toEqual([
       'participantId',
       'participantToken',
     ]);

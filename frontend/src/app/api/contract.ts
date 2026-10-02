@@ -19,6 +19,18 @@ export interface CreateSessionResponse {
   readonly participantToken: string;
 }
 
+/** `join-session-request.json` : le pseudo est brut, le webservice le normalise. */
+export interface JoinSessionRequest {
+  readonly pseudo: string;
+  readonly role: Role;
+}
+
+/** `join-session-response.json`. `participantToken` est SECRET : jamais dans une URL ni un journal. */
+export interface JoinSessionResponse {
+  readonly participantId: string;
+  readonly participantToken: string;
+}
+
 /** `problem.json#/properties/code` */
 export type ProblemCode = 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_NOT_FOUND';
 
@@ -58,6 +70,25 @@ export function parseCreateSessionResponse(json: unknown): CreateSessionResponse
   }
   return {
     sessionId: json['sessionId'],
+    participantId: json['participantId'],
+    participantToken: json['participantToken'],
+  };
+}
+
+export function joinSessionRequest(pseudo: string, role: Role): JoinSessionRequest {
+  return { pseudo, role };
+}
+
+/** Lit une réponse d'entrée dans une session, ou lève une erreur si elle ne respecte pas le contrat. */
+export function parseJoinSessionResponse(json: unknown): JoinSessionResponse {
+  if (
+    !isObject(json) ||
+    !matches(json['participantId'], UUID) ||
+    !matches(json['participantToken'], BASE64URL_128_BITS)
+  ) {
+    throw new Error('join-session-response: unexpected shape');
+  }
+  return {
     participantId: json['participantId'],
     participantToken: json['participantToken'],
   };

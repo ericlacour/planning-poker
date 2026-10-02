@@ -13,8 +13,8 @@ public record Participant(UUID id, Pseudo pseudo, Role role, int joinOrder, Part
         Objects.requireNonNull(pseudo, "pseudo");
         Objects.requireNonNull(role, "role");
         Objects.requireNonNull(token, "token");
-        if (joinOrder < 0) {
-            throw new IllegalArgumentException("joinOrder must be >= 0");
+        if (joinOrder < 1) {
+            throw new IllegalArgumentException("joinOrder must be >= 1");
         }
     }
 }

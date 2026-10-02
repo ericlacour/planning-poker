@@ -16,12 +16,17 @@ const CORS = {
 
 type Answer = 'created' | 'abort' | 'error503';
 
-/** Simule le webservice : `/api/health` éveillé, `POST /api/sessions` selon `answer()`. */
+/**
+ * Simule le webservice : `/api/health` éveillé, `POST /api/sessions` selon `answer()`, et toute session existante
+ * (`GET /api/sessions/{id}` → 204).
+ */
 async function mockApi(page: Page, answer: () => Answer) {
   const bodies: unknown[] = [];
   await page.route(`${API}/api/health`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', headers: CORS, body: '{"status":"UP"}' }),
   );
+  // Story 1.4 : la page du lien vérifie d'abord que la session existe.
+  await page.route(`${API}/api/sessions/*`, (route) => route.fulfill({ status: 204, headers: CORS }));
   await page.route(`${API}/api/sessions`, async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') {

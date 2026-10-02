@@ -36,6 +36,16 @@ describe('BrowserStorage', () => {
     expect(storage.readPseudo()).toBe('Eric');
   });
 
+  it('removes the token of one session only', () => {
+    const backing = memoryStorage();
+    const storage = storageWith(() => backing);
+    storage.saveToken('a', 'token-a');
+    storage.saveToken('b', 'token-b');
+    storage.removeToken('a');
+    expect(storage.readToken('a')).toBeNull();
+    expect(storage.readToken('b')).toBe('token-b');
+  });
+
   it('returns null when nothing is stored', () => {
     expect(storageWith(() => memoryStorage()).readPseudo()).toBeNull();
   });
@@ -44,6 +54,7 @@ describe('BrowserStorage', () => {
     const storage = storageWith(() => null);
     expect(storage.readPseudo()).toBeNull();
     expect(() => storage.savePseudo('Eric')).not.toThrow();
+    expect(() => storage.removeToken('id')).not.toThrow();
   });
 
   it('never throws when every access throws', () => {
@@ -55,5 +66,6 @@ describe('BrowserStorage', () => {
     const storage = storageWith(() => throwing);
     expect(storage.readPseudo()).toBeNull();
     expect(() => storage.saveToken('id', 'token')).not.toThrow();
+    expect(() => storage.removeToken('id')).not.toThrow();
   });
 });

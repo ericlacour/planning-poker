@@ -13,3 +13,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-creer-une-session-et-en-partager-le-lien.md`
   summary: Borner les ressources du webservice : taille des corps REST, nombre de sessions en mémoire et débit de `POST /api/sessions`.
   evidence: Le pseudo brut est lu en entier avant le contrôle des 200 points de code, et le stockage en mémoire n'a ni plafond ni expiration avant la story 2.5 ; un client anonyme peut épuiser la mémoire.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
+  summary: Plafonner le nombre de participants par session (et donc `nextJoinOrder`), avec les autres limites de ressources de la story 1.3.
+  evidence: `Session.join` accepte des arrivées sans limite ; un client anonyme peut gonfler une session indéfiniment.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
+  summary: Décider si le pseudo doit aussi perdre les espaces insécables et caractères invisibles (U+00A0, U+200B, U+FEFF) avant comparaison, pour empêcher les sosies.
+  evidence: `Pseudo` applique `String.strip()` (règle de la story 1.3) ; « Sofia » précédé d'un U+00A0 rejoint comme un participant distinct, identique à l'écran.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
+  summary: Story 2.4 — remplacer le 409 systématique par la reprise d'un participant déconnecté portant le même pseudo (FR-8, `openapi.yaml` joinSession).
+  evidence: `Session.join` lève `PseudoTakenException` pour tout pseudo présent ; la notion de déconnexion n'existait pas encore.

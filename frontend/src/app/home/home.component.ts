@@ -4,10 +4,8 @@ import { Router } from '@angular/router';
 import { createSessionRequest } from '../api/contract';
 import { SessionApi, SessionApiError } from '../api/session-api';
 import { EntryFormComponent, EntryFormValue } from '../entry-form/entry-form.component';
+import { INVALID_PSEUDO_MESSAGE, NETWORK_MESSAGE } from '../entry-form/entry-messages';
 import { BrowserStorage } from '../storage/browser-storage';
-
-export const INVALID_PSEUDO_MESSAGE = "Ce pseudo n'est pas valide.";
-export const NETWORK_MESSAGE = 'Impossible de joindre le serveur.';
 
 /** Accueil : créer une session (FR-1). */
 @Component({

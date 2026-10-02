@@ -39,6 +39,15 @@ export class BrowserStorage {
     this.write(tokenKey(sessionId), token);
   }
 
+  /** Efface le jeton d'une session disparue. */
+  removeToken(sessionId: string): void {
+    try {
+      this.storage()?.removeItem(tokenKey(sessionId));
+    } catch {
+      // Stockage refusé : rien à effacer.
+    }
+  }
+
   private read(key: string): string | null {
     try {
       return this.storage()?.getItem(key) ?? null;

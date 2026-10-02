@@ -52,7 +52,7 @@ La création manuelle, décrite plus bas, reste possible si le blueprint n'est p
 
 Les deux services dépendent chacun de l'URL de l'autre :
 
-1. Crée les deux services. Render leur attribue leur URL `*.onrender.com`.
+1. Crée les deux services. Render leur attribue leur URL `*.onrender.com`. Si le nom est déjà pris, il y ajoute un suffixe (par exemple `https://planning-poker-api-wukg.onrender.com`) : relève l'URL exacte sur la page de chaque service.
 2. Renseigne `API_BASE_URL` (front) avec l'URL du webservice, et `ALLOWED_ORIGINS` (webservice) avec l'URL du front.
 3. Redéploie les deux services : le webservice d'abord, puis le front (sa CSP est calculée au build).
 
@@ -72,12 +72,17 @@ Les deux services dépendent chacun de l'URL de l'autre :
 | `RENDER_BACKEND_SERVICE_ID` | variable | identifiant `srv-…` du webservice, visible dans son URL Render |
 | `RENDER_FRONTEND_SERVICE_ID` | variable | identifiant `srv-…` du site statique |
 
+- Crée-les au niveau du **dépôt** (sections « Repository secrets » et « Repository variables »), pas dans un environnement. Les environnements `main - planning-poker-api` et `main - planning-poker` que propose GitHub sont créés par l'intégration Render pour afficher ses déploiements ; le workflow ne déclare aucun `environment:` et ne lirait pas ce qui y est rangé.
 - Ces valeurs ne doivent jamais être commitées.
 
 ```bash
 git checkout main && git pull
 git tag v0.1 && git push origin v0.1
 ```
+
+Sans terminal, on peut aussi publier une release GitHub (Releases → Draft a new release) avec une nouvelle étiquette `v*` ciblant `main` ; le titre et la description sont facultatifs.
+
+Pour vérifier un déploiement, Render n'affiche pas l'étiquette mais le **commit** : en haut de la page de chaque service, le commit à côté de `main` doit être celui de l'étiquette (`git rev-parse --short v0.1`), et l'onglet **Events** montre un déploiement déclenché par le Deploy Hook à l'heure du workflow. Le workflow vérifie lui-même que Render a déployé ce commit.
 
 ## À savoir sur Render Free
 

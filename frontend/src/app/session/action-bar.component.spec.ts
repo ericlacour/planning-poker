@@ -109,6 +109,14 @@ describe('ActionBarComponent', () => {
     expect(buttons().find((b) => b.textContent?.trim() === 'Nouveau tour')?.disabled).toBe(false);
   });
 
+  it('no block on the first snapshot, nor when the same version comes back (reconnection)', () => {
+    const { buttons, show } = render(withChange(revealedTie, 'REVEAL', BOB, 9));
+    const newRound = () => buttons().find((b) => b.textContent?.trim() === 'Nouveau tour');
+    expect(newRound()?.disabled).toBe(false);
+    show(withChange(revealedTie, 'REVEAL', BOB, 9));
+    expect(newRound()?.disabled).toBe(false);
+  });
+
   it('a second block restarts the second', () => {
     const { buttons, show, tick } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
     show(withChange(revealedTie, 'REVEAL', BOB, 8));

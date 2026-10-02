@@ -3,6 +3,8 @@ package com.planningpoker.adapter.in.ws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,6 +12,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.planningpoker.ContractExamples;
+import com.planningpoker.domain.Card;
+import com.planningpoker.domain.Summary;
 
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
@@ -95,18 +99,25 @@ class WsContractRoundTripTest {
     /** Une synthèse du domaine s'écrit comme celle de l'exemple (moyenne comparée par sa valeur). */
     @Test
     void aDomainSummaryIsWrittenLikeTheExample() throws Exception {
-        com.planningpoker.domain.Summary summary = com.planningpoker.domain.Summary.of(java.util.stream.Stream
-                .of("5", "8", "5", "8", "?").map(c -> com.planningpoker.domain.Card.of(c).orElseThrow()).toList());
-        JsonNode written = jsonMapper.readTree(jsonMapper.writeValueAsString(ServerMessages.SummaryView.of(summary)));
-        JsonNode expected = jsonMapper.readTree(ContractExamples.read("session-state", "revealed-tie")).get("summary");
-        assertThat(written.equals(NUMERIC, expected)).as(written.toString()).isTrue();
+        JsonNode written = writtenSummary("5", "8", "5", "8", "?");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-tie"))).as(written.toString()).isTrue();
 
-        com.planningpoker.domain.Summary consensus = com.planningpoker.domain.Summary.of(java.util.stream.Stream
-                .of("3", "3", "coffee").map(c -> com.planningpoker.domain.Card.of(c).orElseThrow()).toList());
-        written = jsonMapper.readTree(jsonMapper.writeValueAsString(ServerMessages.SummaryView.of(consensus)));
-        expected = jsonMapper.readTree(ContractExamples.read("session-state", "revealed-consensus")).get("summary");
-        assertThat(written.equals(NUMERIC, expected)).as(written.toString()).isTrue();
+        written = writtenSummary("3", "3", "coffee");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-consensus"))).as(written.toString()).isTrue();
         assertThat(written.get("average").isNumber()).isTrue();
+
+        // Sans carte chiffrée : un objet aux valeurs nulles, jamais « summary: null » sur un tour révélé.
+        written = writtenSummary("?", "coffee");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-no-numeric-vote"))).as(written.toString()).isTrue();
+    }
+
+    private JsonNode writtenSummary(String... cards) throws Exception {
+        List<Card> votes = Stream.of(cards).map(c -> Card.of(c).orElseThrow()).toList();
+        return jsonMapper.readTree(jsonMapper.writeValueAsString(ServerMessages.SummaryView.of(Summary.of(votes))));
+    }
+
+    private JsonNode exampleSummary(String example) throws Exception {
+        return jsonMapper.readTree(ContractExamples.read("session-state", example)).get("summary");
     }
 
     @Test

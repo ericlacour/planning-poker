@@ -34,3 +34,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-voter-a-l-aveugle.md`
   summary: Au changement de rôle (story 3.1), retirer le vote d'un votant devenu observateur, ou filtrer `hasVoted` par rôle dans l'instantané.
   evidence: `SessionSnapshot` pose `hasVoted = vote != null` quel que soit le rôle, alors que `progress` ne compte que les votants.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-reveler-lire-le-resultat-passer-au-ticket-suivant.md`
+  summary: Les arrivées tardives (`canVoteThisRound` faux) devront être traitées avec `hide` (3.2) et `changeRole` (3.1) : exclues ou non de `progress.expected`, raison de refus d'un vote sur un tour redevenu caché, marquage d'un observateur devenu votant en tour révélé.
+  evidence: Non vérifié (medium si vrai) — aujourd'hui une arrivée tardive n'existe que pendant un tour révélé, où le compteur est masqué ; à trancher dans les specs 3.1 et 3.2 (le schéma `session-state.json` dit déjà qu'un observateur devenu votant en tour révélé ne vote pas ce tour).

@@ -70,9 +70,10 @@ export class ActionBarComponent {
   constructor() {
     effect(() => {
       const state = this.state();
-      if (state === this.lastSeen) return;
+      const previous = this.lastSeen;
       this.lastSeen = state;
-      if (!blocksActions(state)) return;
+      // Seul un changement nouveau bloque : ni le premier instantané, ni un instantané renvoyé à la reconnexion.
+      if (!previous || state.version <= previous.version || !blocksActions(state)) return;
       clearTimeout(this.timer);
       this.guarded.set(true);
       this.timer = setTimeout(() => this.guarded.set(false), CROSS_CLICK_GUARD_MS);

@@ -2,7 +2,7 @@
 title: 'Story 1.7 : révéler, lire le résultat, passer au ticket suivant'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '67ceca091646aa6740b3650f08d55a949ecd65f7'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -95,6 +95,23 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+Relecture du diff depuis `67ceca0` par trois relecteurs indépendants (aveugle, cas limites, tests).
+
+| # | Source | Constat | Verdict | Suite |
+|---|--------|---------|---------|-------|
+| 1 | aveugle, cas limites | Le blocage de 1 s se déclenchait aussi sur le premier instantané et à chaque reconnexion (même `lastChange` renvoyé), sans changement nouveau. | low — réel, `lastSeen` nul au départ et comparaison par référence. | patch : blocage seulement si `version` augmente après un instantané déjà vu ; test Vitest ajouté. |
+| 2 | tests | `SummaryView.of` n'était jamais testé sur une synthèse sans carte chiffrée (exemple `revealed-no-numeric-vote`). | low — réel, seuls les cas chiffrés passaient par `of`. | patch : troisième cas dans `aDomainSummaryIsWrittenLikeTheExample`. |
+| 3 | aveugle | `anUnknownSessionOrParticipantIsIgnored` ne vérifiait pas l'absence de diffusion ni `clear` par un inconnu. | low — réel. | patch : `clear` inconnu et `broadcaster.published` vide vérifiés. |
+| 4 | aveugle | Noms de classes complets dans `WsContractRoundTripTest` et `RoundUseCaseTest` ; import `HashSet` mal placé dans `Session.java`. | low — cosmétique. | patch (imports). |
+| 5 | aveugle, cas limites | Les arrivées tardives comptent dans `progress.expected` et votent refusées avec `ROUND_REVEALED` ; un `changeRole` en tour révélé ne les marque pas. | maybe-false — inatteignable aujourd'hui (arrivée tardive seulement en tour révélé, compteur masqué) ; deviendrait medium avec `hide` (3.2) et `changeRole` (3.1). | defer. |
+| 6 | cas limites | Annonce « Nouveau tour » seule si la reconnexion saute de l'ancien tour à un nouveau tour déjà révélé. | low — rare (instantanés manqués), correctif = nouvelle branche. | rejeté. |
+| 7 | aveugle | Intention `reveal`/`clear` ignorée sans trace quand la connexion n'a plus d'attache. | low — course avec la fermeture, sans effet utilisateur. | rejeté. |
+| 8 | aveugle | Boucle de nouveau `roundId` (`RoundUseCase.newRoundId`) non testée. | low — `IdGenerator` est final, le test demanderait un générateur aléatoire truqué. | rejeté. |
+| 9 | aveugle | Main grisée sans explication pour un votant arrivé tard. | false — conforme à la spec et à l'UX (« votera au prochain tour » sur sa place). | rejeté. |
+| 10 | aveugle | « Masquer » inactif en `disabled` natif, sans explication. | low — temporaire jusqu'à la story 3.2, voulu par la spec. | rejeté. |
+| 11 | aveugle | `Card.numericValue()` recalculé à chaque appel. | low — négligeable (au plus quelques dizaines de cartes). | rejeté. |
+| 12 | aveugle | Test e2e du blocage sans borne haute de durée. | low — la durée exacte est couverte par le test Vitest en faux temps. | rejeté. |
 
 ## Verification
 

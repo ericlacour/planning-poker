@@ -6,6 +6,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.SplittableRandom;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
@@ -83,10 +84,13 @@ class RoundUseCaseTest {
 
     @Test
     void anUnknownSessionOrParticipantIsIgnored() {
+        broadcaster.published.clear();
         Session before = session();
         rounds.reveal("k3Jx9QvT2mLpZ8wR4nYb7A", alice.participantId(), "r");
         rounds.clear("k3Jx9QvT2mLpZ8wR4nYb7A", alice.participantId(), "r");
-        rounds.reveal(alice.sessionId(), java.util.UUID.randomUUID(), before.roundId());
+        rounds.reveal(alice.sessionId(), UUID.randomUUID(), before.roundId());
+        rounds.clear(alice.sessionId(), UUID.randomUUID(), before.roundId());
         assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.published).isEmpty();
     }
 }

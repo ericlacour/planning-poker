@@ -1,0 +1,44 @@
+package com.planningpoker.config;
+
+import java.security.SecureRandom;
+import java.time.Clock;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.planningpoker.adapter.out.memory.InMemorySessionStore;
+import com.planningpoker.application.CreateSessionUseCase;
+import com.planningpoker.application.SessionLocks;
+import com.planningpoker.application.SessionStore;
+import com.planningpoker.domain.IdGenerator;
+
+/** Assemblage des sessions : aléa sûr, stockage en mémoire, verrous et cas d'usage. */
+@Configuration
+public class SessionConfig {
+
+    @Bean
+    public SecureRandom secureRandom() {
+        return new SecureRandom();
+    }
+
+    @Bean
+    public IdGenerator idGenerator(SecureRandom secureRandom) {
+        return new IdGenerator(secureRandom);
+    }
+
+    @Bean
+    public SessionStore sessionStore() {
+        return new InMemorySessionStore();
+    }
+
+    @Bean
+    public SessionLocks sessionLocks() {
+        return new SessionLocks();
+    }
+
+    @Bean
+    public CreateSessionUseCase createSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
+            Clock clock) {
+        return new CreateSessionUseCase(store, locks, ids, clock);
+    }
+}

@@ -10,3 +10,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ouvrir-l-outil-meme-quand-le-serveur-dort.md`
   summary: Confirmer au premier déploiement `v0.1` la forme réelle de la réponse `GET /v1/services/{id}/deploys` de Render et le blueprint `deploy/render.yaml`.
   evidence: `render-deploy.sh` est testé contre une fausse API ; aucun compte Render n'était accessible pendant la story 1.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-creer-une-session-et-en-partager-le-lien.md`
+  summary: Borner les ressources du webservice : taille des corps REST, nombre de sessions en mémoire et débit de `POST /api/sessions`.
+  evidence: Le pseudo brut est lu en entier avant le contrôle des 200 points de code, et le stockage en mémoire n'a ni plafond ni expiration avant la story 2.5 ; un client anonyme peut épuiser la mémoire.

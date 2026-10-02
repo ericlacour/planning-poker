@@ -133,6 +133,33 @@ Reprise du commit WIP df88869 (domaine, `SessionBroadcaster`, `SessionConnection
 
 ## Review Triage Log
 
+| # | Source | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | verification-gap | Fermeture sur envoi bloqué > 2 s et sur échec d'envoi non testées | medium | Seul `aConnectionThatOverflowsItsBufferIsClosed` ferme, par la limite d'octets | patch |
+| 2 | verification-gap | Contrôle des journaux WS aveugle à un pseudo dans le texte (`"Alice"` entre guillemets, `getOut()` seul) | medium | Journaux JSON : un pseudo dans le message ne contient pas `"Alice"` | patch |
+| 3 | verification-gap | Script de charge hors de toute vérification automatique | low | Exécution manuelle prévue par la décision du spec | rejeté |
+| 4 | edge-case | `localStorage` indisponible : jeton non rangé, renvoi vers Rejoindre puis PSEUDO_TAKEN | medium | `BrowserStorage.write` est sans effet si le stockage est nul ; `SessionService.connect` lit le jeton rangé | patch |
+| 5 | edge-case, blind | Envoi bloqué détecté seulement au prochain `enqueue` (≤ 5 s par le `tick`) | low | Délai borné par le `tick` ; correction = minuterie de surveillance | rejeté |
+| 6 | edge-case, blind | Une exception dans `tickAll` arrête les `tick` | low | `enqueue` ne lève pas en marche normale ; l'exécuteur ne refuse qu'à l'arrêt du contexte | rejeté |
+| 7 | edge-case | `RejectedExecutionException` à l'arrêt | low | Uniquement à la fermeture du contexte | rejeté |
+| 8 | edge-case | Instantané > 64 Ko | low | ≈ 300 participants nécessaires ; cible 13 | rejeté |
+| 9 | edge-case | `tick-interval` ≤ 0 | low | Erreur de configuration explicite au démarrage | rejeté |
+| 10 | edge-case | `new WebSocket` lève (contenu mixte) | low | Déploiement en https des deux côtés | rejeté |
+| 11 | edge-case, blind | Instantané d'une autre session accepté | false | Le serveur n'envoie sur une connexion que les instantanés de sa session | rejeté |
+| 12 | edge-case | Script de charge : double comptage, dépassement de durée | low | Sortie en erreur dans les deux cas ; dépassement cosmétique | rejeté |
+| 13 | blind | Course sur `queuedBytes` (dépassement d'un message) | low | Dépassement borné à un message | rejeté |
+| 14 | blind | `WebSocketBroadcaster` sans test unitaire | low | Couvert de bout en bout par `SessionSocketHandlerTest` | rejeté |
+| 15 | blind | Nettoyage fragile si `disconnect` lève | low | Aucune source d'exception démontrée | rejeté |
+| 16 | blind | Javadoc de `Session` contraire à `withConnections` | low | `disconnect` dépend de `!=` sur une nouvelle instance de même version | patch |
+| 17 | blind | Rien d'affiché sur coupure avant le premier instantané / pastilles vertes après coupure | false | Exclu par l'intention (Never : coupure → dernière table, story 2.1/2.2) | rejeté |
+| 18 | blind | Présence invisible aux lecteurs d'écran | medium | `presence-dot` en `aria-hidden` sans texte ; libellés de présence réservés à 2.1, accessibilité à 3.5 | defer |
+| 19 | blind | Critère 1 sans test automatisé | low | Vérifié manuellement, consigné | rejeté |
+| 20 | blind | Statut du sprint désaccordé | false | Synchronisé à la fin du workflow | rejeté |
+| 21 | blind | Script de charge ignore `error` et l'ordre des `version` | low | Améliorations du script, hors besoin du critère | rejeté |
+| 22 | blind | Journal de débordement par id de connexion | low | Règle du spec : désigner par `participantId` | patch |
+| 23 | blind | Test de `tick` à délai fixe fragile | low | 550 ms pour 2 `tick` de 200 ms : marge de 150 ms | patch |
+| 24 | blind | CSS : `.invite` en double, carte « observe », jeton mobile | low | Doublon réel ; les deux autres non démontrés | patch (doublon), rejeté (reste) |
+
 ## Verification
 
 **Commands :**

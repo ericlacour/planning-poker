@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-response.json",
+  "title": "Health response",
+  "description": "Body of GET /api/health once the webservice is ready.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status"],
+  "properties": {
+    "status": { "const": "UP" }
+  }
+}

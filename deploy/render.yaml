@@ -1,0 +1,60 @@
+# Blueprint Render V1 (AD-13) : un web service Docker et un site statique, sans déploiement
+# automatique. Le déploiement se fait sur étiquette v* (.github/workflows/deploy.yml).
+# Mode d'emploi et variables à compléter : deploy/README.md.
+services:
+  - type: web
+    name: planning-poker-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: PORT
+        value: "8080"
+      # URL du site statique, sans « / » final (AD-11).
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+  - type: web
+    name: planning-poker
+    runtime: static
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist/frontend/browser
+    autoDeployTrigger: "off"
+    routes:
+      # Les liens de session directs servent l'application Angular.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+      # Directives qu'une balise <meta> ne peut pas porter, ou qui ne retombent pas sur default-src.
+      # Elles s'ajoutent à la CSP injectée dans index.html au build (AD-11).
+      - path: /*
+        name: Content-Security-Policy
+        value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      # index.html (servi aussi par la réécriture SPA) et config.json changent à chaque déploiement.
+      - path: /*
+        name: Cache-Control
+        value: no-cache
+    envVars:
+      # URL du webservice, en https (AD-11). Elle produit config.json et la CSP du index.html.
+      - key: API_BASE_URL
+        sync: false
+      - key: NODE_VERSION
+        value: "24"

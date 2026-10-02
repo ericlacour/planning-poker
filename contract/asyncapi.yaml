@@ -1,0 +1,232 @@
+asyncapi: 3.1.0
+info:
+  title: Planning Poker - session WebSocket
+  version: 1.0.0
+  description: |
+    The **only** channel for session actions (AD-2). Raw WebSocket carrying
+    JSON text frames: no STOMP, no SockJS. Every message is an object whose
+    `type` property names it (camelCase envelope). Operations are written
+    from the webservice's point of view: it **receives** the client's
+    messages and **sends** its own.
+
+    Rules shared by every intent (AD-4):
+    - `roundId` is opaque and changes only on `clear`. An intent carrying a
+      stale `roundId` is silently ignored.
+    - An intent already satisfied (e.g. `reveal` on a revealed round)
+      changes nothing, does not increment `version` and raises no error.
+    - A forbidden intent changes nothing and gets an `error` back.
+    - The contract only evolves by addition (AD-13).
+  license:
+    name: Proprietary
+
+defaultContentType: application/json
+
+channels:
+  session:
+    address: /ws/sessions/{sessionId}
+    title: Session channel
+    description: |
+      Handshake (AD-7):
+      1. the client opens `/ws/sessions/{sessionId}` (`wss://` derived from
+         `apiBaseUrl`; the token is **never** in the URL);
+      2. its first message must be `hello {participantToken}`, within 5 s;
+      3. the server checks the session first: close `4404` if it does not
+         exist;
+      4. then the token: active token, reconnected; token of a participant
+         removed for absence whose pseudo is still free, back in place with
+         a new `joinOrder`; otherwise close `4401`;
+      5. then it sends `sessionState`.
+
+      Liveness (AD-8): the server sends a WebSocket protocol ping every 5 s
+      and closes a connection after 15 s without pong nor message. It sends
+      `tick` every 5 s; the client declares the connection lost after 12 s
+      without any message. The client sends `heartbeat` every 5 s.
+
+      Protocol rules:
+      - Before a successful `hello`, any other message, or a `hello` that
+        does not match its schema, closes the connection with `1008`.
+      - A second `hello` on an open conversation changes nothing and gets
+        `error INVALID_MESSAGE`.
+      - After the handshake, a message that is not valid JSON, has an
+        unknown `type`, or breaks its schema (including its length bounds)
+        changes nothing and gets `error INVALID_MESSAGE`.
+      - `vote` checks, in this order: stale `roundId` (silently ignored),
+        `NOT_A_VOTER`, `ROUND_REVEALED`, then `INVALID_CARD`.
+
+      WebSocket error codes (`error.code`):
+      - `ROUND_REVEALED`: `vote` on a revealed round;
+      - `NOT_A_VOTER`: `vote` from an observer;
+      - `INVALID_CARD`: `vote` with a card outside the deck;
+      - `INVALID_MESSAGE`: unparsable message, unknown `type`, or message
+        that does not match its schema.
+
+      Close codes: see `x-close-codes`. On `4401` or `4404` the client
+      deletes `pp.token.{sessionId}` and does not reconnect; on any other
+      code it reconnects (immediately, then after 1, 2, 4, 8 s, then every
+      10 s).
+    parameters:
+      sessionId:
+        description: 128 random bits, base64url without padding (22 characters).
+    messages:
+      hello:
+        $ref: '#/components/messages/hello'
+      heartbeat:
+        $ref: '#/components/messages/heartbeat'
+      vote:
+        $ref: '#/components/messages/vote'
+      reveal:
+        $ref: '#/components/messages/reveal'
+      hide:
+        $ref: '#/components/messages/hide'
+      clear:
+        $ref: '#/components/messages/clear'
+      changeRole:
+        $ref: '#/components/messages/changeRole'
+      sessionState:
+        $ref: '#/components/messages/sessionState'
+      tick:
+        $ref: '#/components/messages/tick'
+      error:
+        $ref: '#/components/messages/error'
+    x-close-codes:
+      - code: 4401
+        reason: Unknown or revoked token, or pseudo taken in the meantime. The client shows the Join screen with the pseudo pre-filled.
+      - code: 4404
+        reason: Session does not exist or has expired. The client shows the "session not found" screen.
+      - code: 1008
+        reason: First message is not a valid hello, or hello did not arrive within 5 s.
+
+operations:
+  receiveHello:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Open the conversation with the participant's token.
+    messages:
+      - $ref: '#/channels/session/messages/hello'
+  receiveHeartbeat:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Client sign of life, keeps the host awake.
+    messages:
+      - $ref: '#/channels/session/messages/heartbeat'
+  receiveVote:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Choose or withdraw a card.
+    messages:
+      - $ref: '#/channels/session/messages/vote'
+  receiveReveal:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Reveal the round.
+    messages:
+      - $ref: '#/channels/session/messages/reveal'
+  receiveHide:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Hide a revealed round.
+    messages:
+      - $ref: '#/channels/session/messages/hide'
+  receiveClear:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Clear the votes and start a new round.
+    messages:
+      - $ref: '#/channels/session/messages/clear'
+  receiveChangeRole:
+    action: receive
+    channel:
+      $ref: '#/channels/session'
+    summary: Switch between voter and observer.
+    messages:
+      - $ref: '#/channels/session/messages/changeRole'
+  sendSessionState:
+    action: send
+    channel:
+      $ref: '#/channels/session'
+    summary: Snapshot for this recipient, after each version change and on each new connection.
+    messages:
+      - $ref: '#/channels/session/messages/sessionState'
+  sendTick:
+    action: send
+    channel:
+      $ref: '#/channels/session'
+    summary: Server tick, every 5 s.
+    messages:
+      - $ref: '#/channels/session/messages/tick'
+  sendError:
+    action: send
+    channel:
+      $ref: '#/channels/session'
+    summary: A forbidden intent or an invalid message was rejected.
+    messages:
+      - $ref: '#/channels/session/messages/error'
+
+components:
+  messages:
+    hello:
+      name: hello
+      title: hello
+      summary: First client message, carries the secret token.
+      payload:
+        $ref: './schemas/hello.json'
+    heartbeat:
+      name: heartbeat
+      title: heartbeat
+      summary: Client sign of life, every 5 s.
+      payload:
+        $ref: './schemas/heartbeat.json'
+    vote:
+      name: vote
+      title: vote
+      summary: Choose (card) or withdraw (null) one's vote.
+      payload:
+        $ref: './schemas/vote.json'
+    reveal:
+      name: reveal
+      title: reveal
+      summary: Reveal the round.
+      payload:
+        $ref: './schemas/reveal.json'
+    hide:
+      name: hide
+      title: hide
+      summary: Hide a revealed round.
+      payload:
+        $ref: './schemas/hide.json'
+    clear:
+      name: clear
+      title: clear
+      summary: Clear the votes, start a new round.
+      payload:
+        $ref: './schemas/clear.json'
+    changeRole:
+      name: changeRole
+      title: changeRole
+      summary: Switch role.
+      payload:
+        $ref: './schemas/change-role.json'
+    sessionState:
+      name: sessionState
+      title: sessionState
+      summary: Complete snapshot filtered for the recipient (AD-5).
+      payload:
+        $ref: './schemas/session-state.json'
+    tick:
+      name: tick
+      title: tick
+      summary: Server tick, every 5 s.
+      payload:
+        $ref: './schemas/tick.json'
+    error:
+      name: error
+      title: error
+      summary: Rejected intent or invalid message.
+      payload:
+        $ref: './schemas/error.json'

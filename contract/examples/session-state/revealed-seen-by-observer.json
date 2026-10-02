@@ -1,0 +1,92 @@
+{
+  "type": "sessionState",
+  "sessionId": "k3Jx9QvT2mLpZ8wR4nYb7A",
+  "version": 10,
+  "selfParticipantId": "5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e",
+  "round": {
+    "roundId": "Jd8sK2pQ",
+    "status": "REVEALED"
+  },
+  "participants": [
+    {
+      "participantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+      "pseudo": "Alice",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 1,
+      "hasVoted": true,
+      "vote": "3",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45",
+      "pseudo": "Bob",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 2,
+      "hasVoted": true,
+      "vote": "5",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "0c8b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06",
+      "pseudo": "Chloé",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 3,
+      "hasVoted": true,
+      "vote": "5",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "9e1f2a3b-4c5d-4e6f-8a7b-9c0d1e2f3a4b",
+      "pseudo": "David",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 4,
+      "hasVoted": true,
+      "vote": "8",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+      "pseudo": "Farid",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 6,
+      "hasVoted": false,
+      "vote": null,
+      "canVoteThisRound": false
+    },
+    {
+      "participantId": "5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e",
+      "pseudo": "Emma",
+      "role": "OBSERVER",
+      "connected": true,
+      "joinOrder": 5,
+      "hasVoted": false,
+      "vote": null,
+      "canVoteThisRound": false
+    }
+  ],
+  "progress": {
+    "voted": 4,
+    "expected": 5
+  },
+  "summary": {
+    "average": 5.3,
+    "mostVoted": {
+      "values": [
+        "5"
+      ],
+      "count": 2
+    },
+    "min": "3",
+    "max": "8",
+    "consensus": false
+  },
+  "lastChange": {
+    "action": "ROLE",
+    "byParticipantId": "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d"
+  }
+}

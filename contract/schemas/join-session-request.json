@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "join-session-request.json",
+  "title": "Join session request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pseudo", "role"],
+  "properties": {
+    "pseudo": { "$ref": "common.json#/$defs/rawPseudo" },
+    "role": { "$ref": "role.json" }
+  }
+}

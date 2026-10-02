@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "role.json",
+  "title": "Role",
+  "description": "VOTER (votant) or OBSERVER (observateur).",
+  "type": "string",
+  "enum": ["VOTER", "OBSERVER"]
+}

@@ -1,0 +1,1 @@
+{ "type": "about:blank", "title": "Conflict", "status": 409, "detail": "Pseudo already taken in this session.", "instance": "/api/sessions/k3Jx9QvT2mLpZ8wR4nYb7A/participants", "code": "PSEUDO_TAKEN" }

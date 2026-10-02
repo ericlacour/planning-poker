@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "problem.json",
+  "title": "Problem details",
+  "description": "REST error, media type application/problem+json (RFC 9457). The text shown to the user comes from the front, based on code. A malformed request body (unknown role, missing field) is a 400 without code.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "title", "status"],
+  "properties": {
+    "type": { "type": "string" },
+    "title": { "type": "string" },
+    "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+    "detail": { "type": "string" },
+    "instance": { "type": "string" },
+    "code": {
+      "type": "string",
+      "enum": ["PSEUDO_TAKEN", "INVALID_PSEUDO", "SESSION_NOT_FOUND"]
+    }
+  }
+}

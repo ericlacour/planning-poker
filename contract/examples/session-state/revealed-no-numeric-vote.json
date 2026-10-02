@@ -1,0 +1,47 @@
+{
+  "type": "sessionState",
+  "sessionId": "k3Jx9QvT2mLpZ8wR4nYb7A",
+  "version": 9,
+  "selfParticipantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+  "round": {
+    "roundId": "Jd8sK2pQ",
+    "status": "REVEALED"
+  },
+  "participants": [
+    {
+      "participantId": "3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90",
+      "pseudo": "Alice",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 1,
+      "hasVoted": true,
+      "vote": "?",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45",
+      "pseudo": "Bob",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 2,
+      "hasVoted": true,
+      "vote": "coffee",
+      "canVoteThisRound": true
+    }
+  ],
+  "progress": {
+    "voted": 2,
+    "expected": 2
+  },
+  "summary": {
+    "average": null,
+    "mostVoted": null,
+    "min": null,
+    "max": null,
+    "consensus": false
+  },
+  "lastChange": {
+    "action": "REVEAL",
+    "byParticipantId": "7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45"
+  }
+}

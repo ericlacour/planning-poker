@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tick.json",
+  "title": "tick (server → client)",
+  "description": "Sent every 5 s on each connection. The client declares the connection lost after 12 s without any message.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type"
+  ],
+  "properties": {
+    "type": {
+      "const": "tick"
+    }
+  }
+}

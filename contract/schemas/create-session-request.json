@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "create-session-request.json",
+  "title": "Create session request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pseudo", "role"],
+  "properties": {
+    "pseudo": { "$ref": "common.json#/$defs/rawPseudo" },
+    "role": { "$ref": "role.json" }
+  }
+}

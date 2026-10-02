@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hello.json",
+  "title": "hello (client → server)",
+  "description": "Must be the first message, within 5 s of opening. The server checks the session first (close 4404), then the token (close 4401), then sends sessionState. A token within the length bounds but unknown, revoked or of the wrong shape is closed with 4401; a hello that breaks this schema is closed with 1008.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "participantToken"
+  ],
+  "properties": {
+    "type": {
+      "const": "hello"
+    },
+    "participantToken": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  }
+}

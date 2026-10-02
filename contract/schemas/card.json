@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "card.json",
+  "title": "Card",
+  "description": "A card of the deck. Only the front displays \"coffee\" as ☕.",
+  "type": "string",
+  "enum": ["0", "1", "2", "3", "5", "8", "13", "21", "?", "coffee"]
+}

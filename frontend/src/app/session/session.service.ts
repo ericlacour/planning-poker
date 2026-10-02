@@ -1,6 +1,15 @@
 import { DestroyRef, Injectable, InjectionToken, Signal, inject, signal } from '@angular/core';
 
-import { Card, heartbeatMessage, helloMessage, parseServerMessage, SessionState, voteMessage } from '../api/contract';
+import {
+  Card,
+  clearMessage,
+  heartbeatMessage,
+  helloMessage,
+  parseServerMessage,
+  revealMessage,
+  SessionState,
+  voteMessage,
+} from '../api/contract';
 import { APP_CONFIG } from '../config/app-config';
 import { BrowserStorage } from '../storage/browser-storage';
 
@@ -99,10 +108,25 @@ export class SessionService {
    * Aucune mise à jour optimiste : le prochain instantané fait foi. Sans connexion ouverte, rien n'est envoyé.
    */
   vote(card: Card | null): void {
+    this.sendForRound((roundId) => voteMessage(roundId, card));
+  }
+
+  /** Intention `reveal` pour le tour de l'instantané courant (« Révéler les votes »). */
+  reveal(): void {
+    this.sendForRound(revealMessage);
+  }
+
+  /** Intention `clear` pour le tour de l'instantané courant (« Nouveau tour », « Effacer les votes »). */
+  clear(): void {
+    this.sendForRound(clearMessage);
+  }
+
+  /** Envoie une intention liée au `roundId` courant ; rien avant le premier instantané ni sans connexion ouverte. */
+  private sendForRound(message: (roundId: string) => object): void {
     const state = this.stateSignal();
     const socket = this.socket;
     if (!state || !socket || socket.readyState !== OPEN) return;
-    socket.send(JSON.stringify(voteMessage(state.round.roundId, card)));
+    socket.send(JSON.stringify(message(state.round.roundId)));
   }
 
   /** Ferme la connexion sans rien changer à l'état affiché. */

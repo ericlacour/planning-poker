@@ -10,6 +10,7 @@ import com.planningpoker.adapter.out.memory.InMemorySessionStore;
 import com.planningpoker.application.CheckSessionUseCase;
 import com.planningpoker.application.CreateSessionUseCase;
 import com.planningpoker.application.JoinSessionUseCase;
+import com.planningpoker.application.RoundUseCase;
 import com.planningpoker.application.SessionBroadcaster;
 import com.planningpoker.application.SessionConnectionUseCase;
 import com.planningpoker.application.SessionLocks;
@@ -67,5 +68,11 @@ public class SessionConfig {
     @Bean
     public VoteUseCase voteUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster) {
         return new VoteUseCase(store, locks, broadcaster);
+    }
+
+    @Bean
+    public RoundUseCase roundUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
+            SessionBroadcaster broadcaster) {
+        return new RoundUseCase(store, locks, ids, broadcaster);
     }
 }

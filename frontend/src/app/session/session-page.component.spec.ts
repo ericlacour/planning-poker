@@ -1,10 +1,11 @@
-import { signal } from '@angular/core';
+import { LOCALE_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
 
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
+import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { SessionState } from '../api/contract';
 import { TopBarState } from '../top-bar/top-bar-state';
 import { SessionPageComponent, sessionLink } from './session-page.component';
@@ -15,10 +16,11 @@ const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
 describe('SessionPageComponent', () => {
   function render() {
     const state = signal<SessionState | null>(null);
-    const session = { state, connect: vi.fn(), disconnect: vi.fn(), vote: vi.fn() };
+    const session = { state, connect: vi.fn(), disconnect: vi.fn(), vote: vi.fn(), reveal: vi.fn(), clear: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         { provide: SessionService, useValue: session },
+        { provide: LOCALE_ID, useValue: 'fr' },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: convertToParamMap({ sessionId: SESSION_ID }) } },
@@ -66,13 +68,46 @@ describe('SessionPageComponent', () => {
     expect(button?.classList).toContain('btn-primary');
   });
 
-  it('with others: the table and the action bar with its counter, without invitation nor button', () => {
+  it('with others: the table and the action bar with its counter and buttons, without invitation', () => {
     const { element, show } = render();
     show(hiddenRound);
     expect(element.querySelectorAll('.seat')).toHaveLength(5);
     expect(element.querySelector('.invite')).toBeNull();
     expect(element.querySelector('.action-bar .vote-counter')?.textContent).toBe('3 votes sur 4');
-    expect(element.querySelector('.btn-primary')).toBeNull();
+    expect(element.querySelector('.action-bar .btn-primary')?.textContent?.trim()).toBe('Révéler les votes');
+  });
+
+  it('announces a reveal then a new round in a polite live region, whoever made them', () => {
+    const { element, show } = render();
+    const live = () => element.querySelector('[aria-live="polite"]');
+    const hidden = { ...revealedTie, round: { ...revealedTie.round, status: 'HIDDEN' }, summary: null, version: 8 };
+    show(hidden);
+    expect(live()).not.toBeNull();
+    expect(live()?.textContent?.trim()).toBe('');
+    show(revealedTie);
+    expect(live()?.textContent?.trim()).toBe(
+      'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 2 votes chacune. Min 5, max 8.',
+    );
+    const newRound = {
+      ...hidden,
+      version: 10,
+      round: { roundId: 'Vn4pX9tA', status: 'HIDDEN' },
+      lastChange: { action: 'CLEAR', byParticipantId: hiddenRound.selfParticipantId },
+    };
+    show(newRound);
+    expect(live()?.textContent?.trim()).toBe('Nouveau tour');
+    const firstNode = live()?.firstElementChild;
+    // Un second « Nouveau tour » est rendu dans un nouvel élément, pour être annoncé de nouveau.
+    show({ ...newRound, version: 11, round: { roundId: 'Zz9pX9tA', status: 'HIDDEN' } });
+    expect(live()?.textContent?.trim()).toBe('Nouveau tour');
+    expect(live()?.firstElementChild).not.toBe(firstNode);
+  });
+
+  it('announces nothing for the first snapshot nor for a vote', () => {
+    const { element, show } = render();
+    show(revealedTie);
+    show({ ...revealedTie, version: 10, lastChange: { action: 'PRESENCE', byParticipantId: null } });
+    expect(element.querySelector('[aria-live="polite"]')?.textContent?.trim()).toBe('');
   });
 
   it('alone in the session: no action bar, but my hand', () => {

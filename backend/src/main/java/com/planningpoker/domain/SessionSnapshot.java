@@ -8,11 +8,13 @@ import java.util.UUID;
 /**
  * Instantané d'une session pour un destinataire ({@code session-state.json}, AD-5) : tout ce qu'il a le droit de
  * voir, rien de plus. Aucun jeton n'y figure. Calcul pur, sans effet de bord. Pendant un tour caché, seul le vote
- * du destinataire est rempli. La synthèse reste absente (nulle dans le message) tant que la révélation n'existe
- * pas (story 1.7).
+ * du destinataire est rempli et la synthèse est nulle ; pendant un tour révélé, tous les votes sont visibles et la
+ * synthèse est remplie.
+ *
+ * @param summary synthèse du tour révélé ; {@code null} pendant un tour caché
  */
 public record SessionSnapshot(String sessionId, long version, UUID selfParticipantId, Round round,
-        List<Seat> participants, Progress progress, LastChange lastChange) {
+        List<Seat> participants, Progress progress, Summary summary, LastChange lastChange) {
 
     public SessionSnapshot {
         participants = List.copyOf(participants);
@@ -50,13 +52,13 @@ public record SessionSnapshot(String sessionId, long version, UUID selfParticipa
                     Card vote = session.voteOf(p.id()).orElse(null);
                     boolean visible = !hidden || p.id().equals(recipientId);
                     return new Seat(p.id(), p.pseudo(), p.role(), p.connected(), p.joinOrder(), vote != null,
-                            vote != null && visible ? vote.value() : null, p.role() == Role.VOTER);
+                            vote != null && visible ? vote.value() : null, session.canVoteThisRound(p));
                 })
                 .toList();
         List<Participant> voters = session.participants().stream().filter(p -> p.role() == Role.VOTER).toList();
         int voted = (int) voters.stream().filter(p -> session.voteOf(p.id()).isPresent()).count();
         return new SessionSnapshot(session.id(), session.version(), recipientId,
                 new Round(session.roundId(), session.roundStatus()), seats, new Progress(voted, voters.size()),
-                session.lastChange());
+                session.summary().orElse(null), session.lastChange());
     }
 }

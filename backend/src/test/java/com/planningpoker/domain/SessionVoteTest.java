@@ -32,9 +32,7 @@ class SessionVoteTest {
     }
 
     private static Session revealed(Session session) {
-        return new Session(session.id(), session.participants(), session.version(), session.roundId(),
-                session.nextJoinOrder(), session.createdAt(), session.lastChange(), RoundStatus.REVEALED,
-                session.votes());
+        return session.reveal(EMMA, ROUND);
     }
 
     private static SessionSnapshot.Seat seat(SessionSnapshot snapshot, UUID participantId) {

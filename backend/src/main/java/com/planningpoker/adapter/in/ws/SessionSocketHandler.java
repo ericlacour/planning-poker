@@ -9,6 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
@@ -22,12 +23,15 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.planningpoker.adapter.in.ws.ClientMessages.ClearMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.ClientMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HeartbeatMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HelloMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.Intent;
+import com.planningpoker.adapter.in.ws.ClientMessages.RevealMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.VoteMessage;
 import com.planningpoker.application.ConnectResult;
+import com.planningpoker.application.RoundUseCase;
 import com.planningpoker.application.SessionConnectionUseCase;
 import com.planningpoker.application.VoteUseCase;
 
@@ -42,8 +46,8 @@ import tools.jackson.databind.json.JsonMapper;
  * {@code pendingHellos} poursuit la poignée de main : le délai et le premier message ne se concurrencent jamais.
  * <p>
  * Ensuite : {@code heartbeat} sans effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
- * ({@code error {code}}) ; {@code reveal}, {@code hide}, {@code clear}, {@code changeRole} conformes ignorés
- * (stories 1.7, 3.x) ; tout le reste (second {@code hello}, JSON
+ * ({@code error {code}}) ; {@code reveal} et {@code clear} confiés au cas d'usage du tour, sans réponse ;
+ * {@code hide} et {@code changeRole} conformes ignorés (stories 3.x) ; tout le reste (second {@code hello}, JSON
  * invalide, {@code type} inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
  */
 @Component
@@ -59,6 +63,7 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
     private final JsonMapper jsonMapper;
     private final SessionConnectionUseCase connections;
     private final VoteUseCase votes;
+    private final RoundUseCase rounds;
     private final WebSocketBroadcaster broadcaster;
     private final Duration helloTimeout;
     private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(
@@ -66,11 +71,12 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
     private final Map<String, ScheduledFuture<?>> pendingHellos = new ConcurrentHashMap<>();
 
     public SessionSocketHandler(JsonMapper jsonMapper, SessionConnectionUseCase connections, VoteUseCase votes,
-            WebSocketBroadcaster broadcaster,
+            RoundUseCase rounds, WebSocketBroadcaster broadcaster,
             @Value("${planning-poker.hello-timeout:5s}") Duration helloTimeout) {
         this.jsonMapper = jsonMapper;
         this.connections = connections;
         this.votes = votes;
+        this.rounds = rounds;
         this.broadcaster = broadcaster;
         this.helloTimeout = helloTimeout;
     }
@@ -98,8 +104,12 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
                 // Signe de vie du client : aucun effet.
             }
             case VoteMessage vote -> vote(session, vote);
+            case RevealMessage reveal -> withAttachment(session,
+                    a -> rounds.reveal(a.sessionId(), a.participantId(), reveal.roundId()));
+            case ClearMessage clear -> withAttachment(session,
+                    a -> rounds.clear(a.sessionId(), a.participantId(), clear.roundId()));
             case Intent intent -> {
-                // Intentions conformes : livrées par les stories 1.7 et 3.x.
+                // Intentions conformes : livrées par les stories 3.x.
             }
             default -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.INVALID_MESSAGE);
         }
@@ -152,6 +162,13 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
         }
         votes.vote(attachment.sessionId(), attachment.participantId(), vote.roundId(), vote.card())
                 .ifPresent(reason -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.of(reason)));
+    }
+
+    private void withAttachment(WebSocketSession session, Consumer<WsConnection.Attachment> action) {
+        WsConnection.Attachment attachment = broadcaster.attachmentOf(session.getId());
+        if (attachment != null) {
+            action.accept(attachment);
+        }
     }
 
     private void refuse(WebSocketSession session, CloseStatus status) {

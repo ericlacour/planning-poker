@@ -135,7 +135,7 @@ export interface ParticipantState {
   readonly canVoteThisRound: boolean;
 }
 
-/** `session-state.json#/$defs/summary` (tour révélé, story 1.7). */
+/** `session-state.json#/$defs/summary` : synthèse d'un tour révélé, calculée par le webservice seul. */
 export interface Summary {
   readonly average: number | null;
   readonly mostVoted: { readonly values: readonly Card[]; readonly count: number } | null;
@@ -194,6 +194,26 @@ export interface VoteMessage {
 
 export function voteMessage(roundId: string, card: Card | null): VoteMessage {
   return { type: 'vote', roundId, card };
+}
+
+/** `reveal.json` : révéler les votes du tour `roundId` (sans effet s'il est déjà révélé ou périmé). */
+export interface RevealMessage {
+  readonly type: 'reveal';
+  readonly roundId: string;
+}
+
+export function revealMessage(roundId: string): RevealMessage {
+  return { type: 'reveal', roundId };
+}
+
+/** `clear.json` : effacer les votes du tour `roundId` et ouvrir un nouveau tour (sans effet s'il est périmé). */
+export interface ClearMessage {
+  readonly type: 'clear';
+  readonly roundId: string;
+}
+
+export function clearMessage(roundId: string): ClearMessage {
+  return { type: 'clear', roundId };
 }
 
 export function helloMessage(participantToken: string): HelloMessage {

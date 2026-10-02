@@ -2,6 +2,7 @@ package com.planningpoker.domain;
 
 import java.util.Arrays;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 /** Une carte du jeu ({@code card.json}). Seul le front affiche {@code coffee} en ☕. */
 public enum Card {
@@ -20,6 +21,16 @@ public enum Card {
 
     Card(String value) {
         this.value = value;
+    }
+
+    /** Valeur numérique de la carte ; vide pour {@code ?} et {@code coffee}, exclues de la synthèse. */
+    public OptionalInt numericValue() {
+        return value.chars().allMatch(Character::isDigit) ? OptionalInt.of(Integer.parseInt(value))
+                : OptionalInt.empty();
+    }
+
+    public boolean isNumeric() {
+        return numericValue().isPresent();
     }
 
     /** Valeur échangée dans le contrat. */

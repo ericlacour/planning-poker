@@ -12,6 +12,20 @@ export interface Seat {
    * caché, seule ma place montre sa face (`vote` n'est rempli que pour moi).
    */
   readonly card: 'empty' | 'back' | { readonly face: Card };
+  /**
+   * Mention sous la place : « visible par toi seul » (ma face pendant un tour caché), « votera au prochain tour »
+   * (votant arrivé pendant un tour révélé), « n'a pas voté » (tour révélé, sans vote), ou rien.
+   */
+  readonly note: string | null;
+}
+
+/** Mention d'une place, d'après l'instantané seul (`canVoteThisRound`, `vote`, statut du tour). */
+function noteOf(participant: ParticipantState, isSelf: boolean, hidden: boolean, card: Seat['card']): string | null {
+  if (participant.role !== 'VOTER') return null;
+  if (!participant.canVoteThisRound) return 'votera au prochain tour';
+  if (card === 'empty') return hidden ? null : "n'a pas voté";
+  if (card !== 'back' && hidden && isSelf) return 'visible par toi seul';
+  return null;
 }
 
 /**
@@ -23,11 +37,12 @@ export function seatsOf(state: SessionState): Seat[] {
   const seats: Seat[] = state.participants.map((participant) => {
     const isSelf = participant.participantId === state.selfParticipantId;
     const visible = participant.vote !== null && (!hidden || isSelf);
-    return {
-      participant,
-      isSelf,
-      card: visible ? { face: participant.vote as Card } : hidden && participant.hasVoted ? 'back' : 'empty',
-    };
+    const card: Seat['card'] = visible
+      ? { face: participant.vote as Card }
+      : hidden && participant.hasVoted
+        ? 'back'
+        : 'empty';
+    return { participant, isSelf, card, note: noteOf(participant, isSelf, hidden, card) };
   });
   const mine = seats.findIndex((seat) => seat.isSelf);
   if (mine < 0) return seats;
@@ -44,8 +59,9 @@ export const PENDING_SEATS = 3;
 /**
  * Table des participants (`seat-card-empty`, `seat-card-back`, `seat-card-face`, `presence-dot`) : pseudo,
  * pastille de présence, et pour un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la
- * face de ma carte avec « visible par toi seul » ; un observateur a la mention « observe ». Avant le premier
- * instantané, des places vides en attente, sans pseudo.
+ * face de ma carte avec « visible par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
+ * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
+ * « observe ». Avant le premier instantané, des places vides en attente, sans pseudo.
  */
 @Component({
   selector: 'app-participant-table',
@@ -88,8 +104,8 @@ export const PENDING_SEATS = 3;
                 {{ ' ' }}<span class="seat-me">(toi)</span>
               }
             </span>
-            @if (seat.isSelf && seat.card !== 'empty' && seat.card !== 'back' && hidden()) {
-              <span class="seat-note">visible par toi seul</span>
+            @if (seat.note; as note) {
+              <span class="seat-note">{{ note }}</span>
             }
           </li>
         }
@@ -115,7 +131,6 @@ export class ParticipantTableComponent {
     return state ? seatsOf(state) : null;
   });
   protected readonly pending = Array.from({ length: PENDING_SEATS }, (_, i) => i);
-  protected readonly hidden = computed(() => this.state()?.round.status === 'HIDDEN');
 
   protected faceOf(seat: Seat): Card {
     return typeof seat.card === 'object' ? seat.card.face : '0';

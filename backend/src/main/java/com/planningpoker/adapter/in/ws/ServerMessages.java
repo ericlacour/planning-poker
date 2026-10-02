@@ -1,8 +1,11 @@
 package com.planningpoker.adapter.in.ws;
 
+import java.math.BigDecimal;
 import java.util.List;
 
+import com.planningpoker.domain.Card;
 import com.planningpoker.domain.SessionSnapshot;
+import com.planningpoker.domain.Summary;
 import com.planningpoker.domain.VoteRejectedException;
 
 /**
@@ -40,7 +43,7 @@ final class ServerMessages {
                     new RoundView(snapshot.round().roundId(), snapshot.round().status().name()),
                     snapshot.participants().stream().map(ParticipantView::of).toList(),
                     new ProgressView(snapshot.progress().voted(), snapshot.progress().expected()),
-                    null,
+                    SummaryView.of(snapshot.summary()),
                     new LastChangeView(snapshot.lastChange().action().name(),
                             snapshot.lastChange().byParticipantId() == null ? null
                                     : snapshot.lastChange().byParticipantId().toString()));
@@ -62,8 +65,22 @@ final class ServerMessages {
     record ProgressView(int voted, int expected) {
     }
 
-    /** Synthèse d'un tour révélé ; toujours nulle tant que la révélation n'existe pas (story 1.7). */
-    record SummaryView(Double average, MostVotedView mostVoted, String min, String max, boolean consensus) {
+    /** Synthèse d'un tour révélé, calculée par le domaine ; {@code average} écrite en nombre JSON. */
+    record SummaryView(BigDecimal average, MostVotedView mostVoted, String min, String max, boolean consensus) {
+
+        /** {@code null} pendant un tour caché. */
+        static SummaryView of(Summary summary) {
+            if (summary == null) {
+                return null;
+            }
+            return new SummaryView(summary.average(),
+                    summary.mostVoted() == null ? null
+                            : new MostVotedView(summary.mostVoted().values().stream().map(Card::value).toList(),
+                                    summary.mostVoted().count()),
+                    summary.min() == null ? null : summary.min().value(),
+                    summary.max() == null ? null : summary.max().value(),
+                    summary.consensus());
+        }
     }
 
     record MostVotedView(List<String> values, int count) {

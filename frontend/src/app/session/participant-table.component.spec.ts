@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
+import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
+import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { ParticipantState, SessionState } from '../api/contract';
 import { ParticipantTableComponent, PENDING_SEATS, seatsOf } from './participant-table.component';
 
@@ -132,5 +134,34 @@ describe('ParticipantTableComponent', () => {
     const face = element.querySelector('.seat-card-face');
     expect(face?.querySelector('.card-value')?.textContent).toBe('☕\uFE0E');
     expect(face?.getAttribute('aria-label')).toBe('Carte pause café');
+  });
+
+  it("revealed round: every face with its pseudo, « n'a pas voté » on a seat without vote", () => {
+    const state = revealedTie as SessionState;
+    const element = render({
+      ...state,
+      participants: state.participants.map((p) => (p.participantId === FARID ? { ...p, hasVoted: false, vote: null } : p)),
+    });
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    expect(seats.map((s) => s.querySelector('.seat-pseudo')?.textContent)).toEqual(['Alice', 'Bob', 'Chloé', 'David', 'Farid', 'Emma']);
+    expect(seats.slice(0, 4).map((s) => s.querySelector('.seat-card-face')?.getAttribute('aria-label'))).toEqual([
+      'Carte 5', 'Carte 8', 'Carte 5', 'Carte 8',
+    ]);
+    expect(element.querySelectorAll('.seat-card-back')).toHaveLength(0);
+    expect(seats[4].querySelector('.seat-card-empty')).not.toBeNull();
+    expect(seats[4].querySelector('.seat-note')?.textContent).toBe("n'a pas voté");
+    expect(element.textContent).not.toContain('visible par toi seul');
+    expect(element.querySelectorAll('.seat-note')).toHaveLength(1);
+  });
+
+  it('revealed round: a voter who arrived meanwhile carries « votera au prochain tour »', () => {
+    // Vu par Emma (observatrice) : Farid est arrivé pendant la révélation.
+    const element = render(revealedObserver as SessionState);
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    const farid = seats.find((s) => s.querySelector('.seat-pseudo')?.textContent === 'Farid');
+    expect(farid?.querySelector('.seat-note')?.textContent).toBe('votera au prochain tour');
+    expect(farid?.querySelector('.seat-card-empty')).not.toBeNull();
+    expect(element.textContent).not.toContain("n'a pas voté");
+    expect(element.querySelectorAll('.seat-card-face')).toHaveLength(4);
   });
 });

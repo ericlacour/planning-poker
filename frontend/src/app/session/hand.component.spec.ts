@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
+import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
+import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { Card, SessionState } from '../api/contract';
 import { HandComponent } from './hand.component';
 import { SessionService } from './session.service';
@@ -125,5 +127,46 @@ describe('HandComponent', () => {
     expect(element.querySelector('[role="toolbar"]')).toBeNull();
     expect(element.querySelectorAll('.poker-card')).toHaveLength(0);
     expect(element.textContent?.trim()).toBe('Tu observes');
+  });
+
+  it('revealed round: the hand is greyed (aria-disabled), keeps my card pressed, and clicks do nothing', () => {
+    const { element, session, cards } = render(revealedTie as SessionState);
+    const toolbar = element.querySelector('[role="toolbar"]');
+    expect(toolbar?.getAttribute('aria-disabled')).toBe('true');
+    expect(cards().every((c) => c.getAttribute('aria-disabled') === 'true')).toBe(true);
+    expect(cards().every((c) => !c.disabled)).toBe(true);
+    expect(cards()[4].getAttribute('aria-pressed')).toBe('true');
+    expect(element.querySelector('.hand-hint')).toBeNull();
+    cards()[5].click();
+    cards()[4].click();
+    cards()[4].focus();
+    cards()[4].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(session.vote).not.toHaveBeenCalled();
+  });
+
+  it('the focus stays on its card when the round is revealed', () => {
+    const { cards, show } = render(withMyVote('5'));
+    cards()[4].focus();
+    show(revealedTie as SessionState);
+    expect(document.activeElement).toBe(cards()[4]);
+  });
+
+  it('a voter who arrived during the reveal has a greyed hand until the next round', () => {
+    const state = revealedObserver as SessionState;
+    const FARID = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
+    const { element, session, cards, show } = render({ ...state, selfParticipantId: FARID });
+    expect(element.querySelector('[role="toolbar"]')?.getAttribute('aria-disabled')).toBe('true');
+    cards()[5].click();
+    expect(session.vote).not.toHaveBeenCalled();
+    // Même un tour caché ne rouvre pas la main tant que canVoteThisRound est faux.
+    show({ ...state, selfParticipantId: FARID, round: { ...state.round, status: 'HIDDEN' }, summary: null });
+    cards()[5].click();
+    expect(session.vote).not.toHaveBeenCalled();
+  });
+
+  it('a hidden round: neither aria-disabled on the toolbar nor on the cards', () => {
+    const { element, cards } = render(withMyVote(null));
+    expect(element.querySelector('[role="toolbar"]')?.hasAttribute('aria-disabled')).toBe(false);
+    expect(cards().some((c) => c.hasAttribute('aria-disabled'))).toBe(false);
   });
 });

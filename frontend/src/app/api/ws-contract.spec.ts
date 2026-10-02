@@ -13,11 +13,21 @@ import revealedConsensus from '../../../../contract/examples/session-state/revea
 import revealedNoNumeric from '../../../../contract/examples/session-state/revealed-no-numeric-vote.json';
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
+import clear from '../../../../contract/examples/clear/clear.json';
+import reveal from '../../../../contract/examples/reveal/reveal.json';
 import tick from '../../../../contract/examples/tick/tick.json';
 import chooseCard from '../../../../contract/examples/vote/choose-card.json';
 import coffee from '../../../../contract/examples/vote/coffee.json';
 import withdraw from '../../../../contract/examples/vote/withdraw.json';
-import { Card, heartbeatMessage, helloMessage, parseServerMessage, voteMessage } from './contract';
+import {
+  Card,
+  clearMessage,
+  heartbeatMessage,
+  helloMessage,
+  parseServerMessage,
+  revealMessage,
+  voteMessage,
+} from './contract';
 
 const roundTrip = (value: unknown) => JSON.parse(JSON.stringify(value));
 
@@ -26,14 +36,29 @@ describe('WebSocket contract round trip', () => {
   it.each([
     ['alone-after-create', alone],
     ['hidden-round', hiddenRound],
+    ['new-round-after-sweep', newRoundAfterSweep],
+    ['revealed-consensus', revealedConsensus],
+    ['revealed-no-numeric-vote', revealedNoNumeric],
+    ['revealed-seen-by-observer', revealedObserver],
+    ['revealed-tie', revealedTie],
   ])('session-state/%s', (_, example) => {
     expect(roundTrip(parseServerMessage(example))).toEqual(example);
   });
 
-  it('the other session-state examples are accepted too', () => {
-    for (const example of [newRoundAfterSweep, revealedConsensus, revealedNoNumeric, revealedObserver, revealedTie]) {
-      expect(parseServerMessage(example)).toEqual(example);
-    }
+  it('an average written 3.0 by the server reads as the number 3 (numeric comparison)', () => {
+    const json = JSON.stringify(revealedConsensus).replace('"average":3,', '"average":3.0,');
+    expect(json).toContain('"average":3.0,');
+    const parsed = parseServerMessage(JSON.parse(json));
+    expect(parsed).toEqual(revealedConsensus);
+    expect(parsed?.type === 'sessionState' && parsed.summary?.average).toBe(3);
+  });
+
+  it('reveal', () => {
+    expect(roundTrip(revealMessage(reveal.roundId))).toEqual(reveal);
+  });
+
+  it('clear', () => {
+    expect(roundTrip(clearMessage(clear.roundId))).toEqual(clear);
   });
 
   it('hello', () => {

@@ -40,10 +40,15 @@ final class ClientMessages {
     record VoteMessage(String type, String roundId, String card) implements ClientMessage {
     }
 
-    /**
-     * {@code reveal}, {@code hide}, {@code clear} ou {@code changeRole} conforme à son schéma, encore ignoré
-     * (stories 1.7, 3.x).
-     */
+    /** {@code reveal.json} */
+    record RevealMessage(String type, String roundId) implements ClientMessage {
+    }
+
+    /** {@code clear.json} */
+    record ClearMessage(String type, String roundId) implements ClientMessage {
+    }
+
+    /** {@code hide} ou {@code changeRole} conforme à son schéma, encore ignoré (stories 3.x). */
     record Intent(String type) implements ClientMessage {
     }
 
@@ -80,6 +85,8 @@ final class ClientMessages {
             case "heartbeat" -> new HeartbeatMessage(type);
             case "vote" -> new VoteMessage(type, node.get("roundId").asString(),
                     node.get("card").isNull() ? null : node.get("card").asString());
+            case "reveal" -> new RevealMessage(type, node.get("roundId").asString());
+            case "clear" -> new ClearMessage(type, node.get("roundId").asString());
             default -> new Intent(type);
         };
     }

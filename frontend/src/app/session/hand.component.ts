@@ -9,6 +9,7 @@ import { SessionService } from './session.service';
  * Barre d'outils de 10 boutons bascule à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
+ * Tour révélé, ou arrivée pendant la révélation : main grisée, sans effet.
  */
 @Component({
   selector: 'app-hand',
@@ -17,11 +18,17 @@ import { SessionService } from './session.service';
   template: `
     @if (me(); as me) {
       @if (me.role === 'VOTER') {
-        <div class="hand">
-          @if (myVote() === null) {
+        <div class="hand" [class.hand-locked]="!open()">
+          @if (open() && myVote() === null) {
             <p class="hand-hint">Choisis ta carte</p>
           }
-          <div class="hand-cards" role="toolbar" aria-label="Ta carte" (keydown)="onKeydown($event)">
+          <div
+            class="hand-cards"
+            role="toolbar"
+            aria-label="Ta carte"
+            [attr.aria-disabled]="open() ? null : 'true'"
+            (keydown)="onKeydown($event)"
+          >
             @for (card of cards; track card; let i = $index) {
               <button
                 #cardButton
@@ -32,7 +39,7 @@ import { SessionService } from './session.service';
                 [attr.aria-label]="name(card)"
                 [attr.aria-pressed]="card === myVote()"
                 [tabIndex]="i === activeIndex() ? 0 : -1"
-                [disabled]="!open()"
+                [attr.aria-disabled]="open() ? null : 'true'"
                 (focus)="focused.set(i)"
                 (click)="choose(card)"
               ></button>
@@ -64,7 +71,13 @@ export class HandComponent {
     return state?.participants.find((p) => p.participantId === state.selfParticipantId) ?? null;
   });
   protected readonly myVote = computed(() => this.me()?.vote ?? null);
-  protected readonly open = computed(() => this.state()?.round.status === 'HIDDEN');
+  /**
+   * Main active : tour caché et vote permis pour ce tour. Sinon elle est grisée (`aria-disabled`) mais garde le
+   * focus, pour qu'une révélation ne le fasse pas sauter ; ses clics sont sans effet.
+   */
+  protected readonly open = computed(
+    () => this.state()?.round.status === 'HIDDEN' && this.me()?.canVoteThisRound === true,
+  );
   /** Seul arrêt de tabulation : la dernière carte visitée, sinon la carte choisie, sinon la première. */
   protected readonly activeIndex = computed(() => {
     const focused = this.focused();
@@ -74,6 +87,7 @@ export class HandComponent {
   });
 
   protected choose(card: Card): void {
+    if (!this.open()) return;
     this.session.vote(card === this.myVote() ? null : card);
   }
 
@@ -98,7 +112,7 @@ export class HandComponent {
         // Géré ici (et non par le clic natif) pour un seul envoi, quel que soit le navigateur ; une touche
         // maintenue (répétition) n'envoie rien de plus.
         event.preventDefault();
-        if (this.open() && !event.repeat) this.choose(CARDS[index]);
+        if (!event.repeat) this.choose(CARDS[index]);
         break;
     }
   }

@@ -143,6 +143,29 @@ describe('SessionService', () => {
     expect(service.state()).toEqual(hiddenRound);
   });
 
+  it('sends reveal and clear with the current roundId, without changing its state', () => {
+    const { service, socket } = connected();
+    socket.serverSends(hiddenRound);
+    service.reveal();
+    service.clear();
+    expect(socket.sent.slice(1)).toEqual([
+      { type: 'reveal', roundId: hiddenRound.round.roundId },
+      { type: 'clear', roundId: hiddenRound.round.roundId },
+    ]);
+    expect(service.state()).toEqual(hiddenRound);
+  });
+
+  it('sends no reveal nor clear before the first snapshot nor once the socket is closed', () => {
+    const { service, socket } = connected();
+    service.reveal();
+    service.clear();
+    socket.serverSends(hiddenRound);
+    socket.serverCloses(1006);
+    service.reveal();
+    service.clear();
+    expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }]);
+  });
+
   it('sends no vote before the first snapshot nor once the socket is closed', () => {
     const { service, socket } = connected();
     service.vote('8');

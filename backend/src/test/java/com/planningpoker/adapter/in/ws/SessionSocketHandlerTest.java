@@ -615,4 +615,144 @@ class SessionSocketHandlerTest {
         JsonNode again = connect(alice).state();
         assertThat(seat(again, alice.participantId()).get("vote").asString()).isEqualTo("13");
     }
+
+    // --- Révéler, effacer ---
+
+    private static String intent(String type, JsonNode state) {
+        return "{\"type\":\"" + type + "\",\"roundId\":\"" + state.get("round").get("roundId").asString() + "\"}";
+    }
+
+    @Test
+    void anObserverRevealsAndEveryoneSeesTheVotesAndTheSummaryWithinOneSecond() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        Connected a = both[0];
+        Connected b = both[1];
+        String bobId = b.state().get("selfParticipantId").asString();
+        Created emma = join(alice.sessionId(), "Emma", "OBSERVER");
+        nextState(a.client());
+        nextState(b.client());
+        Connected e = connect(emma);
+        nextState(a.client());
+        nextState(b.client());
+
+        a.client().send(vote(a.state(), "5"));
+        nextState(a.client());
+        nextState(b.client());
+        nextState(e.client());
+        b.client().send(vote(b.state(), "8"));
+        nextState(a.client());
+        nextState(b.client());
+        long version = nextState(e.client()).get("version").asLong();
+
+        long start = System.nanoTime();
+        e.client().send(intent("reveal", e.state()));
+        JsonNode[] states = { nextState(a.client()), nextState(b.client()), nextState(e.client()) };
+        assertThat(System.nanoTime() - start).isLessThan(1_000_000_000L);
+
+        for (JsonNode state : states) {
+            assertThat(state.get("version").asLong()).isEqualTo(version + 1);
+            assertThat(state.get("round").get("status").asString()).isEqualTo("REVEALED");
+            assertThat(state.get("lastChange").toString())
+                    .isEqualTo("{\"action\":\"REVEAL\",\"byParticipantId\":\"" + emma.participantId() + "\"}");
+            assertThat(seat(state, alice.participantId()).get("vote").asString()).isEqualTo("5");
+            assertThat(seat(state, bobId).get("vote").asString()).isEqualTo("8");
+            JsonNode summary = state.get("summary");
+            assertThat(summary.get("average").decimalValue()).isEqualByComparingTo("6.5");
+            assertThat(summary.get("mostVoted").toString()).isEqualTo("{\"values\":[\"5\",\"8\"],\"count\":1}");
+            assertThat(summary.get("min").asString()).isEqualTo("5");
+            assertThat(summary.get("max").asString()).isEqualTo("8");
+            assertThat(summary.get("consensus").asBoolean()).isFalse();
+        }
+
+        // Déjà révélé : rien. Vote : ROUND_REVEALED à son seul auteur.
+        a.client().send(intent("reveal", a.state()));
+        assertThat(next(e.client(), QUIET_MS)).isNull();
+        a.client().send(vote(a.state(), "13"));
+        assertError(next(a.client(), WAIT_MS), "ROUND_REVEALED");
+        assertThat(next(b.client(), QUIET_MS)).isNull();
+
+        // Nouveau tour : tout le monde revient à un tour caché sans vote.
+        b.client().send(intent("clear", b.state()));
+        for (Client client : new Client[] { a.client(), b.client(), e.client() }) {
+            JsonNode state = nextState(client);
+            assertThat(state.get("version").asLong()).isEqualTo(version + 2);
+            assertThat(state.get("round").get("status").asString()).isEqualTo("HIDDEN");
+            assertThat(state.get("round").get("roundId").asString())
+                    .isNotEqualTo(a.state().get("round").get("roundId").asString());
+            assertThat(state.get("summary").isNull()).isTrue();
+            assertThat(state.get("progress").toString()).isEqualTo("{\"voted\":0,\"expected\":2}");
+            assertThat(state.get("lastChange").get("action").asString()).isEqualTo("CLEAR");
+            for (JsonNode participant : state.get("participants")) {
+                assertThat(participant.get("hasVoted").asBoolean()).isFalse();
+                assertThat(participant.get("vote").isNull()).isTrue();
+            }
+        }
+    }
+
+    @Test
+    void twoClearsFromTheSameRoundMakeOneNewRound() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        long version = both[1].state().get("version").asLong();
+        String clear = intent("clear", both[0].state());
+
+        both[0].client().send(clear);
+        both[1].client().send(clear);
+
+        JsonNode forAlice = nextState(both[0].client());
+        JsonNode forBob = nextState(both[1].client());
+        assertThat(forAlice.get("version").asLong()).isEqualTo(version + 1);
+        assertThat(forBob.get("round")).isEqualTo(forAlice.get("round"));
+        assertThat(next(both[0].client(), QUIET_MS)).isNull();
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void staleRevealAndClearAreIgnoredWithoutAnswer() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send("{\"type\":\"reveal\",\"roundId\":\"stale\"}");
+        both[0].client().send("{\"type\":\"clear\",\"roundId\":\"stale\"}");
+        assertThat(next(both[0].client(), QUIET_MS)).isNull();
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "{\"type\":\"reveal\"}", "{\"type\":\"clear\",\"roundId\":\"\"}",
+            "{\"type\":\"reveal\",\"roundId\":\"r\",\"extra\":1}", "{\"type\":\"clear\",\"roundId\":7}" })
+    void aRevealOrClearOutsideItsSchemaGetsInvalidMessage(String message) throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(message);
+        assertInvalidMessage(next(both[0].client(), WAIT_MS));
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void aVoterArrivingDuringARevealedRoundVotesFromTheNextRound() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        a.client().send(vote(a.state(), "3"));
+        nextState(a.client());
+        a.client().send(intent("reveal", a.state()));
+        nextState(a.client());
+
+        Created farid = join(alice.sessionId(), "Farid", "VOTER");
+        nextState(a.client());
+        Connected f = connect(farid);
+        nextState(a.client());
+        assertThat(seat(f.state(), farid.participantId()).get("canVoteThisRound").asBoolean()).isFalse();
+        assertThat(seat(f.state(), alice.participantId()).get("vote").asString()).isEqualTo("3");
+        assertThat(f.state().get("summary").isNull()).isFalse();
+
+        f.client().send(vote(f.state(), "5"));
+        assertError(next(f.client(), WAIT_MS), "ROUND_REVEALED");
+
+        f.client().send(intent("clear", f.state()));
+        JsonNode next = nextState(f.client());
+        assertThat(seat(next, farid.participantId()).get("canVoteThisRound").asBoolean()).isTrue();
+        f.client().send(vote(next, "5"));
+        assertThat(seat(nextState(f.client()), farid.participantId()).get("vote").asString()).isEqualTo("5");
+    }
 }

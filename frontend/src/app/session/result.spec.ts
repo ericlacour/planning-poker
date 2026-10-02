@@ -11,9 +11,11 @@ import revealedTie from '../../../../contract/examples/session-state/revealed-ti
 import { SessionState, Summary } from '../api/contract';
 import {
   announcementFor,
+  compactMostVoted,
   formatAverage,
   joinValues,
   NEW_ROUND_ANNOUNCEMENT,
+  ResultLineComponent,
   ResultPanelComponent,
   revealAnnouncement,
   votesCount,
@@ -119,5 +121,46 @@ describe('ResultPanelComponent', () => {
     expect(text('.result-panel')).toBe('Pas de résultat chiffré');
     expect(element.querySelector('.result-stat')).toBeNull();
     expect(element.querySelector('.consensus-badge')).toBeNull();
+  });
+});
+
+describe('ResultLineComponent (phone)', () => {
+  function render(summary: Summary | null) {
+    TestBed.configureTestingModule({ providers: [{ provide: LOCALE_ID, useValue: 'fr' }] });
+    const fixture = TestBed.createComponent(ResultLineComponent);
+    fixture.componentRef.setInput('summary', summary);
+    fixture.detectChanges();
+    const element: HTMLElement = fixture.nativeElement;
+    const text = (selector: string) => element.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim();
+    return { element, text };
+  }
+
+  it('writes the most voted value with its count in brackets', () => {
+    expect(compactMostVoted({ values: ['5'], count: 6 })).toBe('5 (6)');
+    expect(compactMostVoted({ values: ['5', '8'], count: 2 })).toBe('5 et 8 (2)');
+  });
+
+  it('the mockup: « Moy. 5,9 », « Plus votée 5 (6) », « Min 3 », « Max 13 », no badge', () => {
+    const { element, text } = render(mockup);
+    expect(text('.result-line-average')).toBe('Moy. 5,9');
+    expect(text('.result-line-value')).toBe('5,9');
+    expect(text('.result-line-most-voted')).toBe('Plus votée 5 (6)');
+    expect(text('.result-line-min')).toBe('Min 3');
+    expect(text('.result-line-max')).toBe('Max 13');
+    expect(element.querySelector('.consensus-badge')).toBeNull();
+  });
+
+  it('a tie, and consensus with the badge next to the average', () => {
+    expect(render(summaryOf(revealedTie)).text('.result-line-most-voted')).toBe('Plus votée 5 et 8 (2)');
+    TestBed.resetTestingModule();
+    const { element, text } = render(summaryOf(revealedConsensus));
+    expect(text('.result-line-average + .result-line-badge .consensus-badge')).toBe('Consensus !');
+    expect(element.textContent).not.toContain('☕');
+  });
+
+  it('without a numeric vote: only « Pas de résultat chiffré »', () => {
+    const { element, text } = render(summaryOf(revealedNoNumeric));
+    expect(text('.result-line')).toBe('Pas de résultat chiffré');
+    expect(element.querySelector('.result-line-item')).toBeNull();
   });
 });

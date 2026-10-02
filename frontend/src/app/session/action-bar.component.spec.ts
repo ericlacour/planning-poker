@@ -55,6 +55,7 @@ describe('ActionBarComponent', () => {
     expect(buttons()[1].classList).toContain('btn-primary');
     expect(buttons().every((b) => !b.disabled)).toBe(true);
     expect(element.querySelector('.result-panel')).toBeNull();
+    expect(element.querySelector('.result-line')).toBeNull();
   });
 
   it('« Révéler les votes » sends reveal, « Effacer les votes » sends clear, without confirmation', () => {
@@ -69,6 +70,9 @@ describe('ActionBarComponent', () => {
     const { element, session, buttons, labels } = render(withChange(revealedTie, 'REVEAL', ALICE));
     expect(element.querySelector('.vote-counter')).toBeNull();
     expect(element.querySelector('.result-average .result-value')?.textContent).toBe('6,5');
+    // Résultat condensé du téléphone, juste avant la barre (la feuille de style montre l'un ou l'autre).
+    expect(element.querySelector('app-result-line .result-line-value')?.textContent).toBe('6,5');
+    expect(element.querySelector('app-result-line')?.nextElementSibling?.classList).toContain('action-bar');
     expect(labels()).toEqual(['Masquer', 'Nouveau tour']);
     expect(buttons()[0].classList).toContain('btn-secondary');
     expect(buttons()[0].disabled).toBe(true);

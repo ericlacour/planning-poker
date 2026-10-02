@@ -101,7 +101,10 @@ test('l\'accueil montre le formulaire d\'entrée : panneau de 400 px, « Je vote
 test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistrés, et « Copier le lien » copie le lien', async ({
   page,
   context,
+  browserName,
 }) => {
+  // WebKit (CI) ne connaît pas les permissions de presse-papiers de Playwright : la copie est vérifiée sur Chromium.
+  test.skip(browserName === 'webkit', 'permissions clipboard-read / clipboard-write propres à Chromium');
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
   const check = await watchPage(page);
   const bodies = await mockApi(page, () => 'created');

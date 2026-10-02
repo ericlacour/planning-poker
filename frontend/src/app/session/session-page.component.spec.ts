@@ -77,6 +77,25 @@ describe('SessionPageComponent', () => {
     expect(element.querySelector('.action-bar .btn-primary')?.textContent?.trim()).toBe('Révéler les votes');
   });
 
+  it('marks the page « session-revealed » while the round is revealed (phone drawer folds away)', () => {
+    const { element, show } = render();
+    show(hiddenRound);
+    expect(element.classList).not.toContain('session-revealed');
+    show(revealedTie);
+    expect(element.classList).toContain('session-revealed');
+    show({ ...hiddenRound, version: 20 });
+    expect(element.classList).not.toContain('session-revealed');
+  });
+
+  it('wraps the table in its own scrolling zone, before the action bar and the hand', () => {
+    const { element, show } = render();
+    show(hiddenRound);
+    const main = element.querySelector('main.session-page');
+    expect(main?.firstElementChild?.classList).toContain('session-scroll');
+    expect(element.querySelector('.session-scroll > .session-table')).not.toBeNull();
+    expect(element.lastElementChild?.classList).toContain('hand-dock');
+  });
+
   it('announces a reveal then a new round in a polite live region, whoever made them', () => {
     const { element, show } = render();
     const live = () => element.querySelector('[aria-live="polite"]');

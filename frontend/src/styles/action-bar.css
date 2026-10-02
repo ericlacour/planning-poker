@@ -102,20 +102,3 @@
   line-height: var(--typography-label-line-height);
   white-space: nowrap;
 }
-
-/* Petite largeur : boutons sous le compteur ou le résultat, sans défilement horizontal (disposition téléphone : 1.8). */
-@media (max-width: 599px) {
-  .action-bar {
-    flex-wrap: wrap;
-    padding: var(--spacing-3) var(--spacing-4);
-  }
-
-  .action-buttons {
-    flex: 1 1 100%;
-  }
-
-  .action-buttons .btn {
-    flex: 1 1 0;
-    padding: 0 var(--spacing-2);
-  }
-}

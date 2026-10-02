@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 
 import { ChangeAction, SessionState } from '../api/contract';
 import { voteCounter } from './cards';
-import { ResultPanelComponent } from './result';
+import { ResultLineComponent, ResultPanelComponent } from './result';
 import { SessionService } from './session.service';
 
 /** Durée pendant laquelle les boutons restent inactifs après un changement d'état venu d'un autre (FR-17). */
@@ -22,14 +22,19 @@ export function blocksActions(state: SessionState): boolean {
  * Barre d'action (`action-bar`, `button-primary`, `button-secondary`). Tour caché : le compteur « N votes sur M »
  * tiré de `progress` (ou « Aucun votant »), « Effacer les votes » et « Révéler les votes ». Tour révélé : le panneau
  * de résultat à la place du compteur, « Masquer » (inactif : story 3.2) et « Nouveau tour ». Chaque bouton envoie
- * son intention avec le `roundId` courant, sans confirmation. Après un REVEAL, HIDE ou CLEAR fait par un autre,
- * les boutons restent inactifs pendant 1 s, pour qu'un clic parti trop tôt ne tombe pas sur le nouveau bouton.
+ * son intention avec le `roundId` courant, sans confirmation. Sur téléphone (< 600 px), le panneau intégré laisse
+ * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
+ * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
+ * trop tôt ne tombe pas sur le nouveau bouton.
  */
 @Component({
   selector: 'app-action-bar',
-  imports: [ResultPanelComponent],
+  imports: [ResultLineComponent, ResultPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    @if (revealed()) {
+      <app-result-line class="result-line-dock" [summary]="state().summary" />
+    }
     <div class="action-bar" [class.action-bar-revealed]="revealed()">
       @if (revealed()) {
         <app-result-panel [summary]="state().summary" />

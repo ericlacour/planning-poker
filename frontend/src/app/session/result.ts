@@ -40,6 +40,14 @@ export function revealAnnouncement(summary: Summary | null, locale: string): str
   ].join(' ');
 }
 
+/**
+ * « Plus votée » condensé du téléphone : « 5 (6) », « 5 et 8 (2) » ; le nombre de votes entre parenthèses, tel
+ * que reçu.
+ */
+export function compactMostVoted(mostVoted: { readonly values: readonly Card[]; readonly count: number }): string {
+  return `${joinValues(mostVoted.values)} (${mostVoted.count})`;
+}
+
 /** Annonce d'un effacement (nouveau tour). */
 export const NEW_ROUND_ANNOUNCEMENT = 'Nouveau tour';
 
@@ -104,6 +112,55 @@ export class ResultPanelComponent {
       consensus: summary.consensus,
       mostVoted: joinValues(mostVoted.values),
       count: votesCount(mostVoted.count, mostVoted.values.length > 1),
+      min: summary.min,
+      max: summary.max,
+    };
+  });
+}
+
+/**
+ * Résultat condensé du téléphone (`result-panel` < 600 px) : « Moy. 5,9 · Plus votée 5 (6) · Min 3 · Max 13 »,
+ * badge « Consensus ! » à côté de la moyenne. Affichage pur de la synthèse reçue. Si la ligne déborde, elle passe
+ * sur deux lignes : la moyenne et le badge, puis le reste (les séparateurs « · » en début de ligne sont rognés par
+ * la feuille de style). Sans vote numérique : « Pas de résultat chiffré ».
+ */
+@Component({
+  selector: 'app-result-line',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div class="result-line" role="group" aria-label="Résultat">
+      @if (numbers(); as n) {
+        <p class="result-line-items">
+          <span class="result-line-item result-line-average"
+            >Moy.{{ ' ' }}<span class="result-line-value">{{ n.average }}</span></span
+          >
+          @if (n.consensus) {
+            <span class="result-line-item result-line-badge"><span class="consensus-badge">Consensus !</span></span>
+          }
+          <span class="result-line-rest">
+            <span class="result-line-item result-line-most-voted">Plus votée {{ n.mostVoted }}</span>
+            <span class="result-line-item result-line-min">Min {{ n.min }}</span>
+            <span class="result-line-item result-line-max">Max {{ n.max }}</span>
+          </span>
+        </p>
+      } @else {
+        <p class="result-none">Pas de résultat chiffré</p>
+      }
+    </div>
+  `,
+})
+export class ResultLineComponent {
+  private readonly locale = inject(LOCALE_ID);
+
+  readonly summary = input.required<Summary | null>();
+
+  protected readonly numbers = computed(() => {
+    const summary = this.summary();
+    if (!summary || !hasNumbers(summary)) return null;
+    return {
+      average: formatAverage(summary.average!, this.locale),
+      consensus: summary.consensus,
+      mostVoted: compactMostVoted(summary.mostVoted!),
       min: summary.min,
       max: summary.max,
     };

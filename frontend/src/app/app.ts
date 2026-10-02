@@ -12,7 +12,9 @@ import { WakeScreenComponent } from './wake/wake-screen.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top-bar">
-      <div class="brand"><span class="brand-mark card-back" aria-hidden="true"></span>Planning Poker</div>
+      <div class="brand">
+        <span class="brand-mark card-back" aria-hidden="true"></span><span class="brand-name">Planning Poker</span>
+      </div>
       @if (topBar.shareUrl(); as url) {
         <div class="top-actions">
           <app-copy-link [url]="url" variant="secondary" />

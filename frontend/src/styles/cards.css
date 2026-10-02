@@ -88,27 +88,13 @@
   text-wrap: balance;
 }
 
-/* Main « Ta carte » : une ligne de 10 cartes, fixée en bas de l'écran Session. */
-app-session-entry:has(> app-session-page),
-app-session-page {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-
-.hand-dock {
-  position: sticky;
-  bottom: 0;
-  display: block;
-  margin-top: auto;
-}
-
+/* Main « Ta carte » : une ligne de 10 cartes en bas de l'écran Session (placement : session-layout.css). */
 .hand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--spacing-3);
-  padding: var(--spacing-3) var(--spacing-4) 15px;
+  gap: var(--spacing-1);
+  padding: var(--spacing-2) var(--spacing-4) var(--spacing-3);
   background: var(--surface-muted);
   border-top: 1px solid var(--border);
 }
@@ -136,7 +122,8 @@ app-session-page {
   display: flex;
   justify-content: center;
   gap: var(--spacing-3);
-  max-width: 100%;
+  /* Pleine largeur : les cartes partent de 60 px et ne rétrécissent (jusqu'à 44 px) que faute de place. */
+  width: 100%;
   padding-top: var(--spacing-3);
 }
 
@@ -181,23 +168,5 @@ app-session-page {
 @media (prefers-reduced-motion: reduce) {
   .poker-card {
     transition: none;
-  }
-}
-
-@media (max-width: 899px) {
-  .hand-cards {
-    gap: var(--spacing-2);
-  }
-}
-
-/* Téléphone : la main passe sur deux lignes plutôt que de déborder (le tiroir vient avec la story 1.8). */
-@media (max-width: 599px) {
-  .hand-cards {
-    flex-wrap: wrap;
-    row-gap: var(--spacing-4);
-  }
-
-  .poker-card {
-    flex: 0 0 var(--spacing-touch-min);
   }
 }

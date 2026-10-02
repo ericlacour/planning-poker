@@ -2,7 +2,7 @@
 title: 'Story 1.8 : un écran de séance qui tient sur PC et sur téléphone'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '23f0ab8f89ce19f2c07a765a9948776981b5b95a'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -65,17 +65,25 @@ context:
 ## Tasks & Acceptance
 
 **Execution :**
-- [ ] `frontend/src/styles/session-layout.css` (+ ajustements des feuilles de la table, de la main, de la barre d'action, du résultat et de la barre du haut) -- trois paliers, budget vertical PC, défilement limité à la table, tiroir téléphone et repli.
-- [ ] `frontend/src/app/session/` -- seuls les ajustements de structure nécessaires (conteneurs, classe d'état révélé pour le repli, résultat condensé pour téléphone).
-- [ ] `frontend/playwright.config.ts` -- projet WebKit ajouté (lancé seulement si disponible localement via une variable, toujours en CI).
-- [ ] `frontend/e2e/layout.spec.ts` -- toute la matrice, avec 13 participants simulés ; contrôle CSP.
-- [ ] `.github/workflows/ci.yml` -- `npx playwright install --with-deps chromium webkit`.
+- [x] `frontend/src/styles/session-layout.css` (+ ajustements des feuilles de la table, de la main, de la barre d'action, du résultat et de la barre du haut) -- trois paliers, budget vertical PC, défilement limité à la table, tiroir téléphone et repli.
+- [x] `frontend/src/app/session/` -- seuls les ajustements de structure nécessaires (conteneurs, classe d'état révélé pour le repli, résultat condensé pour téléphone).
+- [x] `frontend/playwright.config.ts` -- projet WebKit ajouté (lancé seulement si disponible localement via une variable, toujours en CI).
+- [x] `frontend/e2e/layout.spec.ts` -- toute la matrice, avec 13 participants simulés ; contrôle CSP.
+- [x] `.github/workflows/ci.yml` -- `npx playwright install --with-deps chromium webkit`.
 
 **Acceptance Criteria :**
 - Étant donné la suite Playwright, quand elle s'exécute sur Chromium localement, alors toute la matrice est verte ; le projet WebKit est configuré pour la CI.
 - Étant donné le webservice réel en local et 13 participants connectés par script, quand on ouvre la session en 1280 × 650 puis en 390 × 844, alors les captures montrent l'écran complet sans défilement de page (PC) et le tiroir (téléphone).
 
 ## Implementation Notes
+
+- Géométrie centralisée dans `styles/session-layout.css` : `app-root:has(app-session-page)` prend `100dvh`, la page est une colonne flex et seule `.session-scroll` (nouveau conteneur autour de la table) défile. Les feuilles `table.css`, `cards.css`, `action-bar.css` ont perdu leurs règles « téléphone provisoire » de 1.6/1.7.
+- Correctif au passage : la main PC mesurait 44 px de large par carte (la barre `.hand-cards` se dimensionnait au contenu) ; elle est désormais pleine largeur, d'où 60 × 90 px sur PC et un rétrécissement jusqu'à 44 px seulement faute de place.
+- Repli du tiroir : classe `session-revealed` sur l'hôte de `app-session-page` ; `grid-template-rows: 1fr → 0fr` + `visibility: hidden` différé (200 ms), sans transition sous `prefers-reduced-motion`.
+- Résultat condensé : `ResultLineComponent` (`result.ts`), rendu par la barre d'action juste avant elle, visible seulement < 600 px ; le panneau PC est masqué < 600 px. Les séparateurs « · » sont des `::before` dont celui de début de ligne tombe dans une marge rognée, ce qui donne « moyenne + badge » puis « le reste » sur la seconde ligne quand la ligne déborde.
+- Barre du haut compacte : le nom de l'outil est enveloppé dans `.brand-name`, visuellement masqué < 600 px (toujours lu).
+- WebKit : projet ajouté quand `CI` ou `PLAYWRIGHT_WEBKIT=1`. Le test de copie dans le presse-papiers (`create-session.spec.ts`) est sauté sur WebKit, qui ne connaît pas les permissions `clipboard-read`/`clipboard-write` de Playwright. Le reste de la suite n'a pas pu être exécuté sur WebKit dans le bac à sable.
+- Critère « webservice réel » : vérifié avec le jar local, 12 participants scriptés (REST + WebSocket) et Alice dans Chromium ; 1280 × 650 et 390 × 844, caché et révélé : `scrollHeight = innerHeight`, `scrollWidth = innerWidth`.
 
 ## Spec Change Log
 

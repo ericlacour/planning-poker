@@ -1,4 +1,11 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices, Project } from '@playwright/test';
+
+/**
+ * WebKit (Safari) : toujours en CI ; en local seulement si le navigateur est installé et demandé par
+ * `PLAYWRIGHT_WEBKIT=1` (le bac à sable n'a que Chromium).
+ */
+const withWebkit = !!process.env['CI'] || process.env['PLAYWRIGHT_WEBKIT'] === '1';
+const webkit: Project[] = withWebkit ? [{ name: 'webkit', use: { ...devices['Desktop Safari'] } }] : [];
 
 /**
  * E2E du front construit (`npm run build:e2e` avec API_BASE_URL=http://127.0.0.1:4310) : le webservice est
@@ -19,6 +26,7 @@ export default defineConfig({
         launchOptions: { executablePath: process.env['PLAYWRIGHT_CHROMIUM_PATH'] || undefined },
       },
     },
+    ...webkit,
   ],
   webServer: {
     command: 'node scripts/serve-dist.mjs',

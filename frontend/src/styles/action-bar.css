@@ -1,0 +1,22 @@
+/* Barre d'action (action-bar) : compteur « N votes sur M » à gauche ; boutons à droite (story 1.7). */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  min-height: 72px;
+  margin-top: var(--spacing-3);
+  padding: 0 var(--spacing-4) 0 20px;
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: 0 1px 3px rgb(31 35 48 / 6%);
+}
+
+.vote-counter {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-numeric: tabular-nums;
+}

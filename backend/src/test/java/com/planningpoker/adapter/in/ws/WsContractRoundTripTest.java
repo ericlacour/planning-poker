@@ -46,6 +46,23 @@ class WsContractRoundTripTest {
         assertRoundTrip("heartbeat", "heartbeat", ClientMessages.HeartbeatMessage.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = { "choose-card", "coffee", "withdraw" })
+    void vote(String example) throws Exception {
+        assertRoundTrip("vote", example, ClientMessages.VoteMessage.class);
+        assertThat(ClientMessages.parse(jsonMapper, ContractExamples.read("vote", example)))
+                .isEqualTo(jsonMapper.readValue(ContractExamples.read("vote", example),
+                        ClientMessages.VoteMessage.class));
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "NOT_A_VOTER,not-a-voter", "ROUND_REVEALED,round-revealed", "INVALID_CARD,invalid-card" })
+    void voteRejectionsAreTheContractExamples(String reason, String example) throws Exception {
+        assertThat(jsonMapper.readTree(jsonMapper.writeValueAsString(
+                ServerMessages.ErrorMessage.of(com.planningpoker.domain.VoteRejectedException.Reason.valueOf(reason)))))
+                .isEqualTo(jsonMapper.readTree(ContractExamples.read("error", example)));
+    }
+
     @Test
     void tick() throws Exception {
         assertRoundTrip("tick", "tick", ServerMessages.TickMessage.class);
@@ -66,8 +83,8 @@ class WsContractRoundTripTest {
     }
 
     @ParameterizedTest
-    @CsvSource({ "hello,hello,HelloMessage", "heartbeat,heartbeat,HeartbeatMessage", "vote,choose-card,Intent",
-            "vote,withdraw,Intent", "vote,coffee,Intent", "reveal,reveal,Intent", "hide,hide,Intent",
+    @CsvSource({ "hello,hello,HelloMessage", "heartbeat,heartbeat,HeartbeatMessage", "vote,choose-card,VoteMessage",
+            "vote,withdraw,VoteMessage", "vote,coffee,VoteMessage", "reveal,reveal,Intent", "hide,hide,Intent",
             "clear,clear,Intent", "change-role,to-observer,Intent" })
     void clientExamplesAreAccepted(String schema, String example, String kind) throws Exception {
         ClientMessages.ClientMessage parsed = ClientMessages.parse(jsonMapper, ContractExamples.read(schema, example));

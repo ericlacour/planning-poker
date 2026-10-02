@@ -15,7 +15,7 @@ const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
 describe('SessionPageComponent', () => {
   function render() {
     const state = signal<SessionState | null>(null);
-    const session = { state, connect: vi.fn(), disconnect: vi.fn() };
+    const session = { state, connect: vi.fn(), disconnect: vi.fn(), vote: vi.fn() };
     TestBed.configureTestingModule({
       providers: [
         { provide: SessionService, useValue: session },
@@ -66,13 +66,39 @@ describe('SessionPageComponent', () => {
     expect(button?.classList).toContain('btn-primary');
   });
 
-  it('with others: the table, without invitation nor action bar', () => {
+  it('with others: the table and the action bar with its counter, without invitation nor button', () => {
     const { element, show } = render();
     show(hiddenRound);
     expect(element.querySelectorAll('.seat')).toHaveLength(5);
     expect(element.querySelector('.invite')).toBeNull();
-    expect(element.querySelector('.action-bar')).toBeNull();
+    expect(element.querySelector('.action-bar .vote-counter')?.textContent).toBe('3 votes sur 4');
     expect(element.querySelector('.btn-primary')).toBeNull();
+  });
+
+  it('alone in the session: no action bar, but my hand', () => {
+    const { element, show } = render();
+    show(alone);
+    expect(element.querySelector('.action-bar')).toBeNull();
+    expect(element.querySelector('[role="toolbar"][aria-label="Ta carte"]')).not.toBeNull();
+  });
+
+  it('only observers besides voters-less me: the action bar says « Aucun votant »', () => {
+    const { element, show } = render();
+    const observer = { ...hiddenRound.participants[4] };
+    show({
+      ...hiddenRound,
+      selfParticipantId: observer.participantId,
+      participants: [observer, { ...observer, participantId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', pseudo: 'Farid', joinOrder: 6 }],
+      progress: { voted: 0, expected: 0 },
+    });
+    expect(element.querySelector('.vote-counter')?.textContent).toBe('Aucun votant');
+    expect(element.textContent).toContain('Tu observes');
+  });
+
+  it('before the first snapshot: neither action bar nor hand', () => {
+    const { element } = render();
+    expect(element.querySelector('.action-bar')).toBeNull();
+    expect(element.querySelector('.hand')).toBeNull();
   });
 
   it('puts « Copier le lien » in the top bar while it is displayed', () => {

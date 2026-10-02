@@ -185,6 +185,17 @@ export interface HeartbeatMessage {
   readonly type: 'heartbeat';
 }
 
+/** `vote.json` : `card: null` retire le vote. */
+export interface VoteMessage {
+  readonly type: 'vote';
+  readonly roundId: string;
+  readonly card: Card | null;
+}
+
+export function voteMessage(roundId: string, card: Card | null): VoteMessage {
+  return { type: 'vote', roundId, card };
+}
+
 export function helloMessage(participantToken: string): HelloMessage {
   return { type: 'hello', participantToken };
 }
@@ -193,7 +204,8 @@ export function heartbeatMessage(): HeartbeatMessage {
   return { type: 'heartbeat' };
 }
 
-const CARDS: readonly Card[] = ['0', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'];
+/** Le jeu, dans l'ordre de la main (`card.json`). */
+export const CARDS: readonly Card[] = ['0', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'];
 const NUMERIC_CARDS: readonly Card[] = ['0', '1', '2', '3', '5', '8', '13', '21'];
 const ACTIONS: readonly ChangeAction[] = ['JOIN', 'LEAVE', 'VOTE', 'REVEAL', 'HIDE', 'CLEAR', 'ROLE', 'PRESENCE'];
 const ERROR_CODES: readonly ErrorCode[] = ['ROUND_REVEALED', 'NOT_A_VOTER', 'INVALID_CARD', 'INVALID_MESSAGE'];

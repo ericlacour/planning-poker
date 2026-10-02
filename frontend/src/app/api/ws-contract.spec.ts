@@ -14,7 +14,10 @@ import revealedNoNumeric from '../../../../contract/examples/session-state/revea
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import tick from '../../../../contract/examples/tick/tick.json';
-import { heartbeatMessage, helloMessage, parseServerMessage } from './contract';
+import chooseCard from '../../../../contract/examples/vote/choose-card.json';
+import coffee from '../../../../contract/examples/vote/coffee.json';
+import withdraw from '../../../../contract/examples/vote/withdraw.json';
+import { Card, heartbeatMessage, helloMessage, parseServerMessage, voteMessage } from './contract';
 
 const roundTrip = (value: unknown) => JSON.parse(JSON.stringify(value));
 
@@ -39,6 +42,14 @@ describe('WebSocket contract round trip', () => {
 
   it('heartbeat', () => {
     expect(roundTrip(heartbeatMessage())).toEqual(heartbeat);
+  });
+
+  it.each([
+    ['choose-card', chooseCard],
+    ['coffee', coffee],
+    ['withdraw', withdraw],
+  ])('vote/%s', (_, example) => {
+    expect(roundTrip(voteMessage(example.roundId, example.card as Card | null))).toEqual(example);
   });
 
   it('tick', () => {

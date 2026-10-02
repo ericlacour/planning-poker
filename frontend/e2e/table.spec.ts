@@ -68,7 +68,9 @@ test('la table en direct : votants d\'abord, ma place en tête des observateurs 
   expect(server.received).toEqual([{ type: 'hello', participantToken: TOKEN }]);
   expect(page.url()).not.toContain(TOKEN);
   await expect(page.locator('.seat').nth(4).locator('.seat-card-observer')).toHaveText('observe');
-  await expect(page.locator('.seat .seat-card-empty')).toHaveCount(4);
+  // Alice, Bob et David ont voté (dos), Chloé non (carte vide).
+  await expect(page.locator('.seat .seat-card-back')).toHaveCount(3);
+  await expect(page.locator('.seat .seat-card-empty')).toHaveCount(1);
   await expect(page.locator('.seat').nth(3).locator('.presence-dot')).toHaveClass(/presence-offline/);
   await expect(page.locator('.seat').nth(0).locator('.presence-dot')).toHaveClass(/presence-online/);
   await expect(page.getByText('Partage le lien pour inviter ton équipe')).toHaveCount(0);

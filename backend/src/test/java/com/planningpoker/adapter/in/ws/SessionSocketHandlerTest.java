@@ -350,8 +350,9 @@ class SessionSocketHandlerTest {
         assertInvalidMessage(next(a.client(), WAIT_MS));
     }
 
+    /** Les exemples du contrat portent un {@code roundId} qui n'est pas celui de la session : ils sont périmés. */
     @Test
-    void heartbeatAndConformingIntentsGetNoAnswer() throws Exception {
+    void heartbeatStaleVotesAndConformingIntentsGetNoAnswer() throws Exception {
         Connected a = connect(createSession("Alice", "VOTER"));
         a.client().send(ContractExamples.read("heartbeat", "heartbeat"));
         for (String[] example : new String[][] { { "vote", "choose-card" }, { "vote", "withdraw" },
@@ -452,5 +453,166 @@ class SessionSocketHandlerTest {
         Client client = open(alice.sessionId());
         Thread.sleep(250);
         assertThat(client.messages).isEmpty();
+    }
+
+    // --- Vote ---
+
+    private static String vote(JsonNode state, String card) {
+        String roundId = state.get("round").get("roundId").asString();
+        return "{\"type\":\"vote\",\"roundId\":\"" + roundId + "\",\"card\":"
+                + (card == null ? "null" : "\"" + card + "\"") + "}";
+    }
+
+    private static void assertError(JsonNode node, String code) {
+        assertThat(node).isNotNull();
+        assertThat(node.toString()).isEqualTo("{\"type\":\"error\",\"code\":\"" + code + "\"}");
+    }
+
+    /** Alice et Bob votants, tous deux connectés ; renvoie leurs connexions, à jour. */
+    private Connected[] twoVoters(Created alice) throws Exception {
+        Connected a = connect(alice);
+        Created bob = join(alice.sessionId(), "Bob", "VOTER");
+        nextState(a.client());
+        Connected b = connect(bob);
+        JsonNode aState = nextState(a.client());
+        return new Connected[] { new Connected(a.client(), aState), b };
+    }
+
+    @Test
+    void aVoteIsBroadcastFilteredForEachRecipientWithinOneSecond() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        Connected a = both[0];
+        Connected b = both[1];
+        String bobId = b.state().get("selfParticipantId").asString();
+        long version = b.state().get("version").asLong();
+
+        long start = System.nanoTime();
+        a.client().send(vote(a.state(), "8"));
+        JsonNode forAlice = nextState(a.client());
+        JsonNode forBob = nextState(b.client());
+        assertThat(System.nanoTime() - start).isLessThan(1_000_000_000L);
+
+        for (JsonNode state : new JsonNode[] { forAlice, forBob }) {
+            assertThat(state.get("version").asLong()).isEqualTo(version + 1);
+            assertThat(state.get("lastChange").toString())
+                    .isEqualTo("{\"action\":\"VOTE\",\"byParticipantId\":\"" + alice.participantId() + "\"}");
+            assertThat(state.get("progress").toString()).isEqualTo("{\"voted\":1,\"expected\":2}");
+            assertThat(seat(state, alice.participantId()).get("hasVoted").asBoolean()).isTrue();
+            assertThat(seat(state, bobId).get("hasVoted").asBoolean()).isFalse();
+        }
+        assertThat(seat(forAlice, alice.participantId()).get("vote").asString()).isEqualTo("8");
+        assertThat(seat(forBob, alice.participantId()).get("vote").isNull()).isTrue();
+        assertThat(forBob.toString()).doesNotContain("\"8\"");
+
+        // Changer : la version avance, le compteur reste.
+        a.client().send(vote(a.state(), "5"));
+        JsonNode changed = nextState(a.client());
+        assertThat(seat(changed, alice.participantId()).get("vote").asString()).isEqualTo("5");
+        assertThat(changed.get("progress").get("voted").asInt()).isEqualTo(1);
+        assertThat(seat(nextState(b.client()), alice.participantId()).get("vote").isNull()).isTrue();
+
+        // Déjà satisfait : rien.
+        a.client().send(vote(a.state(), "5"));
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+        assertThat(next(b.client(), QUIET_MS)).isNull();
+
+        // Retirer.
+        a.client().send(vote(a.state(), null));
+        JsonNode withdrawn = nextState(b.client());
+        assertThat(seat(withdrawn, alice.participantId()).get("hasVoted").asBoolean()).isFalse();
+        assertThat(withdrawn.get("progress").get("voted").asInt()).isZero();
+        assertThat(withdrawn.get("version").asLong()).isEqualTo(version + 3);
+        nextState(a.client());
+
+        // Retrait sans vote : rien.
+        a.client().send(vote(a.state(), null));
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+        assertThat(next(b.client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void coffeeIsAcceptedAndCounted() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[1].client().send(vote(both[1].state(), "coffee"));
+        JsonNode forBob = nextState(both[1].client());
+        assertThat(seat(forBob, both[1].state().get("selfParticipantId").asString()).get("vote").asString())
+                .isEqualTo("coffee");
+        assertThat(nextState(both[0].client()).get("progress").get("voted").asInt()).isEqualTo(1);
+    }
+
+    @Test
+    void aStaleVoteIsIgnoredWithoutAnswer() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send("{\"type\":\"vote\",\"roundId\":\"stale\",\"card\":\"8\"}");
+        // Périmé d'abord, même pour une carte inconnue.
+        both[0].client().send("{\"type\":\"vote\",\"roundId\":\"stale\",\"card\":\"4\"}");
+        assertThat(next(both[0].client(), QUIET_MS)).isNull();
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void anObserverGetsNotAVoterAloneAndNothingChanges() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        Created emma = join(alice.sessionId(), "Emma", "OBSERVER");
+        nextState(a.client());
+        Connected e = connect(emma);
+        nextState(a.client());
+
+        // Observateur et carte inconnue : NOT_A_VOTER d'abord.
+        e.client().send(vote(e.state(), "4"));
+        assertError(next(e.client(), WAIT_MS), "NOT_A_VOTER");
+        e.client().send(vote(e.state(), "8"));
+        assertError(next(e.client(), WAIT_MS), "NOT_A_VOTER");
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+        assertThat(next(e.client(), QUIET_MS)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "4", "☕", "COFFEE" })
+    void aCardOutsideTheDeckGetsInvalidCardAlone(String card) throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(vote(both[0].state(), card));
+        assertError(next(both[0].client(), WAIT_MS), "INVALID_CARD");
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+        assertThat(both[0].client().closeCode).isNotDone();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "{\"type\":\"vote\",\"roundId\":\"r\",\"card\":\"12345678901234567\"}",
+            "{\"type\":\"vote\",\"roundId\":\"\",\"card\":\"8\"}",
+            "{\"type\":\"vote\",\"card\":\"8\"}",
+            "{\"type\":\"vote\",\"roundId\":\"r\",\"card\":\"8\",\"extra\":1}",
+            "{\"type\":\"vote\",\"roundId\":\"r\",\"card\":8}" })
+    void aVoteOutsideItsSchemaGetsInvalidMessage(String message) throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(message);
+        assertInvalidMessage(next(both[0].client(), WAIT_MS));
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void aVoteWithARoundIdOver64CodePointsGetsInvalidMessage() throws Exception {
+        Connected a = connect(createSession("Alice", "VOTER"));
+        a.client().send("{\"type\":\"vote\",\"roundId\":\"" + "r".repeat(65) + "\",\"card\":\"8\"}");
+        assertInvalidMessage(next(a.client(), WAIT_MS));
+    }
+
+    @Test
+    void theVoteSurvivesAReconnection() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        a.client().send(vote(a.state(), "13"));
+        nextState(a.client());
+        a.client().socket.sendClose(WebSocket.NORMAL_CLOSURE, "").join();
+        a.client().closeCode.get(5, TimeUnit.SECONDS);
+
+        JsonNode again = connect(alice).state();
+        assertThat(seat(again, alice.participantId()).get("vote").asString()).isEqualTo("13");
     }
 }

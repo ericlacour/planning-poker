@@ -2,7 +2,7 @@
 title: 'Story 1.6 : voter à l''aveugle'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-review'
+status: 'done'
 baseline_commit: '484ec12ce49456da0ded1ae68435e412088f42a6'
 route: 'dispatch'
 review_loop_iteration: 0

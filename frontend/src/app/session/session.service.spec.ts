@@ -131,6 +131,27 @@ describe('SessionService', () => {
     expect(service.state()?.version).toBe(8);
   });
 
+  it('sends vote with the current roundId, without changing its state', () => {
+    const { service, socket } = connected();
+    socket.serverSends(hiddenRound);
+    service.vote('8');
+    service.vote(null);
+    expect(socket.sent.slice(1)).toEqual([
+      { type: 'vote', roundId: hiddenRound.round.roundId, card: '8' },
+      { type: 'vote', roundId: hiddenRound.round.roundId, card: null },
+    ]);
+    expect(service.state()).toEqual(hiddenRound);
+  });
+
+  it('sends no vote before the first snapshot nor once the socket is closed', () => {
+    const { service, socket } = connected();
+    service.vote('8');
+    socket.serverSends(hiddenRound);
+    socket.serverCloses(1006);
+    service.vote('8');
+    expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }]);
+  });
+
   it('ignores a lower version on the same connection', () => {
     const { service, socket } = connected();
     socket.serverSends({ ...hiddenRound, version: 5 });

@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, InjectionToken, Signal, inject, signal } from '@angular/core';
 
-import { heartbeatMessage, helloMessage, parseServerMessage, SessionState } from '../api/contract';
+import { Card, heartbeatMessage, helloMessage, parseServerMessage, SessionState, voteMessage } from '../api/contract';
 import { APP_CONFIG } from '../config/app-config';
 import { BrowserStorage } from '../storage/browser-storage';
 
@@ -92,6 +92,17 @@ export class SessionService {
         this.endSignal.set(event.code === CLOSE_SESSION_NOT_FOUND ? 'notFound' : 'unknownToken');
       }
     };
+  }
+
+  /**
+   * Intention `vote` pour le tour de l'instantané courant : choisir ou changer sa carte, ou la retirer (`null`).
+   * Aucune mise à jour optimiste : le prochain instantané fait foi. Sans connexion ouverte, rien n'est envoyé.
+   */
+  vote(card: Card | null): void {
+    const state = this.stateSignal();
+    const socket = this.socket;
+    if (!state || !socket || socket.readyState !== OPEN) return;
+    socket.send(JSON.stringify(voteMessage(state.round.roundId, card)));
   }
 
   /** Ferme la connexion sans rien changer à l'état affiché. */

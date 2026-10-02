@@ -3,6 +3,7 @@ package com.planningpoker.adapter.in.ws;
 import java.util.List;
 
 import com.planningpoker.domain.SessionSnapshot;
+import com.planningpoker.domain.VoteRejectedException;
 
 /**
  * Messages serveur → client du canal de session (asyncapi.yaml), écrits à la main d'après {@code tick.json},
@@ -21,6 +22,11 @@ final class ServerMessages {
     /** {@code error.json} */
     record ErrorMessage(String type, String code) {
         static final ErrorMessage INVALID_MESSAGE = new ErrorMessage("error", "INVALID_MESSAGE");
+
+        /** Refus d'un {@code vote} : le code du contrat porte le nom de la raison. */
+        static ErrorMessage of(VoteRejectedException.Reason reason) {
+            return new ErrorMessage("error", reason.name());
+        }
     }
 
     /** {@code session-state.json} : instantané pour un destinataire, sans aucun jeton. */

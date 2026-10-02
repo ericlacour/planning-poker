@@ -26,8 +26,10 @@ import com.planningpoker.adapter.in.ws.ClientMessages.ClientMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HeartbeatMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HelloMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.Intent;
+import com.planningpoker.adapter.in.ws.ClientMessages.VoteMessage;
 import com.planningpoker.application.ConnectResult;
 import com.planningpoker.application.SessionConnectionUseCase;
+import com.planningpoker.application.VoteUseCase;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -39,8 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
  * est rattachée au participant et reçoit son instantané. Seul celui qui retire la connexion de
  * {@code pendingHellos} poursuit la poignée de main : le délai et le premier message ne se concurrencent jamais.
  * <p>
- * Ensuite : {@code heartbeat} sans effet ; {@code vote}, {@code reveal}, {@code hide}, {@code clear},
- * {@code changeRole} conformes ignorés (stories 1.6, 1.7, 3.x) ; tout le reste (second {@code hello}, JSON
+ * Ensuite : {@code heartbeat} sans effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
+ * ({@code error {code}}) ; {@code reveal}, {@code hide}, {@code clear}, {@code changeRole} conformes ignorés
+ * (stories 1.7, 3.x) ; tout le reste (second {@code hello}, JSON
  * invalide, {@code type} inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
  */
 @Component
@@ -55,17 +58,19 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
 
     private final JsonMapper jsonMapper;
     private final SessionConnectionUseCase connections;
+    private final VoteUseCase votes;
     private final WebSocketBroadcaster broadcaster;
     private final Duration helloTimeout;
     private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("ws-hello-timeout").factory());
     private final Map<String, ScheduledFuture<?>> pendingHellos = new ConcurrentHashMap<>();
 
-    public SessionSocketHandler(JsonMapper jsonMapper, SessionConnectionUseCase connections,
+    public SessionSocketHandler(JsonMapper jsonMapper, SessionConnectionUseCase connections, VoteUseCase votes,
             WebSocketBroadcaster broadcaster,
             @Value("${planning-poker.hello-timeout:5s}") Duration helloTimeout) {
         this.jsonMapper = jsonMapper;
         this.connections = connections;
+        this.votes = votes;
         this.broadcaster = broadcaster;
         this.helloTimeout = helloTimeout;
     }
@@ -92,8 +97,9 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
             case HeartbeatMessage heartbeat -> {
                 // Signe de vie du client : aucun effet.
             }
+            case VoteMessage vote -> vote(session, vote);
             case Intent intent -> {
-                // Intentions conformes : livrées par les stories 1.6, 1.7 et 3.x.
+                // Intentions conformes : livrées par les stories 1.7 et 3.x.
             }
             default -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.INVALID_MESSAGE);
         }
@@ -137,6 +143,15 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
                 // Instantané déjà en file d'envoi.
             }
         }
+    }
+
+    private void vote(WebSocketSession session, VoteMessage vote) {
+        WsConnection.Attachment attachment = broadcaster.attachmentOf(session.getId());
+        if (attachment == null) {
+            return;
+        }
+        votes.vote(attachment.sessionId(), attachment.participantId(), vote.roundId(), vote.card())
+                .ifPresent(reason -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.of(reason)));
     }
 
     private void refuse(WebSocketSession session, CloseStatus status) {

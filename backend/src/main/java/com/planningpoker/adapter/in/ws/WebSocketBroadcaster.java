@@ -79,6 +79,12 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
         }
     }
 
+    /** Rattachement de la connexion ouverte, ou {@code null} si elle n'est pas (ou plus) rattachée. */
+    WsConnection.Attachment attachmentOf(String connectionId) {
+        WsConnection connection = connections.get(connectionId);
+        return connection == null ? null : connection.attachment();
+    }
+
     /** Envoie un message à une seule connexion rattachée (réponse {@code error}). */
     void send(String connectionId, Object message) {
         WsConnection connection = connections.get(connectionId);

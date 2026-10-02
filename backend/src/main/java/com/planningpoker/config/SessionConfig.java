@@ -14,6 +14,7 @@ import com.planningpoker.application.SessionBroadcaster;
 import com.planningpoker.application.SessionConnectionUseCase;
 import com.planningpoker.application.SessionLocks;
 import com.planningpoker.application.SessionStore;
+import com.planningpoker.application.VoteUseCase;
 import com.planningpoker.domain.IdGenerator;
 
 /** Assemblage des sessions : aléa sûr, stockage en mémoire, verrous et cas d'usage (diffusion : adaptateur WS). */
@@ -61,5 +62,10 @@ public class SessionConfig {
     public SessionConnectionUseCase sessionConnectionUseCase(SessionStore store, SessionLocks locks,
             SessionBroadcaster broadcaster) {
         return new SessionConnectionUseCase(store, locks, broadcaster);
+    }
+
+    @Bean
+    public VoteUseCase voteUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster) {
+        return new VoteUseCase(store, locks, broadcaster);
     }
 }

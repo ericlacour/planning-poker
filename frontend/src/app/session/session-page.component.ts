@@ -3,6 +3,8 @@ import { ActivatedRoute } from '@angular/router';
 
 import { CopyLinkComponent } from '../share/copy-link';
 import { TopBarState } from '../top-bar/top-bar-state';
+import { ActionBarComponent } from './action-bar.component';
+import { HandComponent } from './hand.component';
 import { ParticipantTableComponent } from './participant-table.component';
 import { SessionService } from './session.service';
 
@@ -14,11 +16,12 @@ export function sessionLink(origin: string, sessionId: string): string {
 /**
  * Écran Session : ouvre la connexion de la session ({@link SessionService}) et montre la table des participants
  * en direct. Seul dans la session : « Partage le lien pour inviter ton équipe » et « Copier le lien » en bouton
- * principal. La main de cartes et la barre d'action viennent avec la story 1.6.
+ * principal, sans barre d'action. Avec d'autres : la barre d'action et son compteur. En bas, la main « Ta carte »
+ * (votant) ou « Tu observes » (observateur).
  */
 @Component({
   selector: 'app-session-page',
-  imports: [CopyLinkComponent, ParticipantTableComponent],
+  imports: [ActionBarComponent, CopyLinkComponent, HandComponent, ParticipantTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main class="session-page">
@@ -32,7 +35,13 @@ export function sessionLink(origin: string, sessionId: string): string {
           </div>
         }
       </section>
+      @if (session.state(); as state) {
+        @if (!alone()) {
+          <app-action-bar [state]="state" />
+        }
+      }
     </main>
+    <app-hand class="hand-dock" [state]="session.state()" />
   `,
 })
 export class SessionPageComponent {

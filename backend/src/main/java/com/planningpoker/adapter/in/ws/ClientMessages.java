@@ -36,9 +36,13 @@ final class ClientMessages {
     record HeartbeatMessage(String type) implements ClientMessage {
     }
 
+    /** {@code vote.json} : {@code card} nul pour retirer son vote. */
+    record VoteMessage(String type, String roundId, String card) implements ClientMessage {
+    }
+
     /**
-     * {@code vote}, {@code reveal}, {@code hide}, {@code clear} ou {@code changeRole} conforme à son schéma, que la
-     * story 1.5 ignore (stories 1.6, 1.7, 3.x).
+     * {@code reveal}, {@code hide}, {@code clear} ou {@code changeRole} conforme à son schéma, encore ignoré
+     * (stories 1.7, 3.x).
      */
     record Intent(String type) implements ClientMessage {
     }
@@ -74,6 +78,8 @@ final class ClientMessages {
         return switch (type) {
             case "hello" -> new HelloMessage(type, node.get("participantToken").asString());
             case "heartbeat" -> new HeartbeatMessage(type);
+            case "vote" -> new VoteMessage(type, node.get("roundId").asString(),
+                    node.get("card").isNull() ? null : node.get("card").asString());
             default -> new Intent(type);
         };
     }

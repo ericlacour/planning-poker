@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
+import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import { ParticipantState, SessionState } from '../api/contract';
 import { ParticipantTableComponent, PENDING_SEATS, seatsOf } from './participant-table.component';
 
@@ -93,5 +94,43 @@ describe('ParticipantTableComponent', () => {
     expect(dots.map((d) => d.classList.contains('presence-online'))).toEqual([true, false, true, true, true]);
     expect(dots[1].classList).toContain('presence-offline');
     expect(element.textContent).not.toContain('déconnecté');
+  });
+
+  it('during a hidden round: my face with « visible par toi seul », a back for the others who voted, else empty', () => {
+    // Vu par Alice (8) : Bob et David ont voté, Chloé non ; Emma observe.
+    const element = render(hiddenRound as SessionState);
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    const mine = seats[0].querySelector('.seat-card-face');
+    expect(mine?.getAttribute('aria-label')).toBe('Carte 8');
+    expect(mine?.querySelector('.card-value')?.textContent).toBe('8');
+    expect([...(mine?.querySelectorAll('.card-index') ?? [])].map((c) => c.textContent)).toEqual(['8', '8']);
+    expect(seats[0].querySelector('.seat-note')?.textContent).toBe('visible par toi seul');
+    expect(seats[1].querySelector('.seat-card-back.card-back')).not.toBeNull();
+    expect(seats[2].querySelector('.seat-card-empty')).not.toBeNull();
+    expect(seats[3].querySelector('.seat-card-back')).not.toBeNull();
+    expect(element.querySelectorAll('.seat-note')).toHaveLength(1);
+    expect(element.querySelectorAll('.seat-card-face')).toHaveLength(1);
+  });
+
+  it('seen by someone else, my vote is only a back', () => {
+    const element = render({ ...(hiddenRound as SessionState), selfParticipantId: BOB });
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    // Ma place (Bob) en tête ; le vote d'Alice (8 dans l'exemple) n'est pour moi qu'un dos.
+    expect(seats.map((s) => s.querySelector('.seat-pseudo')?.textContent)).toEqual(['Bob', 'Alice', 'Chloé', 'David', 'Emma']);
+    expect(element.querySelector('.seat-note')).toBeNull();
+    expect(seats[1].querySelector('.seat-card-back')).not.toBeNull();
+    expect(seats[1].querySelector('.seat-card-face')).toBeNull();
+    expect(element.querySelectorAll('.seat-card-face')).toHaveLength(0);
+  });
+
+  it('shows ☕ as text for coffee', () => {
+    const state = hiddenRound as SessionState;
+    const element = render({
+      ...state,
+      participants: state.participants.map((p) => (p.participantId === ALICE ? { ...p, vote: 'coffee' as const } : p)),
+    });
+    const face = element.querySelector('.seat-card-face');
+    expect(face?.querySelector('.card-value')?.textContent).toBe('☕\uFE0E');
+    expect(face?.getAttribute('aria-label')).toBe('Carte pause café');
   });
 });

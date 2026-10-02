@@ -1,11 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { ParticipantState, SessionState } from '../api/contract';
+import { Card, ParticipantState, SessionState } from '../api/contract';
+import { CardFaceComponent, cardName } from './cards';
 
 /** Une place de la table, vue par moi. */
 export interface Seat {
   readonly participant: ParticipantState;
   readonly isSelf: boolean;
+  /**
+   * Carte de la place : `empty` (pas de vote), `back` (a voté, valeur cachée) ou la face visible. Pendant un tour
+   * caché, seule ma place montre sa face (`vote` n'est rempli que pour moi).
+   */
+  readonly card: 'empty' | 'back' | { readonly face: Card };
 }
 
 /**
@@ -13,10 +19,16 @@ export interface Seat {
  * tête de son groupe. Aucun autre tri n'est fait côté front.
  */
 export function seatsOf(state: SessionState): Seat[] {
-  const seats = state.participants.map((participant) => ({
-    participant,
-    isSelf: participant.participantId === state.selfParticipantId,
-  }));
+  const hidden = state.round.status === 'HIDDEN';
+  const seats: Seat[] = state.participants.map((participant) => {
+    const isSelf = participant.participantId === state.selfParticipantId;
+    const visible = participant.vote !== null && (!hidden || isSelf);
+    return {
+      participant,
+      isSelf,
+      card: visible ? { face: participant.vote as Card } : hidden && participant.hasVoted ? 'back' : 'empty',
+    };
+  });
   const mine = seats.findIndex((seat) => seat.isSelf);
   if (mine < 0) return seats;
   const self = seats[mine];
@@ -30,12 +42,14 @@ export function seatsOf(state: SessionState): Seat[] {
 export const PENDING_SEATS = 3;
 
 /**
- * Table des participants (`seat-card-empty`, `presence-dot`) : pseudo, pastille de présence, et carte vide en
- * pointillés pour un votant ou mention « observe » pour un observateur. Avant le premier instantané, des places
- * vides en attente, sans pseudo.
+ * Table des participants (`seat-card-empty`, `seat-card-back`, `seat-card-face`, `presence-dot`) : pseudo,
+ * pastille de présence, et pour un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la
+ * face de ma carte avec « visible par toi seul » ; un observateur a la mention « observe ». Avant le premier
+ * instantané, des places vides en attente, sans pseudo.
  */
 @Component({
   selector: 'app-participant-table',
+  imports: [CardFaceComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (seats(); as seats) {
@@ -43,7 +57,22 @@ export const PENDING_SEATS = 3;
         @for (seat of seats; track seat.participant.participantId) {
           <li class="seat" [class.seat-self]="seat.isSelf" [class.offline]="!seat.participant.connected">
             @if (seat.participant.role === 'VOTER') {
-              <span class="seat-card seat-card-empty" aria-hidden="true"></span>
+              @switch (seat.card) {
+                @case ('empty') {
+                  <span class="seat-card seat-card-empty" aria-hidden="true"></span>
+                }
+                @case ('back') {
+                  <span class="seat-card seat-card-back card-back" role="img" aria-label="a voté"></span>
+                }
+                @default {
+                  <span
+                    class="seat-card seat-card-face"
+                    role="img"
+                    [appCardFace]="faceOf(seat)"
+                    [attr.aria-label]="cardName(faceOf(seat))"
+                  ></span>
+                }
+              }
             } @else {
               <span class="seat-card seat-card-observer">observe</span>
             }
@@ -59,6 +88,9 @@ export const PENDING_SEATS = 3;
                 {{ ' ' }}<span class="seat-me">(toi)</span>
               }
             </span>
+            @if (seat.isSelf && seat.card !== 'empty' && seat.card !== 'back' && hidden()) {
+              <span class="seat-note">visible par toi seul</span>
+            }
           </li>
         }
       </ul>
@@ -83,4 +115,11 @@ export class ParticipantTableComponent {
     return state ? seatsOf(state) : null;
   });
   protected readonly pending = Array.from({ length: PENDING_SEATS }, (_, i) => i);
+  protected readonly hidden = computed(() => this.state()?.round.status === 'HIDDEN');
+
+  protected faceOf(seat: Seat): Card {
+    return typeof seat.card === 'object' ? seat.card.face : '0';
+  }
+
+  protected readonly cardName = cardName;
 }

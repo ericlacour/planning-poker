@@ -2,7 +2,8 @@
 title: 'Story 1.8 : un écran de séance qui tient sur PC et sur téléphone'
 type: 'feature'
 created: '2026-10-02'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_commit: '23f0ab8f89ce19f2c07a765a9948776981b5b95a'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

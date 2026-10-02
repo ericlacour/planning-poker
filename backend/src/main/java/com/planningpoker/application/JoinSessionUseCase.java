@@ -11,7 +11,10 @@ import com.planningpoker.domain.Pseudo;
 import com.planningpoker.domain.Role;
 import com.planningpoker.domain.Session;
 
-/** Fait entrer un participant dans une session existante par son lien (FR-2). */
+/**
+ * Fait entrer un participant dans une session existante par son lien (FR-2), puis diffuse le nouvel état à ceux qui
+ * y sont déjà connectés (AD-3).
+ */
 public class JoinSessionUseCase {
 
     private static final Logger LOG = LoggerFactory.getLogger(JoinSessionUseCase.class);
@@ -19,11 +22,14 @@ public class JoinSessionUseCase {
     private final SessionStore store;
     private final SessionLocks locks;
     private final IdGenerator ids;
+    private final SessionBroadcaster broadcaster;
 
-    public JoinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids) {
+    public JoinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
+            SessionBroadcaster broadcaster) {
         this.store = store;
         this.locks = locks;
         this.ids = ids;
+        this.broadcaster = broadcaster;
     }
 
     /**
@@ -42,7 +48,9 @@ public class JoinSessionUseCase {
         locks.withLock(sessionId, () -> {
             Session session = store.find(sessionId).orElseThrow(SessionNotFoundException::new);
             Pseudo pseudo = Pseudo.of(rawPseudo);
-            store.save(session.join(participantId, pseudo, role, ParticipantToken.of(token)));
+            Session joined = session.join(participantId, pseudo, role, ParticipantToken.of(token));
+            store.save(joined);
+            broadcaster.publish(joined);
             return null;
         });
         // Ni jeton, ni pseudo, ni identifiant de session (le lien) dans les journaux.

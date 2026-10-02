@@ -103,9 +103,9 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
   context,
   browserName,
 }) => {
-  // WebKit (CI) ne connaît pas les permissions de presse-papiers de Playwright : la copie est vérifiée sur Chromium.
-  test.skip(browserName === 'webkit', 'permissions clipboard-read / clipboard-write propres à Chromium');
-  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
+  // WebKit (CI) ne connaît pas les permissions de presse-papiers de Playwright : la copie est lue sur Chromium seul.
+  const clipboard = browserName === 'chromium';
+  if (clipboard) await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
   const check = await watchPage(page);
   const bodies = await mockApi(page, () => 'created');
   await page.goto('/');
@@ -128,10 +128,12 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
   // Le nom accessible du bouton change avec son libellé : on le désigne par sa place.
   const primary = page.locator('.invite button');
   await expect(primary).toHaveText('Copier le lien');
-  await primary.click();
-  await expect(primary).toHaveText('Lien copié');
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
-  await expect(primary).toHaveText('Copier le lien', { timeout: 4_000 });
+  if (clipboard) {
+    await primary.click();
+    await expect(primary).toHaveText('Lien copié');
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    await expect(primary).toHaveText('Copier le lien', { timeout: 4_000 });
+  }
 
   expect(page.url()).not.toContain(CREATED.participantToken);
   await check();

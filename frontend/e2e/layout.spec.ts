@@ -439,14 +439,39 @@ test.describe('téléphone étroit 360 × 740', () => {
     );
     const line = page.locator('.result-line-dock');
     await expect(line.locator('.consensus-badge')).toHaveText('Consensus !');
+    // Mesures une fois le tiroir replié (200 ms) : pendant le repli, la mise en page bouge encore.
+    await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toBeHidden();
     const average = await box(line.locator('.result-line-average'));
     const badge = await box(line.locator('.consensus-badge'));
     const mostVoted = await box(line.locator('.result-line-most-voted'));
     expect(Math.abs(badge.y + badge.height / 2 - (average.y + average.height / 2))).toBeLessThanOrEqual(4);
     expect(badge.x).toBeGreaterThan(average.x);
     expect(await lines(line.locator('.result-line-item'))).toBeLessThanOrEqual(2);
-    expect(mostVoted.y).toBeGreaterThanOrEqual(average.y);
+    // « Plus votée » commence la seconde ligne, sous la moyenne.
+    expect(mostVoted.y).toBeGreaterThanOrEqual(average.y + average.height - 1);
     expect((await pageOverflow(page)).horizontal).toBeLessThanOrEqual(0);
+    await check();
+  });
+
+  test('égalité très large : rien n’est rogné', async ({ page }) => {
+    const { check } = await openSession(
+      page,
+      revealed({
+        average: 6.6,
+        mostVoted: { values: ['0', '1', '2', '3', '5', '8', '13', '21'], count: 1 },
+        min: '0',
+        max: '21',
+        consensus: false,
+      }),
+    );
+    const line = page.locator('.result-line-dock');
+    await expect(line.locator('.result-line-most-voted')).toHaveText('Plus votée 0, 1, 2, 3, 5, 8, 13 et 21 (1)');
+    expect((await pageOverflow(page)).horizontal).toBeLessThanOrEqual(0);
+    const panel = await box(line.locator('.result-line'));
+    for (const item of await line.locator('.result-line-item').all()) {
+      const b = await box(item);
+      expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
+    }
     await check();
   });
 

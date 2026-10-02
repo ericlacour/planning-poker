@@ -241,6 +241,8 @@ app-action-bar,
 }
 
 .result-line-item::before {
+  /* Repli pour les navigateurs sans texte alternatif de content (Safari < 17.4, Firefox < 128). */
+  content: '·';
   content: '·' / '';
   flex: none;
   width: var(--result-line-separator);

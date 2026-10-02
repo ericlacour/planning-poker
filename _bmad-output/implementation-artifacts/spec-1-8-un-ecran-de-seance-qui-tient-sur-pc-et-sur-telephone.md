@@ -2,7 +2,7 @@
 title: 'Story 1.8 : un écran de séance qui tient sur PC et sur téléphone'
 type: 'feature'
 created: '2026-10-02'
-status: 'in-review'
+status: 'done'
 baseline_commit: '23f0ab8f89ce19f2c07a765a9948776981b5b95a'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -88,6 +88,25 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+Relecture du diff depuis `23f0ab8` par trois relecteurs indépendants (aveugle, cas limites, tests).
+
+| # | Source | Constat | Verdict | Suite |
+|---|--------|---------|---------|-------|
+| 1 | aveugle, cas limites | `content: '·' / ''` sans repli : Safari < 17.4 et Firefox < 128 ignorent toute la déclaration, les séparateurs disparaissent et la marge négative rogne le début de « Moy. ». | low — réel sur ces navigateurs. | patch : `content: '·'` posé avant. |
+| 2 | aveugle | Le test de copie du lien était entièrement sauté sur WebKit, création de session et jeton compris. | low — couverture perdue sur WebKit. | patch : seule la lecture du presse-papiers est réservée à Chromium. |
+| 3 | tests | Le test consensus ne vérifiait pas que « Plus votée » passe bien sur la seconde ligne. | low — réel. | patch : « Plus votée » sous la moyenne. En le resserrant, le test s'est révélé instable (mesure pendant le repli de 200 ms du tiroir) : il attend désormais le repli ; 288 exécutions vertes. |
+| 4 | cas limites | Égalité très large (8 valeurs) rognée à 360 px. | false — test ajouté (« égalité très large ») : tout tient dans le panneau, avec ou sans retour à la ligne forcé ; le forcer cassait la ligne du consensus. | test gardé, pas de changement CSS. |
+| 5 | aveugle, cas limites, tests | Au repli du tiroir (téléphone), une carte de la main qui avait le focus clavier le perd. | low — clavier sur écran < 600 px, cas rare ; la spec impose un repli complet ; déplacer le focus ajouterait de la logique. | rejeté. |
+| 6 | aveugle, cas limites | Téléphone en paysage ou fenêtre très basse : la page défile au lieu de garder barres et main visibles. | low — hors des paliers de la spec (fondés sur la largeur), page encore utilisable par défilement. | rejeté. |
+| 7 | cas limites | L'observateur voit aussi « Tu observes » disparaître au repli. | low — rien à jouer pour lui pendant un tour révélé ; cohérent avec le repli voulu. | rejeté. |
+| 8 | cas limites | Seul dans la session, tour révélé, téléphone : tiroir replié et pas de barre d'action. | false — l'absence de barre d'action seul vient de la story 1.7 ; le repli n'y change rien. | rejeté. |
+| 9 | cas limites | Ombre de la carte levée possiblement rognée par le tiroir (`overflow: hidden`). | low — le rembourrage haut (12 px) couvre le soulèvement ; au plus quelques pixels d'ombre. | rejeté. |
+| 10 | cas limites | Rembourrage de « Tu observes » écrasé par celui du tiroir. | low — cosmétique. | rejeté. |
+| 11 | aveugle | Données de test incohérentes (synthèse de maquette ≠ votes affichés, consensus avec votes mêlés, nouveau tour gardant des votes). | low — la synthèse est affichée telle que reçue ; les tests de mise en page n'en dépendent pas. | rejeté. |
+| 12 | aveugle | Ombre et règles du thème sombre dupliquées ; logique dupliquée entre panneau et ligne de résultat. | low — maintenabilité, sans défaut observable. | rejeté. |
+| 13 | aveugle, tests | Le projet WebKit n'a jamais tourné (absent du bac à sable) ; la suite complète tournera sur WebKit en CI. | maybe-false — premier passage CI à surveiller. | noté, à vérifier sur la première CI. |
+| 14 | aveugle | Le test « animations réduites » ne vérifie qu'une partie des transitions. | low — le repli est vérifié par sa hauteur finale. | rejeté. |
 
 ## Verification
 

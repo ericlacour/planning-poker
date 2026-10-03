@@ -245,9 +245,12 @@ Une coupure n'a plus de conséquence :
 - retrait au bout de 5 min, puis retour transparent ;
 - reprise du pseudo depuis un autre appareil ;
 - plusieurs onglets comptent comme un seul participant ;
-- la session expire au bout de 24 h.
+- la session expire au bout de 24 h ;
+- des plafonds protègent le service public contre l'épuisement de ses ressources.
 
-**FRs covered:** FR4, FR7 (robustesse complète), FR8, FR9, FR16 (déconnexions)
+Toute coupure de connexion, y compris un redémarrage du serveur, est visible et ne laisse partir aucun clic dans le vide (rétrospective de l'epic 1, constat F1).
+
+**FRs covered:** FR4, FR7 (robustesse complète), FR8, FR9, FR16 (déconnexions), NFR4 (plafonds au-delà des minimums, rétrospective de l'epic 1, constat F2)
 
 ### Epic 3 : Des séances souples et soignées
 L'outil est complet et agréable :
@@ -577,7 +580,8 @@ Une coupure n'a plus de conséquence :
 - retrait au bout de 5 min, puis retour transparent ;
 - reprise du pseudo depuis un autre appareil ;
 - plusieurs onglets comptent comme un seul participant ;
-- la session expire au bout de 24 h.
+- la session expire au bout de 24 h ;
+- des plafonds protègent le service public contre l'épuisement de ses ressources.
 
 ### Story 2.1 : Voir qui est vraiment là
 
@@ -628,10 +632,20 @@ afin de retrouver ma place et mon vote sans rien faire (FR7, UJ-2).
 **Et** il retente immédiatement sur les événements `online` et `visibilitychange` (retour au premier plan).
 **Et** chaque reconnexion rejoue `hello`, avec le jeton de `pp.token.{sessionId}`.
 
+**Étant donné** une connexion ouverte
+**Quand** elle se ferme avec un code autre que `4401` ou `4404` : fermeture par le serveur (`1001`, redémarrage ou redéploiement), coupure (`1006`), débordement de la file d'envoi (`4500`), message refusé (`1008`, `1009`) ou tout autre code
+**Alors** `SessionService` considère la connexion comme perdue **immédiatement**, sans attendre les 12 s, et applique la même séquence de reconnexion (rétrospective de l'epic 1, F1).
+**Et** aucune fermeture ne laisse la page figée sans retour : soit la reconnexion est en cours, soit un écran d'état est affiché.
+
+**Étant donné** une connexion perdue
+**Quand** la perte est constatée
+**Alors** la main et les boutons de la barre d'action sont désactivés **aussitôt**, avant même l'apparition du bandeau. Aucun clic ne part dans le vide, et aucun ne donne l'illusion d'avoir été pris en compte (F1).
+**Et** une intention envoyée juste avant la coupure, et que le serveur n'a pas reçue, n'apparaît pas comme prise en compte : après la reconnexion, la main et la table montrent l'état du premier `sessionState`, sans mise à jour optimiste.
+
 **Étant donné** une coupure en cours
 **Quand** elle dure plus de 2 s
-**Alors** le bandeau ambre « Reconnexion… » apparaît sous la barre du haut. La table reste visible, et les boutons d'action et la main sont désactivés (UX-DR14).
-**Et** une coupure de moins de 2 s ne fait apparaître aucun bandeau.
+**Alors** le bandeau ambre « Reconnexion… » apparaît sous la barre du haut. La table reste visible, et les boutons d'action et la main restent désactivés (UX-DR14).
+**Et** une coupure de moins de 2 s ne fait apparaître aucun bandeau, mais la main et les boutons restent désactivés tant que la connexion n'est pas rétablie.
 
 **Étant donné** que la connexion revient pendant le même tour
 **Quand** le premier `sessionState` arrive
@@ -646,6 +660,11 @@ afin de retrouver ma place et mon vote sans rien faire (FR7, UJ-2).
 **Étant donné** que la session n'existe plus au moment de la reconnexion
 **Quand** le serveur ferme en `4404`
 **Alors** la page n'insiste pas : elle affiche « Session introuvable » et supprime le jeton (FR7).
+
+**Étant donné** un redémarrage du webservice pendant une séance, ce qui perd les sessions en mémoire (NFR1)
+**Quand** le webservice est arrêté puis relancé
+**Alors** chaque participant voit d'abord la main et les boutons désactivés, puis « Reconnexion… », puis l'écran « Session introuvable » dès que le webservice répond `4404` (F1).
+**Et** un test vérifie ce parcours de bout en bout. La rétrospective de l'epic 1 l'a observé à la main : la table restait figée sans message, et un clic sur une carte ne faisait rien.
 
 ### Story 2.3 : Revenir après une longue absence
 
@@ -722,6 +741,54 @@ afin qu'il ne reste aucune trace de nos ateliers (FR4, NFR6).
 **Quand** on la teste
 **Alors** un test avec une horloge fixe vérifie qu'une session vit à T + 23 h 59 et n'existe plus à T + 24 h.
 **Et** aucun journal ne conserve de pseudo, de jeton ou de valeur de vote de la session (NFR6).
+
+### Story 2.6 : Un service qui tient face aux abus
+
+En tant qu'équipe qui tient ses ateliers sur un service public et gratuit,
+je veux que le webservice refuse ce qui dépasse un usage normal,
+afin qu'un client anonyme ne puisse pas épuiser sa mémoire et faire tomber nos ateliers en cours (NFR4, NFR6, rétrospective de l'epic 1, F2).
+
+Plafonds retenus par Eric le 2026-10-03 : de 2 à 4 fois au-dessus des minimums de NFR4. Ils sont réglables par configuration, avec ces valeurs par défaut.
+
+**Critères d'acceptation :**
+
+**Étant donné** une requête `POST /api/sessions` ou `POST /api/sessions/{sessionId}/participants`
+**Quand** son corps dépasse 2 Ko
+**Alors** elle est refusée en `413`, sans que le corps soit lu en entier.
+
+**Étant donné** un message WebSocket
+**Quand** il dépasse 4 Ko
+**Alors** la connexion est fermée en `1009`, et le client applique la reconnexion de la story 2.2.
+
+**Étant donné** 50 sessions déjà présentes en mémoire
+**Quand** quelqu'un crée une session
+**Alors** la réponse est un `503` en `application/problem+json`, avec le code `SESSION_LIMIT_REACHED`, et aucune session n'est créée.
+**Et** le front affiche « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. » sous le bouton. La saisie est conservée, et le bouton redevient actif.
+**Et** les sessions expirées (story 2.5) libèrent leur place.
+
+**Étant donné** une même adresse IP cliente
+**Quand** elle crée plus de 10 sessions en une minute
+**Alors** les créations suivantes reçoivent un `429` en `application/problem+json`, avec le code `TOO_MANY_REQUESTS` et un en-tête `Retry-After`.
+**Et** le front affiche « Trop de sessions créées depuis ton réseau. Patiente une minute. » sous le bouton.
+**Et** l'adresse prise en compte est celle du client transmise par le proxy de Render (`X-Forwarded-For`, configuration explicite et testée), et non celle du proxy.
+**Et** les compteurs par adresse ne vivent qu'en mémoire, sont purgés au bout d'une minute, et aucune adresse IP n'apparaît dans un journal (NFR6).
+
+**Étant donné** une session qui compte déjà 30 participants
+**Quand** quelqu'un tente de la rejoindre
+**Alors** la réponse est un `409` en `application/problem+json`, avec le code `SESSION_FULL`, et rien ne change.
+**Et** le front affiche « Cette session est complète. » sous le champ, et la saisie est conservée.
+**Et** un participant retiré au bout de 5 min (story 2.3) libère sa place.
+
+**Étant donné** le contrat
+**Quand** la story est livrée
+**Alors** `openapi.yaml` décrit les réponses `413`, `429` et `503` et les codes `SESSION_FULL`, `SESSION_LIMIT_REACHED` et `TOO_MANY_REQUESTS`, avec un exemple chacun. Le contrat n'évolue que par ajout (AD-13).
+**Et** `asyncapi.yaml` décrit la fermeture `1009`.
+**Et** les nouveaux libellés, validés par Eric le 2026-10-03, figurent dans EXPERIENCE › Voice and Tone et State Patterns. L'interface les reprend mot pour mot (UX-DR18).
+
+**Étant donné** les plafonds
+**Quand** on les teste
+**Alors** des tests du domaine, sans Spring, vérifient le refus à 31 participants et à 51 sessions, et l'acceptation juste en dessous.
+**Et** le test de charge de la story 1.5 (5 sessions de 13 participants) passe toujours, sans aucun refus.
 
 ## Epic 3 : Des séances souples et soignées
 

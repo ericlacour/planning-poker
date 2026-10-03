@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-03-2026 09:01
+last_updated: 10-03-2026 09:18
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -52,6 +52,7 @@ development_status:
   2-3-revenir-après-une-longue-absence: backlog
   2-4-reprendre-sa-place-depuis-un-autre-appareil: backlog
   2-5-une-session-qui-s-efface-d-elle-même: backlog
+  2-6-un-service-qui-tient-face-aux-abus: backlog
   epic-2-retrospective: optional
 
   epic-3: backlog
@@ -96,14 +97,14 @@ action_items:
     action: "Spec 2.2 : couvrir toute coupure autre que 4401 et 4404 (y compris 4500
       et 1008), avec un retour visible et sans clic perdu (F1)"
     owner: "agent dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-6-ajouter-les-limites-de-ressources-taille"
     epic: 1
     action: "Ajouter les limites de ressources (taille des corps, nombre de sessions
       et de participants, débit) à l'epic 2, avec la story 2.5, avant v1.0 (F2)"
     owner: "Eric + agent dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-7-n-autoriser-le-déploiement-d-une-étiquet"
     epic: 1

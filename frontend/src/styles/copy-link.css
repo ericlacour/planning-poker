@@ -1,0 +1,27 @@
+/* Bouton « Copier le lien » (copy-link-button). */
+.top-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.copy-link-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* Téléphone : « Copier le lien » de la barre du haut devient une icône, avec son libellé accessible. */
+@media (max-width: 599px) {
+  .top-bar .copy-link {
+    padding: 0 var(--spacing-3);
+  }
+
+  .top-bar .copy-link-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

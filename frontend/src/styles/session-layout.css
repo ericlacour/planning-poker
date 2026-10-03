@@ -1,0 +1,271 @@
+/*
+ * Mise en page de l'écran Session (DESIGN.md › Layout & Spacing, EXPERIENCE.md › Responsive & Platform).
+ *
+ * L'écran occupe exactement la hauteur de la fenêtre : barre du haut, zone de la table (seule à défiler), barre
+ * d'action, puis la main. Trois paliers :
+ *   ≥ 900 px  : table de 7 places par rangée (table.css), main d'une ligne de 10 cartes de 60 × 90 px ;
+ *   600–899   : table de 5 places par rangée, main d'une ligne, cartes d'au moins 44 px ;
+ *   < 600 px  : barre du haut compacte, table de 3 places, barre d'action pleine largeur au-dessus du tiroir de la
+ *               main (2 lignes de 5 cartes), qui se replie quand le tour est révélé ; résultat condensé au-dessus
+ *               de la barre d'action.
+ * Budget PC (1280 × 650, 13 participants) : 56 (barre du haut) + 16 + 2 × ~110 + 12 + 32 (table) + 12 + 72 (barre
+ * d'action) + 12 + 146 (main) ≈ 580 px.
+ */
+
+app-root:has(app-session-page) {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+
+app-session-entry:has(> app-session-page),
+app-session-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.session-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--spacing-4) var(--spacing-margin-mobile) var(--spacing-3);
+}
+
+/* Zone de la table : la seule qui défile quand la fenêtre est moins haute que le budget. */
+.session-scroll {
+  flex: 0 1 auto;
+  min-height: calc(2 * var(--spacing-7));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--spacing-1);
+}
+
+app-action-bar,
+.hand-dock {
+  display: block;
+  flex: none;
+}
+
+/* Résultat condensé : téléphone seulement. */
+.result-line-dock {
+  display: none;
+}
+
+/* ≥ 600 px : la main reste sur une ligne, les cartes rétrécissent jusqu'à 44 px. */
+@media (max-width: 899px) {
+  .hand-cards {
+    gap: var(--spacing-2);
+  }
+}
+
+/* Téléphone (< 600 px, dès 360 px). */
+@media (max-width: 599px) {
+  /* Barre du haut compacte : le logo seul, « Copier le lien » en icône (copy-link.css). */
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .brand {
+    min-width: var(--spacing-touch-min);
+    min-height: var(--spacing-touch-min);
+    justify-content: center;
+  }
+
+  .brand-mark {
+    width: 22px;
+    height: 32px;
+  }
+
+  .top-bar .copy-link {
+    min-width: var(--spacing-touch-min);
+  }
+
+  .session-page {
+    padding: 0;
+  }
+
+  /* La table prend toute la place libre et défile ; la barre d'action reste collée au tiroir. */
+  .session-scroll {
+    flex: 1 1 auto;
+    padding: var(--spacing-3) var(--spacing-margin-mobile);
+  }
+
+  /* Résultat condensé, juste au-dessus de la barre d'action ; le panneau intégré du PC disparaît. */
+  .result-line-dock {
+    display: block;
+    margin: 0 var(--spacing-margin-mobile) var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--surface);
+    border-radius: var(--rounded-lg);
+    box-shadow: 0 1px 3px rgb(31 35 48 / 6%);
+  }
+
+  .action-bar .result-panel {
+    display: none;
+  }
+
+  /* Barre d'action pleine largeur : le compteur sur une ligne, les deux boutons côte à côte en dessous. */
+  .action-bar {
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-3);
+    min-height: 0;
+    margin: 0;
+    padding: var(--spacing-2) var(--spacing-margin-mobile) var(--spacing-3);
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .vote-counter {
+    flex: 1 1 100%;
+  }
+
+  .action-buttons {
+    flex: 1 1 100%;
+    gap: var(--spacing-3);
+  }
+
+  .action-buttons .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--spacing-2);
+  }
+
+  /*
+   * Tiroir de la main : fixé en bas, 2 lignes de 5 cartes, ombre vers le haut. Il se replie complètement quand le
+   * tour est révélé (classe session-revealed de la page), et se redéploie au tour suivant.
+   */
+  .hand-dock {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+      grid-template-rows 200ms ease-out,
+      visibility 0s;
+  }
+
+  .hand-dock > .hand {
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--spacing-3) var(--spacing-margin-mobile) var(--spacing-4);
+    box-shadow: 0 -4px 12px rgb(31 35 48 / 10%);
+    transition: padding 200ms ease-out;
+  }
+
+  .hand-dock .hand-cards {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(var(--spacing-touch-min), var(--spacing-hand-card-width-pc)));
+    justify-content: center;
+    gap: var(--spacing-3) var(--spacing-2);
+    width: 100%;
+  }
+
+  .hand-dock .poker-card {
+    min-width: var(--spacing-touch-min);
+  }
+
+  .session-revealed .hand-dock {
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows 200ms ease-out,
+      visibility 0s 200ms;
+  }
+
+  .session-revealed .hand-dock > .hand {
+    padding-block: 0;
+    border-top-width: 0;
+  }
+}
+
+/* Thème sombre : pas d'ombre, le tiroir se détache par sa surface plus claire. */
+@media (max-width: 599px) and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hand-dock > .hand {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 599px) {
+  :root[data-theme="dark"] .hand-dock > .hand {
+    box-shadow: none;
+  }
+}
+
+/* Animations réduites : le tiroir se replie et se redéploie sans mouvement. */
+@media (prefers-reduced-motion: reduce) {
+  .hand-dock,
+  .session-revealed .hand-dock,
+  .hand-dock > .hand {
+    transition: none;
+  }
+}
+
+/* Résultat condensé (result-panel sur téléphone) : « Moy. 5,9 · Plus votée 5 (6) · Min 3 · Max 13 ». */
+.result-line {
+  /* Les séparateurs en début de ligne (première ligne ou ligne repliée) tombent dans la marge rognée. */
+  --result-line-separator: var(--spacing-4);
+  overflow: hidden;
+}
+
+.result-line-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--spacing-1);
+  margin-left: calc(-1 * var(--result-line-separator));
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-line-rest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.result-line-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.result-line-item::before {
+  /* Repli pour les navigateurs sans texte alternatif de content (Safari < 17.4, Firefox < 128). */
+  content: '·';
+  content: '·' / '';
+  flex: none;
+  width: var(--result-line-separator);
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.result-line-badge::before {
+  content: '';
+}
+
+.result-line-average {
+  align-items: baseline;
+}
+
+.result-line-value {
+  margin-left: var(--spacing-1);
+  font-family: var(--typography-result-stat-font-family);
+  font-size: var(--typography-result-stat-font-size);
+  font-weight: var(--typography-result-stat-font-weight);
+  line-height: var(--typography-result-stat-line-height);
+}
+
+.result-line .result-none {
+  padding: var(--spacing-1) 0;
+}

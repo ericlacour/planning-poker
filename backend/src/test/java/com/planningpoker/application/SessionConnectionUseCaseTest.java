@@ -1,0 +1,101 @@
+package com.planningpoker.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.SplittableRandom;
+
+import org.junit.jupiter.api.Test;
+
+import com.planningpoker.adapter.out.memory.InMemorySessionStore;
+import com.planningpoker.domain.ChangeAction;
+import com.planningpoker.domain.IdGenerator;
+import com.planningpoker.domain.Role;
+import com.planningpoker.domain.Session;
+
+class SessionConnectionUseCaseTest {
+
+    private final InMemorySessionStore store = new InMemorySessionStore();
+    private final SessionLocks locks = new SessionLocks();
+    private final IdGenerator ids = new IdGenerator(new SplittableRandom(5));
+    private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
+    private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster);
+    private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
+            Clock.fixed(Instant.parse("2026-10-02T09:00:00Z"), ZoneOffset.UTC)).create("Alice", Role.VOTER);
+
+    private Session session() {
+        return store.find(created.sessionId()).orElseThrow();
+    }
+
+    @Test
+    void anUnknownSessionIsCheckedBeforeTheToken() {
+        assertThat(connections.connect("k3Jx9QvT2mLpZ8wR4nYb7A", created.participantToken(), "c1"))
+                .isInstanceOf(ConnectResult.SessionNotFound.class);
+        assertThat(connections.connect(null, created.participantToken(), "c1"))
+                .isInstanceOf(ConnectResult.SessionNotFound.class);
+        assertThat(broadcaster.attached).isEmpty();
+    }
+
+    @Test
+    void anUnknownTokenIsRefused() {
+        assertThat(connections.connect(created.sessionId(), "Xb4Rt9LmQ2vN7cZp1HsK0w", "c1"))
+                .isInstanceOf(ConnectResult.UnknownToken.class);
+        assertThat(broadcaster.attached).isEmpty();
+        assertThat(session().version()).isEqualTo(1);
+    }
+
+    @Test
+    void theFirstConnectionChangesPresenceAndPublishesToEveryone() {
+        ConnectResult result = connections.connect(created.sessionId(), created.participantToken(), "c1");
+
+        assertThat(result).isEqualTo(new ConnectResult.Connected(created.participantId()));
+        assertThat(broadcaster.attached).containsEntry("c1", created.participantId());
+        assertThat(session().version()).isEqualTo(2);
+        assertThat(session().lastChange().action()).isEqualTo(ChangeAction.PRESENCE);
+        assertThat(broadcaster.published).singleElement().satisfies(p -> {
+            assertThat(p.session()).isSameAs(session());
+            assertThat(p.onlyTo()).isNull();
+        });
+    }
+
+    @Test
+    void aSecondTabOnlyGetsItsOwnSnapshotAndClosingOneChangesNothing() {
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        broadcaster.published.clear();
+
+        connections.connect(created.sessionId(), created.participantToken(), "c2");
+        assertThat(session().version()).isEqualTo(2);
+        assertThat(broadcaster.published).singleElement().satisfies(p -> assertThat(p.onlyTo()).isEqualTo("c2"));
+
+        broadcaster.published.clear();
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        assertThat(session().version()).isEqualTo(2);
+        assertThat(session().participant(created.participantId()).orElseThrow().connected()).isTrue();
+        assertThat(broadcaster.published).isEmpty();
+
+        connections.disconnect(created.sessionId(), created.participantId(), "c2");
+        assertThat(session().version()).isEqualTo(3);
+        assertThat(session().participant(created.participantId()).orElseThrow().connected()).isFalse();
+        assertThat(broadcaster.published).singleElement().satisfies(p -> assertThat(p.onlyTo()).isNull());
+    }
+
+    @Test
+    void aConnectionIsDetachedOnlyOnce() {
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        connections.connect(created.sessionId(), created.participantToken(), "c2");
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        assertThat(session().participant(created.participantId()).orElseThrow().connected()).isTrue();
+    }
+
+    @Test
+    void aConnectionClosedBeforeItsHelloIsProcessedChangesNothing() {
+        broadcaster.closed.add("c1");
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c1"))
+                .isInstanceOf(ConnectResult.ConnectionClosed.class);
+        assertThat(session().version()).isEqualTo(1);
+        assertThat(broadcaster.published).isEmpty();
+    }
+}

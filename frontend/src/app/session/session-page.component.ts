@@ -20,6 +20,7 @@ export function sessionLink(origin: string, sessionId: string): string {
  * principal, sans barre d'action. Avec d'autres : la barre d'action (compteur ou résultat, et ses boutons). En bas,
  * la main « Ta carte » (votant) ou « Tu observes » (observateur). Une région `aria-live="polite"` annonce chaque
  * révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau tour »), quel qu'en soit l'auteur.
+ * Coupure de plus de 2 s : bandeau ambre « Reconnexion… » sous la barre du haut, la table restant visible.
  * Mise en page (`styles/session-layout.css`) : l'écran tient dans la hauteur de la fenêtre, seule la zone de la table
  * (`session-scroll`) défile ; sur téléphone, la main devient un tiroir qui se replie quand le tour est révélé.
  */
@@ -30,6 +31,12 @@ export function sessionLink(origin: string, sessionId: string): string {
   host: { '[class.session-revealed]': 'revealed()' },
   template: `
     <main class="session-page">
+      <!-- Région toujours présente : seul son contenu change, pour que « Reconnexion… » soit annoncé. -->
+      <div class="status-region" role="status">
+        @if (session.reconnecting()) {
+          <div class="status-banner">Reconnexion…</div>
+        }
+      </div>
       <div class="session-scroll">
         <section class="session-table" aria-label="Table des participants">
           <app-participant-table [state]="session.state()" />

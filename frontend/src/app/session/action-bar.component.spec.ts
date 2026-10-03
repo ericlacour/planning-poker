@@ -1,4 +1,4 @@
-import { LOCALE_ID } from '@angular/core';
+import { LOCALE_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +6,7 @@ import hiddenRound from '../../../../contract/examples/session-state/hidden-roun
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { ChangeAction, SessionState } from '../api/contract';
 import { ActionBarComponent, blocksActions, CROSS_CLICK_GUARD_MS } from './action-bar.component';
-import { SessionService } from './session.service';
+import { ConnectionStatus, SessionService } from './session.service';
 
 const ALICE = '3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90';
 const BOB = '7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45';
@@ -23,7 +23,7 @@ describe('ActionBarComponent', () => {
   afterEach(() => vi.useRealTimers());
 
   function render(state: SessionState) {
-    const session = { reveal: vi.fn(), clear: vi.fn() };
+    const session = { reveal: vi.fn(), clear: vi.fn(), connection: signal<ConnectionStatus>('open') };
     TestBed.configureTestingModule({
       providers: [
         { provide: SessionService, useValue: session },
@@ -44,7 +44,11 @@ describe('ActionBarComponent', () => {
       vi.advanceTimersByTime(ms);
       fixture.detectChanges();
     };
-    return { element, session, buttons, labels, show, tick };
+    const setConnection = (status: ConnectionStatus) => {
+      session.connection.set(status);
+      fixture.detectChanges();
+    };
+    return { element, session, buttons, labels, show, tick, setConnection };
   }
 
   it('hidden round: counter, « Effacer les votes » (secondary) and « Révéler les votes » (primary)', () => {
@@ -139,5 +143,15 @@ describe('ActionBarComponent', () => {
     expect(blocksActions(withChange(hiddenRound, 'REVEAL', ALICE))).toBe(false);
     expect(blocksActions(withChange(hiddenRound, 'VOTE', BOB))).toBe(false);
     expect(blocksActions(withChange(hiddenRound, 'ROLE', BOB))).toBe(false);
+  });
+
+  it('a lost connection disables every button at once, until it is back', () => {
+    const { session, buttons, setConnection } = render(hiddenRound as SessionState);
+    setConnection('lost');
+    expect(buttons().every((b) => b.disabled)).toBe(true);
+    buttons()[1].click();
+    expect(session.reveal).not.toHaveBeenCalled();
+    setConnection('open');
+    expect(buttons().every((b) => !b.disabled)).toBe(true);
   });
 });

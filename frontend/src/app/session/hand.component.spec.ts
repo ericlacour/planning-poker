@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +7,7 @@ import revealedObserver from '../../../../contract/examples/session-state/reveal
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { Card, SessionState } from '../api/contract';
 import { HandComponent } from './hand.component';
-import { SessionService } from './session.service';
+import { ConnectionStatus, SessionService } from './session.service';
 
 const ALICE = '3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90';
 const EMMA = '5b6c7d8e-9f0a-4b1c-8d2e-3f4a5b6c7d8e';
@@ -22,7 +23,7 @@ const withMyVote = (vote: Card | null): SessionState => {
 
 describe('HandComponent', () => {
   function render(state: SessionState | null) {
-    const session = { vote: vi.fn() };
+    const session = { vote: vi.fn(), connection: signal<ConnectionStatus>('open') };
     TestBed.configureTestingModule({ providers: [{ provide: SessionService, useValue: session }] });
     const fixture = TestBed.createComponent(HandComponent);
     fixture.componentRef.setInput('state', state);
@@ -34,7 +35,11 @@ describe('HandComponent', () => {
       fixture.componentRef.setInput('state', next);
       fixture.detectChanges();
     };
-    return { element, session, cards, show, fixture };
+    const setConnection = (status: ConnectionStatus) => {
+      session.connection.set(status);
+      fixture.detectChanges();
+    };
+    return { element, session, cards, show, fixture, setConnection };
   }
 
   it('shows nothing before the first snapshot', () => {
@@ -168,5 +173,20 @@ describe('HandComponent', () => {
     const { element, cards } = render(withMyVote(null));
     expect(element.querySelector('[role="toolbar"]')?.hasAttribute('aria-disabled')).toBe(false);
     expect(cards().some((c) => c.hasAttribute('aria-disabled'))).toBe(false);
+  });
+
+  it('a lost connection greys the hand at once (aria-disabled), clicks send nothing, until it is back', () => {
+    const { element, session, cards, setConnection } = render(withMyVote(null));
+    setConnection('lost');
+    expect(element.querySelector('.hand')?.classList).toContain('hand-locked');
+    expect(element.querySelector('.hand-cards')?.getAttribute('aria-disabled')).toBe('true');
+    expect(element.querySelector('.hand-hint')).toBeNull();
+    cards()[3].click();
+    expect(session.vote).not.toHaveBeenCalled();
+
+    setConnection('open');
+    expect(element.querySelector('.hand-cards')?.getAttribute('aria-disabled')).toBeNull();
+    cards()[3].click();
+    expect(session.vote).toHaveBeenCalledTimes(1);
   });
 });

@@ -185,7 +185,7 @@ Tout participant peut effacer le tour en cours, qu'il soit caché ou révélé. 
 
 #### FR-16 : Diffusion en temps réel
 Toute modification de l'état de la session apparaît chez tous les participants connectés en moins d'une seconde, sans recharger la page. Cela concerne l'arrivée ou le départ d'un participant, un changement de rôle, le dépôt ou le retrait d'un vote, et les actions révéler, masquer et effacer.
-- Une déconnexion **explicite** (onglet fermé, départ volontaire) est diffusée dans ce même délai.
+- Une déconnexion **explicite** (onglet fermé, départ volontaire) est diffusée dans ce même délai. Le délai court à partir du moment où le serveur constate la fermeture. Derrière l'hébergeur, ce constat peut prendre environ 5 s : un départ apparaît donc chez les autres en 6 s au plus (décision d'équipe du 2026-10-03, après le test de charge sur Render, voir `deploy/README.md`).
 - Une déconnexion **brutale** (réseau coupé, téléphone en veille) est détectée en 15 s au plus, puis diffusée en moins d'une seconde.
 
 #### FR-17 : Actions simultanées

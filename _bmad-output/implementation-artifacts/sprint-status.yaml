@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-03-2026 09:18
+last_updated: 10-03-2026 16:56
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -69,14 +69,14 @@ action_items:
     action: "Exécuter le test de charge de 10 min (5 × 13) contre Render et consigner
       le résultat dans deploy/README.md (R1)"
     owner: "Eric"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-2-observer-l-écran-de-réveil-sur-render-ap"
     epic: 1
     action: "Observer l'écran de réveil sur Render après une mise en veille et le
       consigner dans deploy/README.md (R3)"
     owner: "Eric"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-3-poser-v1-0-et-tenir-le-premier-atelier-r"
     epic: 1

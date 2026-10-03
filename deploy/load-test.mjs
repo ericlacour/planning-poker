@@ -5,19 +5,24 @@
 //
 // Options : --url (obligatoire, URL http(s) du webservice), --sessions 5, --participants 13, --minutes 10,
 // --churn-seconds 10 (période de départ / retour d'un participant par session), --origin (en-tête Origin envoyé à
-// l'ouverture du WebSocket, à mettre dans ALLOWED_ORIGINS ; aucun par défaut), --timeout-ms 5000.
+// l'ouverture du WebSocket, à mettre dans ALLOWED_ORIGINS ; aucun par défaut), --timeout-ms 10000 (au-delà, une diffusion compte comme non reçue).
 //
 // Chaque session a M − 1 participants connectés en permanence et un participant « mobile » qui quitte puis
 // rejoint la table (fermeture puis réouverture de sa connexion : PRESENCE) toutes les --churn-seconds. Les
 // arrivées initiales par REST (JOIN) sont mesurées aussi. Pour chaque mutation, le script mesure le délai entre
 // la mutation (envoi de la requête, du hello ou de la fermeture) et la réception de l'instantané correspondant
-// par chaque participant connecté. Il envoie `heartbeat` toutes les 5 s sur chaque connexion.
+// par chaque participant connecté. Il envoie `heartbeat` toutes les 5 s sur chaque connexion. Les latences sont
+// aussi détaillées par type de mutation : JOIN (arrivée par REST), PRESENCE+ (connexion ou retour), PRESENCE- (départ).
 //
-// Sortie 1 si une diffusion dépasse 1 s, n'arrive pas, ou si une connexion permanente tombe ; 0 sinon.
+// Sortie 1 si une diffusion dépasse 1 s (6 s pour un départ, PRESENCE-), n'arrive pas, ou si une connexion
+// permanente tombe ; 0 sinon. Le seuil des départs suit la décision d'équipe du 2026-10-03 (FR-16) : derrière
+// Render, la fermeture d'une connexion met environ 5 s à atteindre le webservice.
 // Utilise le WebSocket natif de Node 24 ; aucune dépendance.
 
 const HEARTBEAT_MS = 5_000;
 const LIMIT_MS = 1_000;
+const LIMIT_BY_KIND_MS = { 'PRESENCE-': 6_000 };
+const limitOf = (kind) => LIMIT_BY_KIND_MS[kind] ?? LIMIT_MS;
 
 function parseArgs(argv) {
   const options = {
@@ -27,7 +32,7 @@ function parseArgs(argv) {
     minutes: 10,
     churnSeconds: 10,
     origin: null,
-    timeoutMs: 5_000,
+    timeoutMs: 10_000,
   };
   for (let i = 0; i < argv.length; i += 2) {
     const [key, value] = [argv[i], argv[i + 1]];
@@ -70,6 +75,7 @@ class Expectations {
     this.timeoutMs = timeoutMs;
     this.pending = new Set();
     this.latencies = [];
+    this.latenciesByKind = new Map();
     this.missed = [];
   }
 
@@ -92,7 +98,11 @@ class Expectations {
     for (const expectation of this.pending) {
       if (expectation.waiting.has(peer) && expectation.match(state)) {
         expectation.waiting.delete(peer);
-        this.latencies.push(at - expectation.t0);
+        const latency = at - expectation.t0;
+        this.latencies.push(latency);
+        const kind = expectation.label.split(' ')[0];
+        if (!this.latenciesByKind.has(kind)) this.latenciesByKind.set(kind, []);
+        this.latenciesByKind.get(kind).push(latency);
         if (expectation.waiting.size === 0) {
           clearTimeout(expectation.timer);
           this.pending.delete(expectation);
@@ -240,6 +250,15 @@ function percentile(sorted, p) {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)];
 }
 
+/** « p50 … ms, p95 … ms, p99 … ms, max … ms » d'une liste de latences. */
+function describe(latencies) {
+  const sorted = [...latencies].sort((a, b) => a - b);
+  return (
+    `p50 ${percentile(sorted, 50).toFixed(1)} ms, p95 ${percentile(sorted, 95).toFixed(1)} ms, ` +
+    `p99 ${percentile(sorted, 99).toFixed(1)} ms, max ${(sorted.at(-1) ?? 0).toFixed(1)} ms`
+  );
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const run = { options, expectations: new Expectations(options.timeoutMs), drops: [], ticks: 0 };
@@ -267,16 +286,19 @@ async function main() {
   const ticksPerConnection = run.ticks / Math.max(1, connections);
   for (const session of sessions) for (const peer of session.peers) peer.close();
 
-  const latencies = [...run.expectations.latencies].sort((a, b) => a - b);
-  const max = latencies.at(-1) ?? 0;
-  console.log(
-    `Diffusions mesurées : ${latencies.length} ; latence p50 ${percentile(latencies, 50).toFixed(1)} ms, ` +
-      `p95 ${percentile(latencies, 95).toFixed(1)} ms, p99 ${percentile(latencies, 99).toFixed(1)} ms, ` +
-      `max ${max.toFixed(1)} ms`,
-  );
-  console.log(`tick reçus : ${run.ticks} (≈ ${ticksPerConnection.toFixed(1)} par connexion)`);
+  const latencies = run.expectations.latencies;
+  console.log(`Diffusions mesurées : ${latencies.length} ; latence ${describe(latencies)}`);
   const failures = [];
-  if (max > LIMIT_MS) failures.push(`une diffusion a pris ${max.toFixed(1)} ms (> ${LIMIT_MS} ms)`);
+  for (const kind of ['JOIN', 'PRESENCE+', 'PRESENCE-']) {
+    const ofKind = run.expectations.latenciesByKind.get(kind) ?? [];
+    const limit = limitOf(kind);
+    const late = ofKind.filter((latency) => latency > limit).length;
+    console.log(`  ${kind.padEnd(9)} : ${ofKind.length} ; ${describe(ofKind)} ; au-delà de ${limit / 1000} s : ${late}`);
+    if (late) {
+      failures.push(`${late} diffusions ${kind} au-delà de ${limit / 1000} s (max ${Math.max(...ofKind).toFixed(1)} ms)`);
+    }
+  }
+  console.log(`tick reçus : ${run.ticks} (≈ ${ticksPerConnection.toFixed(1)} par connexion)`);
   if (run.expectations.missed.length) {
     failures.push(`${run.expectations.missed.length} diffusions non reçues, par exemple ${run.expectations.missed[0]}`);
   }
@@ -285,7 +307,7 @@ async function main() {
     for (const failure of failures) console.error(`ÉCHEC : ${failure}`);
     process.exit(1);
   }
-  console.log('OK : aucune diffusion au-delà de 1 s, aucune connexion tombée.');
+  console.log('OK : aucune diffusion au-delà de son seuil (1 s, 6 s pour un départ), aucune connexion tombée.');
   process.exit(0);
 }
 

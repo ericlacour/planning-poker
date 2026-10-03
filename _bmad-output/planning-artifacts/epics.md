@@ -58,7 +58,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   Les cartes `?` et `☕` sont exclues de ces calculs. Sans vote numérique, aucun chiffre ne s'affiche.
 - **FR15 :** Tout participant peut effacer le tour, qu'il soit caché ou révélé. Tous les votes sont supprimés, un nouveau tour caché démarre, et aucun historique n'est conservé. Il n'y a ni confirmation ni garde-fou.
 - **FR16 :** Tout changement (arrivée, départ, rôle, vote, révéler, masquer, effacer) apparaît chez tous en moins d'une seconde, sans recharger la page.
-  - Une déconnexion explicite est diffusée en moins d'une seconde.
+  - Une déconnexion explicite est diffusée en moins d'une seconde après que le serveur a constaté la fermeture. Derrière Render, ce constat prend environ 5 s : un départ apparaît chez les autres en 6 s au plus (décision d'équipe du 2026-10-03, test de charge dans `deploy/README.md`).
   - Une déconnexion brutale est détectée en 15 s au plus, puis diffusée en moins d'une seconde.
 - **FR17 :** En cas d'actions quasi simultanées, la dernière reçue s'applique, et tous les participants aboutissent au même état final.
 
@@ -464,7 +464,7 @@ afin de savoir qui est là avant de commencer (FR6, FR7 pour le rafraîchissemen
 **Étant donné** une connexion ouverte
 **Quand** le temps passe
 **Alors** le client envoie `heartbeat` toutes les 5 s, et le serveur envoie `tick` toutes les 5 s (AD-8).
-**Et** un **test de charge** sur l'instance Render fait tenir 5 sessions de 13 participants (65 connexions) pendant 10 min, avec une diffusion en moins d'une seconde. Le résultat est consigné dans la story. S'il échoue, on applique le repli d'hébergement de la spine (Deferred).
+**Et** un **test de charge** sur l'instance Render fait tenir 5 sessions de 13 participants (65 connexions) pendant 10 min, avec une diffusion en moins d'une seconde (6 s au plus pour un départ, décision du 2026-10-03). Le résultat est consigné dans la story. S'il échoue, on applique le repli d'hébergement de la spine (Deferred).
 
 ### Story 1.6 : Voter à l'aveugle
 
@@ -599,7 +599,7 @@ afin de savoir si l'on peut révéler ou s'il faut attendre quelqu'un (FR6, FR16
 
 **Étant donné** que ce participant ferme son dernier onglet
 **Quand** la connexion se ferme proprement
-**Alors** il passe à `connected: false` chez tous les autres en moins d'une seconde, avec `lastChange.action: PRESENCE` (FR16).
+**Alors** il passe à `connected: false` chez tous les autres en moins d'une seconde après que le serveur a constaté la fermeture, soit 6 s au plus de bout en bout derrière Render, avec `lastChange.action: PRESENCE` (FR16, décision du 2026-10-03).
 
 **Étant donné** une connexion ouverte
 **Quand** le serveur la surveille

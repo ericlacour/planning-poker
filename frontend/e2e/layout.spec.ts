@@ -23,7 +23,10 @@ const CORS = {
 const PC = { width: 1280, height: 650 };
 const PHONE = { width: 390, height: 844 };
 
-/** 13 participants : 11 votants (dont moi, Alice, en premier) puis 2 observateurs ; pseudos longs compris. */
+/**
+ * 13 participants : 11 votants (dont moi, Alice, en premier) puis 2 observateurs ; pseudos longs compris. Chloé,
+ * Hugo et Eric sont déconnectés (story 2.1) : leur place porte « déconnecté ».
+ */
 const PSEUDOS = [
   'Alice',
   'Bob',
@@ -40,6 +43,7 @@ const PSEUDOS = [
   'Eric',
 ];
 const VOTERS = 11;
+const DISCONNECTED = [2, 7, 12];
 const VOTES = ['8', '5', '5', '3', '5', '13', '5', '8', '5', '?', '5'] as const;
 const id = (i: number) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`;
 const SELF = id(0);
@@ -52,7 +56,7 @@ function participants(revealed: boolean, votes: readonly (string | null)[] = VOT
       participantId: id(i),
       pseudo,
       role: voter ? 'VOTER' : 'OBSERVER',
-      connected: i !== 7,
+      connected: !DISCONNECTED.includes(i),
       joinOrder: i + 1,
       hasVoted: vote !== null,
       // Tour caché : seul mon vote m'est envoyé.
@@ -208,6 +212,8 @@ test.describe('PC 1280 × 650, 13 participants', () => {
     const dock = await box(page.locator('.hand-dock'));
     expect(dock.y + dock.height).toBeCloseTo(PC.height, 0);
     await expect(page.locator('.vote-counter')).toHaveText('9 votes sur 11');
+    // Les déconnectés restent comptés dans le M et portent « déconnecté », sans rien faire défiler.
+    await expect(page.locator('.seat.offline .seat-note')).toHaveText(['déconnecté', 'déconnecté', 'déconnecté']);
     await check();
   });
 

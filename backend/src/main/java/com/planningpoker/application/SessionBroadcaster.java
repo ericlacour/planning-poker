@@ -26,4 +26,7 @@ public interface SessionBroadcaster {
 
     /** Construit l'instantané d'une seule connexion rattachée et le met en file d'envoi. */
     void publishTo(Session session, String connectionId);
+
+    /** Demande la fermeture de la connexion, sans attendre ; sans effet si elle est déjà fermée ou inconnue. */
+    void close(String connectionId);
 }

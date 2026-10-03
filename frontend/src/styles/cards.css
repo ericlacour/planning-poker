@@ -76,7 +76,7 @@
   border-radius: 10px;
 }
 
-/* Mentions de place (« visible par toi seul », « n'a pas voté », « votera au prochain tour ») : label en muted-foreground. */
+/* Mentions de place (« déconnecté », « visible par toi seul », « n'a pas voté », « votera au prochain tour ») : label en muted-foreground. */
 .seat-note {
   color: var(--muted-foreground);
   font-family: var(--typography-label-font-family);

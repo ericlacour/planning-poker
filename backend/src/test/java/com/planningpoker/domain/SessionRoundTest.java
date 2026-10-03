@@ -207,7 +207,7 @@ class SessionRoundTest {
     void presenceKeepsTheLateArrivals() {
         Session joined = table().reveal(ALICE, ROUND)
                 .join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"))
-                .connect(FARID).disconnect(FARID);
+                .connect(FARID, "farid-1", NOW).disconnect(FARID, "farid-1");
         assertThat(seat(SessionSnapshot.forRecipient(joined, FARID), FARID).canVoteThisRound()).isFalse();
     }
 }

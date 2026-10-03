@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PongMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -45,7 +46,8 @@ import tools.jackson.databind.json.JsonMapper;
  * est rattachée au participant et reçoit son instantané. Seul celui qui retire la connexion de
  * {@code pendingHellos} poursuit la poignée de main : le délai et le premier message ne se concurrencent jamais.
  * <p>
- * Ensuite : {@code heartbeat} sans effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
+ * Ensuite, tout message et tout pong d'une connexion rattachée comptent comme activité (AD-8) ;
+ * {@code heartbeat} sans autre effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
  * ({@code error {code}}) ; {@code reveal} et {@code clear} confiés au cas d'usage du tour, sans réponse ;
  * {@code hide} et {@code changeRole} conformes ignorés (stories 3.x) ; tout le reste (second {@code hello}, JSON
  * invalide, {@code type} inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
@@ -99,9 +101,10 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
             handshake(session, parsed);
             return;
         }
+        touch(session);
         switch (parsed) {
             case HeartbeatMessage heartbeat -> {
-                // Signe de vie du client : aucun effet.
+                // Signe de vie du client : rien d'autre que l'activité.
             }
             case VoteMessage vote -> vote(session, vote);
             case RevealMessage reveal -> withAttachment(session,
@@ -121,7 +124,13 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
             close(session, INVALID_HELLO);
             return;
         }
+        touch(session);
         broadcaster.send(session.getId(), ServerMessages.ErrorMessage.INVALID_MESSAGE);
+    }
+
+    @Override
+    protected void handlePongMessage(WebSocketSession session, PongMessage message) {
+        touch(session);
     }
 
     @Override
@@ -162,6 +171,11 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
         }
         votes.vote(attachment.sessionId(), attachment.participantId(), vote.roundId(), vote.card())
                 .ifPresent(reason -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.of(reason)));
+    }
+
+    /** Activité d'une connexion rattachée ; ignorée pour une connexion pas (ou plus) rattachée. */
+    private void touch(WebSocketSession session) {
+        withAttachment(session, a -> connections.touch(a.sessionId(), session.getId()));
     }
 
     private void withAttachment(WebSocketSession session, Consumer<WsConnection.Attachment> action) {

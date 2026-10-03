@@ -3,6 +3,7 @@ package com.planningpoker.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.SplittableRandom;
@@ -17,13 +18,17 @@ import com.planningpoker.domain.Session;
 
 class SessionConnectionUseCaseTest {
 
+    private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
+
     private final InMemorySessionStore store = new InMemorySessionStore();
     private final SessionLocks locks = new SessionLocks();
     private final IdGenerator ids = new IdGenerator(new SplittableRandom(5));
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
-    private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster);
+    private final MutableClock clock = new MutableClock(NOW);
+    private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
+            clock);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(Instant.parse("2026-10-02T09:00:00Z"), ZoneOffset.UTC)).create("Alice", Role.VOTER);
+            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
 
     private Session session() {
         return store.find(created.sessionId()).orElseThrow();
@@ -97,5 +102,36 @@ class SessionConnectionUseCaseTest {
                 .isInstanceOf(ConnectResult.ConnectionClosed.class);
         assertThat(session().version()).isEqualTo(1);
         assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void theConnectionIsActiveWhenItOpens() {
+        clock.advance(Duration.ofSeconds(3));
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        assertThat(session().participant(created.participantId()).orElseThrow().connections())
+                .containsEntry("c1", NOW.plusSeconds(3));
+    }
+
+    @Test
+    void activityIsRecordedWithoutVersionNorBroadcast() {
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        broadcaster.published.clear();
+        long version = session().version();
+
+        clock.advance(Duration.ofSeconds(5));
+        connections.touch(created.sessionId(), "c1");
+
+        assertThat(session().version()).isEqualTo(version);
+        assertThat(broadcaster.published).isEmpty();
+        assertThat(session().participant(created.participantId()).orElseThrow().connections())
+                .containsEntry("c1", NOW.plusSeconds(5));
+    }
+
+    @Test
+    void activityOfAnUnknownConnectionOrSessionIsIgnored() {
+        Session before = session();
+        connections.touch(created.sessionId(), "c9");
+        connections.touch("k3Jx9QvT2mLpZ8wR4nYb7A", "c9");
+        assertThat(session()).isSameAs(before);
     }
 }

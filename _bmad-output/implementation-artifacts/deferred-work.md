@@ -38,3 +38,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-reveler-lire-le-resultat-passer-au-ticket-suivant.md`
   summary: Les arrivées tardives (`canVoteThisRound` faux) devront être traitées avec `hide` (3.2) et `changeRole` (3.1) : exclues ou non de `progress.expected`, raison de refus d'un vote sur un tour redevenu caché, marquage d'un observateur devenu votant en tour révélé.
   evidence: Non vérifié (medium si vrai) — aujourd'hui une arrivée tardive n'existe que pendant un tour révélé, où le compteur est masqué ; à trancher dans les specs 3.1 et 3.2 (le schéma `session-state.json` dit déjà qu'un observateur devenu votant en tour révélé ne vote pas ce tour).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-voir-qui-est-vraiment-la.md`
+  summary: Couvrir par un test qu'un message binaire après la poignée de main compte comme activité (variante binaire de `LivenessTest.anyMessageCountsAsActivity`).
+  evidence: `SessionSocketHandler.handleBinaryMessage` appelle `touch`, mais le retirer ne casse aucun test ; seul un client hors contrat (le front envoie du texte) serait touché.

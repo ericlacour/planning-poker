@@ -1,5 +1,6 @@
 package com.planningpoker.application;
 
+import java.time.Clock;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -9,8 +10,9 @@ import com.planningpoker.domain.Participant;
 import com.planningpoker.domain.Session;
 
 /**
- * Ouverture et fermeture d'une connexion WebSocket à une session (FR-6, FR-16). Chaque mutation suit, sous le
- * verrou de la session : charger → règle → {@code version++} si changement → {@code save} → {@code publish} (AD-3).
+ * Ouverture, activité et fermeture d'une connexion WebSocket à une session (FR-6, FR-16, AD-8). Chaque mutation
+ * suit, sous le verrou de la session : charger → règle → {@code version++} si changement → {@code save} →
+ * {@code publish} (AD-3). L'heure n'est lue que par {@link Clock}.
  */
 public class SessionConnectionUseCase {
 
@@ -19,11 +21,14 @@ public class SessionConnectionUseCase {
     private final SessionStore store;
     private final SessionLocks locks;
     private final SessionBroadcaster broadcaster;
+    private final Clock clock;
 
-    public SessionConnectionUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster) {
+    public SessionConnectionUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster,
+            Clock clock) {
         this.store = store;
         this.locks = locks;
         this.broadcaster = broadcaster;
+        this.clock = clock;
     }
 
     /**
@@ -46,7 +51,7 @@ public class SessionConnectionUseCase {
             if (!broadcaster.attach(connectionId, sessionId, participant.id())) {
                 return new ConnectResult.ConnectionClosed();
             }
-            Session connected = session.connect(participant.id());
+            Session connected = session.connect(participant.id(), connectionId, clock.instant());
             store.save(connected);
             if (connected.version() != session.version()) {
                 broadcaster.publish(connected);
@@ -72,7 +77,7 @@ public class SessionConnectionUseCase {
                 return false;
             }
             store.find(sessionId).ifPresent(session -> {
-                Session disconnected = session.disconnect(participantId);
+                Session disconnected = session.disconnect(participantId, connectionId);
                 if (disconnected != session) {
                     store.save(disconnected);
                     if (disconnected.version() != session.version()) {
@@ -85,5 +90,21 @@ public class SessionConnectionUseCase {
         if (detached) {
             LOG.info("Participant {} closed a connection", participantId);
         }
+    }
+
+    /**
+     * Activité reçue sur une connexion rattachée (pong ou message) : sa dernière activité devient maintenant.
+     * Changement caché : ni {@code version++}, ni diffusion (AD-3). Sans effet pour une connexion inconnue.
+     */
+    public void touch(String sessionId, String connectionId) {
+        locks.withLock(sessionId, () -> {
+            store.find(sessionId).ifPresent(session -> {
+                Session touched = session.touch(connectionId, clock.instant());
+                if (touched != session) {
+                    store.save(touched);
+                }
+            });
+            return null;
+        });
     }
 }

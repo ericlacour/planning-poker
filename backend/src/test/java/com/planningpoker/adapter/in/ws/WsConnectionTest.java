@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -116,5 +117,39 @@ class WsConnectionTest {
         assertThat(other.attach("s", participant)).isTrue();
         assertThat(other.attach("s", participant)).isFalse();
         assertThat(other.markClosed()).isEqualTo(new WsConnection.Attachment("s", participant));
+    }
+
+    @Test
+    void aProtocolPingGoesThroughTheSendQueueInOrder() throws Exception {
+        CountDownLatch release = new CountDownLatch(1);
+        WsConnection connection = connection(release);
+        connection.enqueue(new TextMessage("before"));
+        connection.enqueue(new PingMessage());
+        connection.enqueue(new TextMessage("after"));
+        release.countDown();
+        verify(session, timeout(2_000).times(3)).sendMessage(any());
+        assertThat(sent).hasSize(3);
+        assertThat(sent.get(0)).isEqualTo("before");
+        assertThat(sent.get(2)).isEqualTo("after");
+        verify(session).sendMessage(any(PingMessage.class));
+    }
+
+    @Test
+    void aDetachedConnectionIsNeverAttachedAgain() throws Exception {
+        WsConnection connection = connection(new CountDownLatch(0));
+        UUID participant = UUID.randomUUID();
+        assertThat(connection.attach("s", participant)).isTrue();
+        assertThat(connection.detach()).isEqualTo(new WsConnection.Attachment("s", participant));
+        assertThat(connection.attachment()).isNull();
+        assertThat(connection.detach()).isNull();
+        assertThat(connection.attach("s", participant)).isFalse();
+        assertThat(connection.markClosed()).isNull();
+    }
+
+    @Test
+    void closeLaterClosesOnTheSenderExecutor() throws Exception {
+        WsConnection connection = connection(new CountDownLatch(0));
+        connection.closeLater(CloseStatus.SESSION_NOT_RELIABLE);
+        verify(session, timeout(2_000)).close(CloseStatus.SESSION_NOT_RELIABLE);
     }
 }

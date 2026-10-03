@@ -97,7 +97,8 @@ const revealed = (summary: object = MOCKUP_SUMMARY, version = 9) => ({
 });
 
 /** Webservice simulé : éveillé, session existante, jeton rangé ; le faux WebSocket envoie `snapshot`. */
-async function openSession(page: Page, snapshot: object) {
+/** `answerOnce` : seul le premier `hello` reçoit son instantané (reconnexion qui n'aboutit pas). */
+async function openSession(page: Page, snapshot: object, answerOnce = false) {
   const consoleErrors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
@@ -117,11 +118,15 @@ async function openSession(page: Page, snapshot: object) {
     SESSION_ID,
     TOKEN,
   ]);
-  const server = await fakeSessionSocket(page, SESSION_ID, (ws) => ws.send(JSON.stringify(snapshot)));
+  let hellos = 0;
+  const server = await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    if (hellos++ === 0 || !answerOnce) ws.send(JSON.stringify(snapshot));
+  });
   await page.goto(`/s/${SESSION_ID}`);
   await expect(page.locator('.seat')).toHaveCount(PSEUDOS.length);
   return {
     send: (next: object) => server.routes[0].send(JSON.stringify(next)),
+    cut: () => server.routes[0].close({ code: 1006, reason: '' }),
     check: async () => {
       expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)).toEqual([]);
       expect(consoleErrors).toEqual([]);
@@ -214,6 +219,27 @@ test.describe('PC 1280 × 650, 13 participants', () => {
     await expect(page.locator('.vote-counter')).toHaveText('9 votes sur 11');
     // Les déconnectés restent comptés dans le M et portent « déconnecté », sans rien faire défiler.
     await expect(page.locator('.seat.offline .seat-note')).toHaveText(['déconnecté', 'déconnecté', 'déconnecté']);
+    await check();
+  });
+
+  test('reconnexion : le bandeau « Reconnexion… » s’ajoute sous la barre du haut sans faire défiler la page', async ({
+    page,
+  }) => {
+    const { cut, check } = await openSession(page, hidden(), true);
+    await cut();
+    const banner = page.locator('.status-banner');
+    await expect(banner).toHaveText('Reconnexion…', { timeout: 5_000 });
+
+    const overflow = await pageOverflow(page);
+    expect(overflow.vertical).toBeLessThanOrEqual(0);
+    expect(overflow.horizontal).toBeLessThanOrEqual(0);
+    const bannerBox = await box(banner);
+    const topBar = await box(page.locator('header.top-bar'));
+    expect(bannerBox.y).toBeGreaterThanOrEqual(topBar.y + topBar.height - 0.5);
+    for (const locator of [page.locator('header.top-bar'), banner, actionBar(page), page.locator('.hand-dock')]) {
+      expect(await inViewport(page, locator)).toBe(true);
+    }
+    await expect(page.locator('.seat')).toHaveCount(PSEUDOS.length);
     await check();
   });
 

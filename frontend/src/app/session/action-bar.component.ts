@@ -25,7 +25,7 @@ export function blocksActions(state: SessionState): boolean {
  * son intention avec le `roundId` courant, sans confirmation. Sur téléphone (< 600 px), le panneau intégré laisse
  * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
  * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
- * trop tôt ne tombe pas sur le nouveau bouton.
+ * trop tôt ne tombe pas sur le nouveau bouton. Connexion perdue : boutons inactifs jusqu'à son rétablissement.
  */
 @Component({
   selector: 'app-action-bar',
@@ -44,14 +44,14 @@ export function blocksActions(state: SessionState): boolean {
       <div class="action-buttons">
         @if (revealed()) {
           <button type="button" class="btn btn-secondary" disabled>Masquer</button>
-          <button type="button" class="btn btn-primary" [disabled]="guarded()" (click)="session.clear()">
+          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.clear()">
             Nouveau tour
           </button>
         } @else {
-          <button type="button" class="btn btn-secondary" [disabled]="guarded()" (click)="session.clear()">
+          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.clear()">
             Effacer les votes
           </button>
-          <button type="button" class="btn btn-primary" [disabled]="guarded()" (click)="session.reveal()">
+          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.reveal()">
             Révéler les votes
           </button>
         }
@@ -68,6 +68,8 @@ export class ActionBarComponent {
   protected readonly revealed = computed(() => this.state().round.status === 'REVEALED');
   /** Boutons inactifs pendant 1 s après un changement d'état fait par un autre. */
   protected readonly guarded = signal(false);
+  /** Boutons inactifs : garde de 1 s, ou connexion pas (encore) rétablie. */
+  protected readonly inactive = computed(() => this.guarded() || this.session.connection() !== 'open');
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private lastSeen: SessionState | null = null;

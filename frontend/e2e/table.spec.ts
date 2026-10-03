@@ -84,11 +84,12 @@ test('la table en direct : votants d\'abord, ma place en tête des observateurs 
   await page.waitForTimeout(200);
   await expect(seatNames(page)).toHaveCount(6);
 
-  // Une coupure (hors 4401/4404) laisse la dernière table, sans reconnexion.
+  // Une coupure (hors 4401/4404) laisse la dernière table affichée et rejoue hello sur une nouvelle connexion
+  // (story 2.2) ; son premier instantané fait foi, quelle que soit sa version.
   await ws.close({ code: 1011, reason: '' });
-  await page.waitForTimeout(300);
-  await expect(seatNames(page)).toHaveCount(6);
-  expect(server.routes).toHaveLength(1);
+  await expect.poll(() => server.routes.length).toBe(2);
+  await expect(seatNames(page)).toHaveText(['Alice', 'Bob', 'Chloé', 'David', 'Emma (toi)']);
+  expect(server.received.filter((m) => (m as { type: string }).type === 'hello')).toHaveLength(2);
   await check();
 });
 

@@ -2,7 +2,8 @@
 title: 'Story 2.2 : se reconnecter tout seul après une coupure'
 type: 'feature'
 created: '2026-10-03'
-status: 'draft'
+status: 'done'
+baseline_commit: '96795b1d467f14d5b21f86c189c271655fada79d'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -66,12 +67,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/src/app/session/session.service.ts` -- signal en lecture seule `connection: 'connecting' | 'open' | 'lost'` (`open` au premier `sessionState` d'un socket) et `reconnecting: boolean` (vrai après 2 s de perte) ; séquence de reconnexion, chien de garde de 12 s, écoute de `online` et `visibilitychange` retirée à la destruction ; intentions refusées hors `open`.
-- [ ] `frontend/src/app/session/session.service.spec.ts` -- couvrir chaque ligne de la matrice avec des minuteries simulées : délais exacts de la séquence, chien de garde à 11,999 s / 12 s, `online`, fin `4404`/`4401` qui arrête tout, première `version` acceptée, intention non envoyée pendant la perte.
-- [ ] `frontend/src/app/session/hand.component.ts`, `action-bar.component.ts` -- désactivées tant que `connection()` n'est pas `open` ; tests unitaires associés.
-- [ ] `frontend/src/app/session/session-page.component.ts`, `styles/session-layout.css` -- bandeau `status-banner` quand `reconnecting()` ; test du composant.
-- [ ] `frontend/e2e/reconnect.spec.ts` (nouveau) -- coupure brève sans bandeau ; coupure longue avec bandeau puis retour, vote intact ; redémarrage (`1001` puis `4404`) jusqu'à « Session introuvable » ; onglet caché 20 min en horloge simulée, le faux serveur répondant `tick` à chaque `heartbeat`, sans seconde connexion.
-- [ ] `frontend/e2e/table.spec.ts` -- inverser l'attente « sans reconnexion » après `1011`.
+- [x] `frontend/src/app/session/session.service.ts` -- signal en lecture seule `connection: 'connecting' | 'open' | 'lost'` (`open` au premier `sessionState` d'un socket) et `reconnecting: boolean` (vrai après 2 s de perte) ; séquence de reconnexion, chien de garde de 12 s, écoute de `online` et `visibilitychange` retirée à la destruction ; intentions refusées hors `open`.
+- [x] `frontend/src/app/session/session.service.spec.ts` -- couvrir chaque ligne de la matrice avec des minuteries simulées : délais exacts de la séquence, chien de garde à 11,999 s / 12 s, `online`, fin `4404`/`4401` qui arrête tout, première `version` acceptée, intention non envoyée pendant la perte.
+- [x] `frontend/src/app/session/hand.component.ts`, `action-bar.component.ts` -- désactivées tant que `connection()` n'est pas `open` ; tests unitaires associés.
+- [x] `frontend/src/app/session/session-page.component.ts`, `styles/session-layout.css` -- bandeau `status-banner` quand `reconnecting()` ; test du composant.
+- [x] `frontend/e2e/reconnect.spec.ts` (nouveau) -- coupure brève sans bandeau ; coupure longue avec bandeau puis retour, vote intact ; redémarrage (`1001` puis `4404`) jusqu'à « Session introuvable » ; onglet caché 20 min en horloge simulée, le faux serveur répondant `tick` à chaque `heartbeat`, sans seconde connexion.
+- [x] `frontend/e2e/table.spec.ts` -- inverser l'attente « sans reconnexion » après `1011`.
 
 **Acceptance Criteria:**
 - Given une coupure en cours, when un participant clique une carte ou un bouton, then rien n'est envoyé et rien ne change à l'écran.
@@ -92,3 +93,22 @@ context:
 
 **Manual checks (if no CLI):**
 - Après déploiement : redémarrer le webservice Render pendant une séance ; chacun voit « Reconnexion… » puis « Session introuvable ».
+
+## Review Triage Log
+
+| # | Source | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | blind | Statut de la spec et du suivi de sprint différents ; 2.1 passée à `done` | false | L'étape 5 synchronise le suivi ; 2.1 est fusionnée (PR #7). | rejeté |
+| 2 | blind, edge | Région `role="status"` insérée déjà remplie : « Reconnexion… » souvent pas annoncé | medium | Le bandeau et son rôle naissent ensemble dans le `@if`. | patch : région `status-region` toujours présente, seul son contenu change |
+| 3 | blind | Retour de la connexion non annoncé | low | Non demandé ; la main redevient active. | rejeté |
+| 4 | blind | `disabled` natif sur la barre d'action fait perdre le focus pendant la coupure | low | Réel, mais la spec impose `disabled` ; un clavier retrouve vite la barre. | rejeté |
+| 5 | blind | Le chien de garde de 12 s coupe une poignée de main lente (réveil Render) | low | Voulu par la spec (délai dès la création) ; une tentative suivante aboutit une fois le serveur réveillé. | rejeté |
+| 6 | blind | Le test « onglet caché 20 min » ne reproduit pas le ralentissement réel | false | Le vrai serveur envoie `tick` toutes les 5 s de lui-même ; le faux serveur le modélise. | rejeté |
+| 7 | blind, vgap | Retrait des écouteurs et `visibilitychange` vers `hidden` non testés | low | Vérifié : aucun test ne les exerce. | patch : deux tests ajoutés |
+| 8 | vgap | Deux échecs rapides puis retour avant 2 s : absence de bandeau non testée | low | Le code est correct, le cas n'était pas couvert. | patch : test ajouté |
+| 9 | blind | `table.spec` ne vérifie plus la table pendant la coupure | low | La reconnexion est immédiate ; l'assertion serait une course. Couvert par `reconnect.spec.ts`. | rejeté |
+| 10 | blind | CSS du bandeau : marges et taille de police codée en dur | low | Les marges latérales viennent de `.session-page` ; police remplacée par le jeton. | patch (jetons) |
+| 11 | blind | Échec de la première connexion : « Reconnexion… » sur des places vides | false | Voulu : la relecture UX demandait de basculer en « Reconnexion… ». | rejeté |
+| 12 | blind | Compteur d'attente non remis à zéro après un retour par `online` | false | `receive` remet `attempts` à 0 au premier instantané, quel que soit le déclencheur. | rejeté |
+| 13 | blind | Position du bandeau comparée à la hauteur de la barre et non à son bas | low | Correction directe. | patch |
+| 14 | blind | Conversions de type risquées dans `reconnect.spec.ts` | low | Correction directe : attente de la valeur non nulle. | patch |

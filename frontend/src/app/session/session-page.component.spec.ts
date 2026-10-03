@@ -9,14 +9,23 @@ import revealedTie from '../../../../contract/examples/session-state/revealed-ti
 import { SessionState } from '../api/contract';
 import { TopBarState } from '../top-bar/top-bar-state';
 import { SessionPageComponent, sessionLink } from './session-page.component';
-import { SessionService } from './session.service';
+import { ConnectionStatus, SessionService } from './session.service';
 
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
 
 describe('SessionPageComponent', () => {
   function render() {
     const state = signal<SessionState | null>(null);
-    const session = { state, connect: vi.fn(), disconnect: vi.fn(), vote: vi.fn(), reveal: vi.fn(), clear: vi.fn() };
+    const session = {
+      state,
+      connection: signal<ConnectionStatus>('open'),
+      reconnecting: signal(false),
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      vote: vi.fn(),
+      reveal: vi.fn(),
+      clear: vi.fn(),
+    };
     TestBed.configureTestingModule({
       providers: [
         { provide: SessionService, useValue: session },
@@ -91,7 +100,9 @@ describe('SessionPageComponent', () => {
     const { element, show } = render();
     show(hiddenRound);
     const main = element.querySelector('main.session-page');
-    expect(main?.firstElementChild?.classList).toContain('session-scroll');
+    // Sous la région du bandeau « Reconnexion… » (vide hors reconnexion), la zone de la table.
+    expect(main?.firstElementChild?.classList).toContain('status-region');
+    expect(main?.children[1]?.classList).toContain('session-scroll');
     expect(element.querySelector('.session-scroll > .session-table')).not.toBeNull();
     expect(element.lastElementChild?.classList).toContain('hand-dock');
   });
@@ -161,5 +172,28 @@ describe('SessionPageComponent', () => {
     expect(topBar.shareUrl()).toBe(`${location.origin}/s/${SESSION_ID}`);
     fixture.destroy();
     expect(topBar.shareUrl()).toBeNull();
+  });
+
+  it('shows the amber « Reconnexion… » banner while reconnecting, above the table that stays visible', () => {
+    const { fixture, element, session, show } = render();
+    show({ ...hiddenRound, selfParticipantId: hiddenRound.participants[0].participantId });
+    const region = element.querySelector('main')?.firstElementChild;
+    expect(region?.getAttribute('role')).toBe('status');
+    expect(region?.textContent?.trim()).toBe('');
+    expect(element.querySelector('.status-banner')).toBeNull();
+
+    session.reconnecting.set(true);
+    fixture.detectChanges();
+    const banner = element.querySelector('.status-banner');
+    expect(banner?.textContent?.trim()).toBe('Reconnexion…');
+    // Même région qu'avant : elle n'est pas recréée, seul son contenu change.
+    expect(element.querySelector('main')?.firstElementChild).toBe(region);
+    expect(banner?.parentElement).toBe(region);
+    expect(element.querySelectorAll('.seat')).toHaveLength(hiddenRound.participants.length);
+
+    session.reconnecting.set(false);
+    fixture.detectChanges();
+    expect(element.querySelector('.status-banner')).toBeNull();
+    expect(element.querySelector('main')?.firstElementChild).toBe(region);
   });
 });

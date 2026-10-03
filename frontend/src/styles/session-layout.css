@@ -34,6 +34,26 @@ app-session-page {
   padding: var(--spacing-4) var(--spacing-margin-mobile) var(--spacing-3);
 }
 
+/* Bandeau « Reconnexion… » (status-banner) : ambre, réservé à la reconnexion (DESIGN.md › Colors). Sa région
+   `status-region` reste dans la page, vide hors reconnexion ; les marges latérales viennent de `.session-page`. */
+.status-region {
+  flex: none;
+}
+
+.status-banner {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--spacing-touch-min);
+  margin-bottom: var(--spacing-3);
+  padding: 0 var(--spacing-4);
+  border-radius: var(--rounded-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+}
+
 /* Zone de la table : la seule qui défile quand la fenêtre est moins haute que le budget. */
 .session-scroll {
   flex: 0 1 auto;

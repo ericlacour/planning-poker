@@ -72,11 +72,15 @@ export class HandComponent {
   });
   protected readonly myVote = computed(() => this.me()?.vote ?? null);
   /**
-   * Main active : tour caché et vote permis pour ce tour. Sinon elle est grisée (`aria-disabled`) mais garde le
-   * focus, pour qu'une révélation ne le fasse pas sauter ; ses clics sont sans effet.
+   * Main active : connexion rétablie, tour caché et vote permis pour ce tour. Sinon elle est grisée
+   * (`aria-disabled`) mais garde le focus, pour qu'une révélation ou une coupure ne le fasse pas sauter ; ses clics
+   * sont sans effet.
    */
   protected readonly open = computed(
-    () => this.state()?.round.status === 'HIDDEN' && this.me()?.canVoteThisRound === true,
+    () =>
+      this.session.connection() === 'open' &&
+      this.state()?.round.status === 'HIDDEN' &&
+      this.me()?.canVoteThisRound === true,
   );
   /** Seul arrêt de tabulation : la dernière carte visitée, sinon la carte choisie, sinon la première. */
   protected readonly activeIndex = computed(() => {

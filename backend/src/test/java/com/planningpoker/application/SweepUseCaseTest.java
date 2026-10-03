@@ -1,0 +1,198 @@
+package com.planningpoker.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.SplittableRandom;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+
+import com.planningpoker.adapter.out.memory.InMemorySessionStore;
+import com.planningpoker.domain.ChangeAction;
+import com.planningpoker.domain.IdGenerator;
+import com.planningpoker.domain.LastChange;
+import com.planningpoker.domain.Role;
+import com.planningpoker.domain.Session;
+
+class SweepUseCaseTest {
+
+    private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
+    private static final Duration TIMEOUT = Duration.ofSeconds(15);
+
+    private final InMemorySessionStore store = new InMemorySessionStore();
+    private final SessionLocks locks = new SessionLocks();
+    private final IdGenerator ids = new IdGenerator(new SplittableRandom(7));
+    private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
+    private final MutableClock clock = new MutableClock(NOW);
+    private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
+            clock);
+    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT);
+    private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
+            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+
+    private Session session() {
+        return store.find(created.sessionId()).orElseThrow();
+    }
+
+    private boolean connected() {
+        return session().participant(created.participantId()).orElseThrow().connected();
+    }
+
+    private void connect(String connectionId) {
+        connections.connect(created.sessionId(), created.participantToken(), connectionId);
+    }
+
+    @Test
+    void aConnectionIsNotClosedBeforeTheTimeout() {
+        connect("c1");
+        broadcaster.published.clear();
+
+        clock.advance(TIMEOUT.minusMillis(1));
+        sweep.sweep();
+
+        assertThat(connected()).isTrue();
+        assertThat(broadcaster.attached).containsKey("c1");
+        assertThat(broadcaster.closeRequested).isEmpty();
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void aConnectionSilentForTheTimeoutIsDetachedClosedAndThePresenceChangeIsPublished() {
+        connect("c1");
+        broadcaster.published.clear();
+        long version = session().version();
+
+        clock.advance(TIMEOUT);
+        sweep.sweep();
+
+        assertThat(connected()).isFalse();
+        assertThat(session().version()).isEqualTo(version + 1);
+        assertThat(session().lastChange()).isEqualTo(LastChange.of(ChangeAction.PRESENCE, created.participantId()));
+        assertThat(broadcaster.attached).doesNotContainKey("c1");
+        assertThat(broadcaster.closeRequested).containsExactly("c1");
+        assertThat(broadcaster.published).singleElement().satisfies(p -> {
+            assertThat(p.session()).isSameAs(session());
+            assertThat(p.onlyTo()).isNull();
+        });
+    }
+
+    @Test
+    void anActiveConnectionIsNeverClosed() {
+        connect("c1");
+        for (int i = 0; i < 12; i++) {
+            clock.advance(Duration.ofSeconds(5));
+            connections.touch(created.sessionId(), "c1");
+            sweep.sweep();
+        }
+        assertThat(connected()).isTrue();
+        assertThat(broadcaster.closeRequested).isEmpty();
+    }
+
+    @Test
+    void closingTheSilentTabOfTwoPublishesNothing() {
+        connect("c1");
+        connect("c2");
+        broadcaster.published.clear();
+        long version = session().version();
+
+        clock.advance(Duration.ofSeconds(10));
+        connections.touch(created.sessionId(), "c2");
+        clock.advance(Duration.ofSeconds(5));
+        sweep.sweep();
+
+        assertThat(connected()).isTrue();
+        assertThat(session().version()).isEqualTo(version);
+        assertThat(broadcaster.closeRequested).containsExactly("c1");
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void theSocketClosingAfterTheSweepChangesNothingMore() {
+        connect("c1");
+        clock.advance(TIMEOUT);
+        sweep.sweep();
+        broadcaster.published.clear();
+        Session swept = session();
+
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        connections.touch(created.sessionId(), "c1");
+
+        assertThat(session()).isSameAs(swept);
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void aSweepWithoutSilentConnectionSavesNothing() {
+        connect("c1");
+        Session before = session();
+        sweep.sweep();
+        assertThat(session()).isSameAs(before);
+    }
+
+    @Test
+    void aSessionThatDisappearsDuringTheSweepIsIgnored() {
+        connect("c1");
+        clock.advance(TIMEOUT);
+        SessionStore vanishing = new SessionStore() {
+            @Override
+            public Optional<Session> find(String sessionId) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void save(Session session) {
+                throw new AssertionError("nothing to save");
+            }
+
+            @Override
+            public void delete(String sessionId) {
+            }
+
+            @Override
+            public Collection<Session> all() {
+                return List.of(session());
+            }
+        };
+        new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT).sweep();
+        assertThat(broadcaster.closeRequested).isEmpty();
+    }
+
+    @Test
+    void theRuleIsAppliedToEverySession() {
+        CreateSessionResult other = new CreateSessionUseCase(store, locks, ids, Clock.fixed(NOW, ZoneOffset.UTC))
+                .create("Bob", Role.VOTER);
+        connect("c1");
+        connections.connect(other.sessionId(), other.participantToken(), "c2");
+        clock.advance(TIMEOUT);
+        sweep.sweep();
+        assertThat(broadcaster.closeRequested).containsExactlyInAnyOrder("c1", "c2");
+        UUID bob = other.participantId();
+        assertThat(store.find(other.sessionId()).orElseThrow().participant(bob).orElseThrow().connected()).isFalse();
+    }
+
+    @Test
+    void eachParticipantSweptInTheSamePassGetsItsOwnPresenceChange() {
+        JoinSessionResult bob = new JoinSessionUseCase(store, locks, ids, broadcaster)
+                .join(created.sessionId(), "Bob", Role.VOTER);
+        connect("c1");
+        connections.connect(created.sessionId(), bob.participantToken(), "c2");
+        broadcaster.published.clear();
+        long version = session().version();
+
+        clock.advance(TIMEOUT);
+        sweep.sweep();
+
+        assertThat(broadcaster.published).hasSize(2);
+        assertThat(broadcaster.published).extracting(p -> p.session().version())
+                .containsExactly(version + 1, version + 2);
+        assertThat(broadcaster.published).extracting(p -> p.session().lastChange().byParticipantId())
+                .containsExactlyInAnyOrder(created.participantId(), bob.participantId());
+    }
+}

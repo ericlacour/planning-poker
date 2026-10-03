@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.CloseStatus;
-import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 
@@ -35,7 +35,7 @@ final class WsConnection {
     private final WebSocketSession session;
     private final WebSocketSession out;
     private final Executor senders;
-    private final Queue<TextMessage> queue = new ConcurrentLinkedQueue<>();
+    private final Queue<WebSocketMessage<?>> queue = new ConcurrentLinkedQueue<>();
     private final AtomicLong queuedBytes = new AtomicLong();
     private final AtomicBoolean draining = new AtomicBoolean();
     /** Début de l'envoi en cours ({@link System#nanoTime()}), 0 sans envoi en cours. */
@@ -43,6 +43,7 @@ final class WsConnection {
     private volatile boolean stopped;
 
     private Attachment attachment;
+    private boolean detached;
     private boolean closed;
 
     WsConnection(WebSocketSession session, Executor senders) {
@@ -62,9 +63,9 @@ final class WsConnection {
         return current == null ? "connection " + id() : "participant " + current.participantId();
     }
 
-    /** Rattache la connexion, sauf si elle est déjà fermée. */
+    /** Rattache la connexion, sauf si elle est déjà fermée, rattachée ou détachée. */
     synchronized boolean attach(String sessionId, UUID participantId) {
-        if (closed || attachment != null) {
+        if (closed || detached || attachment != null) {
             return false;
         }
         attachment = new Attachment(sessionId, participantId);
@@ -75,14 +76,29 @@ final class WsConnection {
         return attachment;
     }
 
+    /**
+     * Détache la connexion et renvoie son rattachement, ou {@code null} si elle n'était pas (ou plus) rattachée.
+     * Elle ne reçoit plus rien et ne sera plus jamais rattachée.
+     */
+    synchronized Attachment detach() {
+        Attachment previous = attachment;
+        attachment = null;
+        detached = true;
+        return previous;
+    }
+
+    synchronized boolean isClosed() {
+        return closed;
+    }
+
     /** Note la fermeture et renvoie le rattachement éventuel : un rattachement ultérieur échouera. */
     synchronized Attachment markClosed() {
         closed = true;
         return attachment;
     }
 
-    /** Met le message en file d'envoi, sans jamais bloquer. */
-    void enqueue(TextMessage message) {
+    /** Met le message (texte ou ping de protocole) en file d'envoi, sans jamais bloquer. */
+    void enqueue(WebSocketMessage<?> message) {
         if (stopped || !session.isOpen()) {
             return;
         }
@@ -101,7 +117,7 @@ final class WsConnection {
 
     private void drain() {
         do {
-            TextMessage message;
+            WebSocketMessage<?> message;
             while ((message = queue.poll()) != null) {
                 queuedBytes.addAndGet(-message.getPayloadLength());
                 if (stopped) {
@@ -146,6 +162,11 @@ final class WsConnection {
         }
         stopped = true;
         return true;
+    }
+
+    /** Demande la fermeture à l'exécuteur d'envoi, sans attendre ; sans effet si elle est déjà fermée. */
+    void closeLater(CloseStatus status) {
+        senders.execute(() -> close(status));
     }
 
     /** Ferme la connexion ; sans effet si elle l'est déjà. */

@@ -14,7 +14,10 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.planningpoker.application.SessionBroadcaster;
@@ -26,7 +29,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * Registre des connexions ouvertes et diffusion des instantanés (AD-3, AD-5). Les instantanés sont construits et
  * sérialisés sous le verrou de la session (appelant), puis confiés à la file d'envoi de chaque connexion
- * ({@link WsConnection}), servie hors du verrou. Envoie aussi {@code tick} sur chaque connexion rattachée.
+ * ({@link WsConnection}), servie hors du verrou. Envoie aussi, par cette même file, {@code tick} et un ping de
+ * protocole sur chaque connexion rattachée (AD-8).
  */
 @Component
 public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean {
@@ -36,15 +40,19 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
             Thread.ofVirtual().name("ws-send-", 0).factory());
     private final ScheduledExecutorService ticker = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("ws-tick").factory());
+    private final PingMessage ping = new PingMessage();
     private final Map<String, WsConnection> connections = new ConcurrentHashMap<>();
     private final Map<String, Set<WsConnection>> bySession = new ConcurrentHashMap<>();
     private final TextMessage tick;
 
     public WebSocketBroadcaster(JsonMapper jsonMapper,
-            @Value("${planning-poker.tick-interval:5s}") Duration tickInterval) {
+            @Value("${planning-poker.tick-interval:5s}") Duration tickInterval,
+            @Value("${planning-poker.ping-interval:5s}") Duration pingInterval) {
         this.jsonMapper = jsonMapper;
         this.tick = toText(ServerMessages.TickMessage.INSTANCE);
-        ticker.scheduleAtFixedRate(this::tickAll, tickInterval.toMillis(), tickInterval.toMillis(),
+        ticker.scheduleAtFixedRate(() -> sendToAll(tick), tickInterval.toMillis(), tickInterval.toMillis(),
+                TimeUnit.MILLISECONDS);
+        ticker.scheduleAtFixedRate(() -> sendToAll(ping), pingInterval.toMillis(), pingInterval.toMillis(),
                 TimeUnit.MILLISECONDS);
     }
 
@@ -103,13 +111,20 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
         return true;
     }
 
+    /**
+     * Détache la connexion. Encore ouverte, elle reste connue jusqu'à sa fermeture, pour pouvoir être fermée
+     * ({@link #close}) ; sa fermeture renverra alors {@code null} ({@link #closed}).
+     */
     @Override
     public boolean detach(String connectionId) {
-        WsConnection connection = connections.remove(connectionId);
+        WsConnection connection = connections.get(connectionId);
         if (connection == null) {
             return false;
         }
-        WsConnection.Attachment attachment = connection.attachment();
+        WsConnection.Attachment attachment = connection.detach();
+        if (connection.isClosed()) {
+            connections.remove(connectionId);
+        }
         if (attachment == null) {
             return false;
         }
@@ -156,10 +171,18 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
         return toText(ServerMessages.SessionStateMessage.of(SessionSnapshot.forRecipient(session, participantId)));
     }
 
-    private void tickAll() {
+    @Override
+    public void close(String connectionId) {
+        WsConnection connection = connections.get(connectionId);
+        if (connection != null) {
+            connection.closeLater(CloseStatus.SESSION_NOT_RELIABLE);
+        }
+    }
+
+    private void sendToAll(WebSocketMessage<?> message) {
         for (Set<WsConnection> set : bySession.values()) {
             for (WsConnection connection : set) {
-                connection.enqueue(tick);
+                connection.enqueue(message);
             }
         }
     }

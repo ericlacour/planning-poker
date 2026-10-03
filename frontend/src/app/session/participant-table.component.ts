@@ -13,14 +13,16 @@ export interface Seat {
    */
   readonly card: 'empty' | 'back' | { readonly face: Card };
   /**
-   * Mention sous la place : « visible par toi seul » (ma face pendant un tour caché), « votera au prochain tour »
-   * (votant arrivé pendant un tour révélé), « n'a pas voté » (tour révélé, sans vote), ou rien.
+   * Mention sous la place : « déconnecté » (prioritaire, quel que soit le rôle), « visible par toi seul » (ma face
+   * pendant un tour caché), « votera au prochain tour » (votant arrivé pendant un tour révélé), « n'a pas voté »
+   * (tour révélé, sans vote), ou rien. Une seule ligne par place : l'état du vote reste lisible par la carte.
    */
   readonly note: string | null;
 }
 
-/** Mention d'une place, d'après l'instantané seul (`canVoteThisRound`, `vote`, statut du tour). */
+/** Mention d'une place, d'après l'instantané seul (`connected`, `canVoteThisRound`, `vote`, statut du tour). */
 function noteOf(participant: ParticipantState, isSelf: boolean, hidden: boolean, card: Seat['card']): string | null {
+  if (!participant.connected) return 'déconnecté';
   if (participant.role !== 'VOTER') return null;
   if (!participant.canVoteThisRound) return 'votera au prochain tour';
   if (card === 'empty') return hidden ? null : "n'a pas voté";
@@ -58,8 +60,9 @@ export const PENDING_SEATS = 3;
 
 /**
  * Table des participants (`seat-card-empty`, `seat-card-back`, `seat-card-face`, `presence-dot`) : pseudo,
- * pastille de présence, et pour un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la
- * face de ma carte avec « visible par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
+ * pastille de présence (grise, pseudo atténué et mention « déconnecté » pour un participant déconnecté), et pour
+ * un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
+ * par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
  * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
  * « observe ». Avant le premier instantané, des places vides en attente, sans pseudo.
  */

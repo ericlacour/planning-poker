@@ -1,5 +1,6 @@
 package com.planningpoker.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +15,7 @@ import java.util.UUID;
 /**
  * Session de Planning Poker, immuable : chaque règle renvoie une nouvelle session, que le cas d'usage enregistre
  * sous le verrou de la session (AD-3). Une règle sans aucun effet renvoie la même instance ; un changement caché
- * (comme le nombre de connexions d'un participant) donne une nouvelle instance de même {@code version}.
+ * (comme la dernière activité d'une connexion) donne une nouvelle instance de même {@code version}.
  *
  * @param version        incrémentée à chaque changement observable ; 1 à la création
  * @param nextJoinOrder  ordre d'arrivée du prochain participant
@@ -83,38 +84,77 @@ public record Session(String id, List<Participant> participants, long version, S
     }
 
     /**
-     * Une connexion du participant s'ouvre. Seule la première change l'état observable ({@code PRESENCE}).
+     * Une connexion du participant s'ouvre, active à {@code now}. Seule la première change l'état observable
+     * ({@code PRESENCE}).
      *
      * @throws IllegalArgumentException si le participant n'est pas dans la session
      */
-    public Session connect(UUID participantId) {
-        Participant participant = participant(participantId)
-                .orElseThrow(() -> new IllegalArgumentException("unknown participant"));
-        return withConnections(participant, participant.connections() + 1);
+    public Session connect(UUID participantId, String connectionId, Instant now) {
+        Objects.requireNonNull(connectionId, "connectionId");
+        Objects.requireNonNull(now, "now");
+        Participant participant = requireParticipant(participantId);
+        return withParticipant(participant, participant.withActivity(connectionId, now));
     }
 
     /**
      * Une connexion du participant se ferme. Seule la dernière change l'état observable ({@code PRESENCE}).
-     * Sans effet pour un participant absent ou déjà sans connexion.
+     * Sans effet (même instance) pour un participant absent ou une connexion qu'il ne porte pas, ou plus.
      */
-    public Session disconnect(UUID participantId) {
+    public Session disconnect(UUID participantId, String connectionId) {
         return participant(participantId)
-                .filter(Participant::connected)
-                .map(p -> withConnections(p, p.connections() - 1))
+                .filter(p -> p.connections().containsKey(connectionId))
+                .map(p -> withParticipant(p, p.withoutConnection(connectionId)))
                 .orElse(this);
     }
 
-    private Session withConnections(Participant participant, int count) {
+    /**
+     * Activité reçue sur une connexion (pong ou message) : changement caché, de même {@code version}, qui ne se
+     * diffuse pas (AD-3). Sans effet (même instance) pour une connexion inconnue.
+     */
+    public Session touch(String connectionId, Instant now) {
+        Objects.requireNonNull(now, "now");
+        return participants.stream()
+                .filter(p -> p.connections().containsKey(connectionId))
+                .findFirst()
+                .map(p -> withParticipant(p, p.withActivity(connectionId, now)))
+                .orElse(this);
+    }
+
+    /**
+     * Connexions muettes : sans aucune activité depuis {@code timeout} ou plus à {@code now} (AD-8). Le balayeur
+     * les ferme.
+     */
+    public List<OpenConnection> silentConnections(Instant now, Duration timeout) {
+        Instant deadline = now.minus(timeout);
+        List<OpenConnection> silent = new ArrayList<>();
+        for (Participant participant : participants) {
+            participant.connections().forEach((connectionId, lastSeenAt) -> {
+                if (!lastSeenAt.isAfter(deadline)) {
+                    silent.add(new OpenConnection(participant.id(), connectionId));
+                }
+            });
+        }
+        return List.copyOf(silent);
+    }
+
+    /** Une connexion ouverte et le participant qui la porte. */
+    public record OpenConnection(UUID participantId, String connectionId) {
+    }
+
+    /**
+     * Remplace le participant. Seul un changement de présence est observable ({@code version + 1},
+     * {@code PRESENCE}) ; sinon nouvelle instance de même {@code version}.
+     */
+    private Session withParticipant(Participant before, Participant after) {
         List<Participant> updated = participants.stream()
-                .map(p -> p.id().equals(participant.id()) ? p.withConnections(count) : p)
+                .map(p -> p.id().equals(before.id()) ? after : p)
                 .toList();
-        boolean presenceChanged = participant.connected() != (count > 0);
-        if (!presenceChanged) {
+        if (before.connected() == after.connected()) {
             return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
                     votes, lateArrivals);
         }
         return new Session(id, updated, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.PRESENCE, participant.id()), roundStatus, votes, lateArrivals);
+                LastChange.of(ChangeAction.PRESENCE, before.id()), roundStatus, votes, lateArrivals);
     }
 
     /** Le vote du participant pendant le tour courant, s'il a voté. */

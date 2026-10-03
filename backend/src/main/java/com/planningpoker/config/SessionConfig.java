@@ -2,7 +2,9 @@ package com.planningpoker.config;
 
 import java.security.SecureRandom;
 import java.time.Clock;
+import java.time.Duration;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -15,6 +17,7 @@ import com.planningpoker.application.SessionBroadcaster;
 import com.planningpoker.application.SessionConnectionUseCase;
 import com.planningpoker.application.SessionLocks;
 import com.planningpoker.application.SessionStore;
+import com.planningpoker.application.SweepUseCase;
 import com.planningpoker.application.VoteUseCase;
 import com.planningpoker.domain.IdGenerator;
 
@@ -61,8 +64,14 @@ public class SessionConfig {
 
     @Bean
     public SessionConnectionUseCase sessionConnectionUseCase(SessionStore store, SessionLocks locks,
-            SessionBroadcaster broadcaster) {
-        return new SessionConnectionUseCase(store, locks, broadcaster);
+            SessionBroadcaster broadcaster, Clock clock) {
+        return new SessionConnectionUseCase(store, locks, broadcaster, clock);
+    }
+
+    @Bean
+    public SweepUseCase sweepUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster,
+            Clock clock, @Value("${planning-poker.liveness-timeout:15s}") Duration livenessTimeout) {
+        return new SweepUseCase(store, locks, broadcaster, clock, livenessTimeout);
     }
 
     @Bean

@@ -44,7 +44,7 @@ class SessionSnapshotTest {
 
     @Test
     void describesAHiddenRoundWithoutVotes() {
-        Session session = observerFirst().connect(BOB);
+        Session session = observerFirst().connect(BOB, "bob-1", NOW);
         SessionSnapshot snapshot = SessionSnapshot.forRecipient(session, BOB);
 
         assertThat(snapshot.sessionId()).isEqualTo("k3Jx9QvT2mLpZ8wR4nYb7A");

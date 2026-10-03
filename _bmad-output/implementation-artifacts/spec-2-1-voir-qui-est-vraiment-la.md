@@ -2,7 +2,8 @@
 title: 'Story 2.1 : voir qui est vraiment là'
 type: 'feature'
 created: '2026-10-03'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '58112283d66dd2f4842cd148dd19a2654b44b91c'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -71,18 +72,18 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/.../domain/Participant.java`, `Session.java` -- connexions identifiées avec leur dernière activité (`Instant`) ; `connect(participantId, connectionId, now)`, `disconnect(participantId, connectionId)` idempotent par connexion, `touch(connectionId, now)` (changement caché), `silentConnections(now, timeout)` -- le domaine porte la règle des 15 s, testable avec une horloge fixe.
-- [ ] `backend/.../domain/SessionPresenceTest.java` -- couvrir chaque ligne de la matrice côté domaine, dont le seuil exact.
-- [ ] `backend/.../application/SessionConnectionUseCase.java` -- passer l'identifiant de connexion et `Clock` ; ajouter `touch(sessionId, connectionId)` sans diffusion.
-- [ ] `backend/.../application/SweepUseCase.java` (nouveau) -- pour chaque session : sous le verrou, détacher chaque connexion muette, appliquer `disconnect`, `save`, `publish` si la `version` change, puis demander la fermeture du socket ; une session qui disparaît pendant le balayage est ignorée -- AD-8.
-- [ ] `backend/.../application/SessionBroadcaster.java`, `RecordingBroadcaster.java` -- `close(connectionId)` non bloquant.
-- [ ] `backend/.../adapter/in/ws/WsConnection.java`, `WebSocketBroadcaster.java` -- la file accepte un ping ; le `ticker` envoie un ping de protocole à chaque connexion rattachée (intervalle `ping-interval`) ; `close` délégué à l'exécuteur d'envoi.
-- [ ] `backend/.../adapter/in/ws/SessionSocketHandler.java` -- tout message reçu et tout pong d'une connexion rattachée appellent `touch`.
-- [ ] `backend/.../adapter/in/scheduling/SweepScheduler.java` (nouveau) -- lance `SweepUseCase` toutes les `sweep-interval`, arrêté proprement (`DisposableBean`) ; une exception n'arrête pas les passages suivants.
-- [ ] `backend/.../config/SessionConfig.java` -- assembler `SweepUseCase` avec `Clock` et `liveness-timeout`.
-- [ ] Tests application et adaptateur -- balayeur avec horloge fixe (fermeture à 15 s, aucune avant), `touch` sans `version++` ni diffusion, fermeture après balayage sans second `PRESENCE`, ping envoyé par la file.
-- [ ] `frontend/.../participant-table.component.ts`, `styles/table.css` -- déconnecté : mention « déconnecté » prioritaire dans la ligne de mention de la place, pseudo en `--muted-foreground`, opacité inchangée.
-- [ ] `frontend/.../participant-table.component.spec.ts` -- inverser le test l. 93-99 ; vérifier carte inchangée et M inchangé.
+- [x] `backend/.../domain/Participant.java`, `Session.java` -- connexions identifiées avec leur dernière activité (`Instant`) ; `connect(participantId, connectionId, now)`, `disconnect(participantId, connectionId)` idempotent par connexion, `touch(connectionId, now)` (changement caché), `silentConnections(now, timeout)` -- le domaine porte la règle des 15 s, testable avec une horloge fixe.
+- [x] `backend/.../domain/SessionPresenceTest.java` -- couvrir chaque ligne de la matrice côté domaine, dont le seuil exact.
+- [x] `backend/.../application/SessionConnectionUseCase.java` -- passer l'identifiant de connexion et `Clock` ; ajouter `touch(sessionId, connectionId)` sans diffusion.
+- [x] `backend/.../application/SweepUseCase.java` (nouveau) -- pour chaque session : sous le verrou, détacher chaque connexion muette, appliquer `disconnect`, `save`, `publish` si la `version` change, puis demander la fermeture du socket ; une session qui disparaît pendant le balayage est ignorée -- AD-8.
+- [x] `backend/.../application/SessionBroadcaster.java`, `RecordingBroadcaster.java` -- `close(connectionId)` non bloquant.
+- [x] `backend/.../adapter/in/ws/WsConnection.java`, `WebSocketBroadcaster.java` -- la file accepte un ping ; le `ticker` envoie un ping de protocole à chaque connexion rattachée (intervalle `ping-interval`) ; `close` délégué à l'exécuteur d'envoi.
+- [x] `backend/.../adapter/in/ws/SessionSocketHandler.java` -- tout message reçu et tout pong d'une connexion rattachée appellent `touch`.
+- [x] `backend/.../adapter/in/scheduling/SweepScheduler.java` (nouveau) -- lance `SweepUseCase` toutes les `sweep-interval`, arrêté proprement (`DisposableBean`) ; une exception n'arrête pas les passages suivants.
+- [x] `backend/.../config/SessionConfig.java` -- assembler `SweepUseCase` avec `Clock` et `liveness-timeout`.
+- [x] Tests application et adaptateur -- balayeur avec horloge fixe (fermeture à 15 s, aucune avant), `touch` sans `version++` ni diffusion, fermeture après balayage sans second `PRESENCE`, ping envoyé par la file.
+- [x] `frontend/.../participant-table.component.ts`, `styles/table.css` -- déconnecté : mention « déconnecté » prioritaire dans la ligne de mention de la place, pseudo en `--muted-foreground`, opacité inchangée.
+- [x] `frontend/.../participant-table.component.spec.ts` -- inverser le test l. 93-99 ; vérifier carte inchangée et M inchangé.
 
 **Acceptance Criteria:**
 - Given Bob connecté dans deux onglets, when les autres regardent la table, then Bob apparaît une seule fois, connecté.
@@ -107,3 +108,26 @@ context:
 
 **Manual checks (if no CLI):**
 - Après déploiement sur Render : couper le wifi d'un téléphone connecté ; les autres le voient « déconnecté » en 15 à 20 s. Laisser un onglet en arrière-plan 20 min : il reste connecté.
+
+## Review Triage Log
+
+| # | Source | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | blind | Statut de la spec (`in-review`) différent de `sprint-status.yaml` (`in-progress`) | false | L'étape 5 du workflow synchronise le suivi de sprint ; l'écart est transitoire. | rejeté |
+| 2 | blind, edge | Horloge murale : un saut d'horloge (NTP, reprise de VM) ferait tout balayer | low | Réel en théorie, mais AD-8 impose `java.time.Clock` ; saut ≥ 15 s rare sur Render. Correctif = changer de source de temps. | rejeté |
+| 3 | blind | `SweepScheduler.runOnce` n'attrape que `RuntimeException` : une `Error` arrête le minuteur sans bruit | low | `scheduleWithFixedDelay` annule les passages suivants sur toute exception levée. Correctif direct. | patch : `catch (Throwable)` journalisé |
+| 4 | blind, edge | Réglages `ping-interval`, `liveness-timeout`, `sweep-interval` non validés | low | Seule une mauvaise configuration déclenche le problème ; le correctif ajoute des gardes. | rejeté |
+| 5 | blind | Double prise du verrou par message (`touch` puis l'action) | low | Coût négligeable (stockage en mémoire, 13 participants) ; aucun effet observable. | rejeté |
+| 6 | blind, edge | Connexion balayée encore ouverte : messages ignorés, fuite si `afterConnectionClosed` ne vient jamais | low | La connexion est muette depuis 15 s (morte) ; Spring appelle `afterConnectionClosed` après `close`. | rejeté |
+| 7 | blind, vgap | Fermeture réelle du socket balayé jamais vérifiée ; `WebSocketBroadcaster` sans test unitaire | medium | Remettre `connections.remove` dans `detach` laissait tous les tests verts. | patch : `LivenessTest` vérifie la fermeture (4500), nouveau `WebSocketBroadcasterTest` |
+| 8 | blind | `SweepScheduler` démarre dans son constructeur | low | Un passage précoce trouve un stockage vide ; aucun effet. | rejeté |
+| 9 | blind, edge | `connections` / `connectionId` nuls sans message clair | false | Aucun appelant ne passe `null` (identifiants fournis par Spring, cartes construites par le domaine). | rejeté |
+| 10 | blind | Un message invalide compte comme activité | false | Voulu : « n'importe quel message reçu » compte (spec, Always). | rejeté |
+| 11 | blind | JSDoc du composant de table non recoupé | low | Ligne de 190 caractères ; correction directe. | patch |
+| 12 | blind | Même code de fermeture (4500) que le débordement | false | Le contrat ne change pas ; la reconnexion (2.2) se déclenche sur tout code autre que 4401/4404. | rejeté |
+| 13 | vgap | `touch` d'un message binaire non couvert par un test | low | Vérifié par le relecteur ; seul un client hors contrat est concerné. | defer |
+| 14 | vgap | Valeurs 5 s / 15 s / 1 s non épinglées par un test | low | Hygiène de configuration ; valeurs lues dans `application.properties`. | rejeté |
+| 15 | edge | Une exception de `publish`/`close` laisse des sockets détachés ouverts | low | `publish` ne fait que mettre en file ; aucune exception démontrée. | rejeté |
+| 16 | edge | Une session en erreur arrête le passage pour les suivantes | low | Aucune règle du domaine appelée ici ne lève d'exception ; correctif = garde supplémentaire. | rejeté |
+| 17 | edge | `closeLater` après arrêt de l'exécuteur | low | Uniquement à l'arrêt de l'application. | rejeté |
+| 18 | edge | Plusieurs participants balayés au même passage : `version + N`, un seul instantané, `lastChange` du dernier seulement | low | Vérifié : une seule diffusion, `PRESENCE` des autres perdu ; plausible si le wifi d'une salle tombe. | patch : `save` + `publish` par participant, test ajouté |

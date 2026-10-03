@@ -96,6 +96,11 @@
   text-overflow: ellipsis;
 }
 
+/* Participant déconnecté : pseudo en muted-foreground (avec pastille grise et « déconnecté »), opacité inchangée. */
+.seat.offline .seat-pseudo {
+  color: var(--muted-foreground);
+}
+
 .seat-me {
   color: var(--muted-foreground);
   font-weight: 400;

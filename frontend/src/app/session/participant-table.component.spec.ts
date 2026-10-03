@@ -90,12 +90,49 @@ describe('ParticipantTableComponent', () => {
     expect(seats[1].querySelector('.seat-card-empty')).toBeNull();
   });
 
-  it('shows a green presence dot when connected and a grey one otherwise, without a « déconnecté » label', () => {
+  it('shows a disconnected participant with a grey dot, a muted pseudo and « déconnecté », its card unchanged', () => {
     const element = render(table(ALICE));
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
     const dots = [...element.querySelectorAll('.presence-dot')];
     expect(dots.map((d) => d.classList.contains('presence-online'))).toEqual([true, false, true, true, true]);
     expect(dots[1].classList).toContain('presence-offline');
-    expect(element.textContent).not.toContain('déconnecté');
+    expect(seats[1].classList).toContain('offline');
+    expect(seats[1].querySelector('.seat-pseudo')?.textContent).toBe('Bob');
+    expect(seats[1].querySelector('.seat-note')?.textContent).toBe('déconnecté');
+    expect(seats[1].querySelector('.seat-card-empty')).not.toBeNull();
+    expect(element.querySelectorAll('.seat.offline')).toHaveLength(1);
+    expect(element.querySelectorAll('.seat-note')).toHaveLength(1);
+  });
+
+  it('a disconnected participant keeps its back during a hidden round and an observer is also « déconnecté »', () => {
+    const state = hiddenRound as SessionState;
+    const element = render({
+      ...state,
+      participants: state.participants.map((p) => (p.participantId === BOB || p.participantId === EMMA ? { ...p, connected: false } : p)),
+    });
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    const bob = seats.find((s) => s.querySelector('.seat-pseudo')?.textContent === 'Bob');
+    const emma = seats.find((s) => s.querySelector('.seat-pseudo')?.textContent === 'Emma');
+    expect(bob?.querySelector('.seat-card-back')).not.toBeNull();
+    expect(bob?.querySelector('.seat-note')?.textContent).toBe('déconnecté');
+    expect(emma?.querySelector('.seat-card-observer')?.textContent).toBe('observe');
+    expect(emma?.querySelector('.seat-note')?.textContent).toBe('déconnecté');
+  });
+
+  it('revealed round: a disconnected voter without vote shows the empty card and « déconnecté »', () => {
+    const state = revealedTie as SessionState;
+    const element = render({
+      ...state,
+      participants: state.participants.map((p) =>
+        p.participantId === FARID ? { ...p, hasVoted: false, vote: null, connected: false } : p,
+      ),
+    });
+    const farid = [...element.querySelectorAll<HTMLElement>('.seat')].find(
+      (s) => s.querySelector('.seat-pseudo')?.textContent === 'Farid',
+    );
+    expect(farid?.querySelector('.seat-card-empty')).not.toBeNull();
+    expect(farid?.querySelector('.seat-note')?.textContent).toBe('déconnecté');
+    expect(element.textContent).not.toContain("n'a pas voté");
   });
 
   it('during a hidden round: my face with « visible par toi seul », a back for the others who voted, else empty', () => {
@@ -110,7 +147,11 @@ describe('ParticipantTableComponent', () => {
     expect(seats[1].querySelector('.seat-card-back.card-back')).not.toBeNull();
     expect(seats[2].querySelector('.seat-card-empty')).not.toBeNull();
     expect(seats[3].querySelector('.seat-card-back')).not.toBeNull();
-    expect(element.querySelectorAll('.seat-note')).toHaveLength(1);
+    // David, déconnecté dans l'exemple, garde son dos et porte « déconnecté ».
+    expect([...element.querySelectorAll('.seat-note')].map((n) => n.textContent)).toEqual([
+      'visible par toi seul',
+      'déconnecté',
+    ]);
     expect(element.querySelectorAll('.seat-card-face')).toHaveLength(1);
   });
 
@@ -119,7 +160,8 @@ describe('ParticipantTableComponent', () => {
     const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
     // Ma place (Bob) en tête ; le vote d'Alice (8 dans l'exemple) n'est pour moi qu'un dos.
     expect(seats.map((s) => s.querySelector('.seat-pseudo')?.textContent)).toEqual(['Bob', 'Alice', 'Chloé', 'David', 'Emma']);
-    expect(element.querySelector('.seat-note')).toBeNull();
+    expect([...element.querySelectorAll('.seat-note')].map((n) => n.textContent)).toEqual(['déconnecté']);
+    expect(seats[3].querySelector('.seat-note')?.textContent).toBe('déconnecté');
     expect(seats[1].querySelector('.seat-card-back')).not.toBeNull();
     expect(seats[1].querySelector('.seat-card-face')).toBeNull();
     expect(element.querySelectorAll('.seat-card-face')).toHaveLength(0);

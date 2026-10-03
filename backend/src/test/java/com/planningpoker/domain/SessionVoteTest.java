@@ -27,8 +27,8 @@ class SessionVoteTest {
                 .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"))
                 .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"))
                 .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"))
-                .connect(ALICE)
-                .connect(BOB);
+                .connect(ALICE, "alice-1", NOW)
+                .connect(BOB, "bob-1", NOW);
     }
 
     private static Session revealed(Session session) {
@@ -196,7 +196,7 @@ class SessionVoteTest {
 
     @Test
     void presenceChangesKeepTheVotes() {
-        Session session = table().vote(BOB, ROUND, "13").disconnect(BOB).connect(BOB);
+        Session session = table().vote(BOB, ROUND, "13").disconnect(BOB, "bob-1").connect(BOB, "bob-2", NOW);
         assertThat(session.voteOf(BOB)).contains(Card.THIRTEEN);
     }
 

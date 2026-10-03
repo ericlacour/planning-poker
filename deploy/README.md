@@ -87,6 +87,7 @@ Pour vérifier un déploiement, Render n'affiche pas l'étiquette mais le **comm
 ## À savoir sur Render Free
 
 - Le webservice s'endort après 15 minutes sans requête ni message WebSocket. Son réveil peut prendre jusqu'à 2 minutes, pendant lesquelles le front affiche « Réveil du serveur… » (NFR-2). Ouvre l'outil quelques minutes avant l'atelier.
+- Observé le 2026-10-03 sur v0.2 : après une mise en veille, le front affiche bien « Réveil du serveur… » puis ouvre l'application (durée du réveil non mesurée).
 - Pendant une séance, le `heartbeat` envoyé toutes les 5 s garde le webservice éveillé (AD-8).
 - Un seul web service gratuit est prévu (AD-13) : 750 h par mois, pas d'environnement de préproduction.
 - Les libellés de l'interface Render peuvent évoluer. Les réglages ci-dessus décrivent l'intention ; adapte-les aux noms de champs du moment.
@@ -99,7 +100,8 @@ Le script `deploy/load-test.mjs` vérifie la capacité visée : 5 sessions de 13
 - Il garde les connexions ouvertes pendant D minutes (`--minutes`, 10 par défaut) en envoyant `heartbeat` toutes les 5 s.
 - Dans chaque session, un participant quitte la table puis revient (fermeture puis réouverture de sa connexion) toutes les `--churn-seconds` (10 par défaut).
 - Pour chaque changement, il mesure le délai entre la mutation et la réception de l'instantané par chaque participant connecté.
-- Il sort en erreur (code 1) si une diffusion dépasse 1 s ou n'arrive pas, ou si une connexion tombe. Sinon il affiche les latences p50, p95, p99 et max, et sort avec le code 0.
+- Il affiche les latences p50, p95, p99 et max, toutes diffusions confondues puis par type de mutation : `JOIN` (arrivée par REST), `PRESENCE+` (connexion ou retour) et `PRESENCE-` (départ), avec le nombre de diffusions au-delà de 1 s.
+- Il sort en erreur (code 1) si une diffusion dépasse 1 s ou n'arrive pas, ou si une connexion tombe. Sinon il sort avec le code 0.
 
 `ALLOWED_ORIGINS` filtre l'en-tête `Origin` des WebSocket. Le script n'en envoie aucun par défaut ; si le webservice le refuse, passe l'URL du front avec `--origin`.
 
@@ -112,4 +114,6 @@ node deploy/load-test.mjs --url https://planning-poker-api.onrender.com \
 | Date | Cible | Paramètres | Résultat |
 | --- | --- | --- | --- |
 | 2026-10-02 | webservice local (`java -jar`, poste de développement) | 5 × 13, 2 min, départ / retour toutes les 10 s | OK : 1 500 diffusions mesurées, p50 11,7 ms, p95 28,2 ms, p99 38,5 ms, max 65,2 ms ; aucune connexion tombée |
+| 2026-10-03 | Render Free (v0.2), depuis un poste Windows | 5 × 13, 1 min, départ / retour toutes les 10 s | **ÉCHEC** : 1 020 diffusions mesurées, p50 297,8 ms, p95 4 608,6 ms, p99 4 796,3 ms, max 4 797,1 ms ; 65 connexions ouvertes en 9 s, aucune connexion tombée. Environ 5 % des diffusions arrivent en 4,6 à 4,8 s. Hypothèse à vérifier avec le détail par type : la fermeture d'une connexion (`PRESENCE-`) met environ 5 s à traverser Render. |
+| à faire | Render Free | 5 × 13, 1 min, avec le détail par type | à consigner ici après l'exécution |
 | à faire | Render Free | 5 × 13, 10 min | à consigner ici après l'exécution |

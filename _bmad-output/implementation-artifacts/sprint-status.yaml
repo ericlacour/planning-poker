@@ -35,7 +35,7 @@ project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 development_status:
-  epic-1: in-progress
+  epic-1: done
   1-1-le-contrat-d-échange-front-webservice: done
   1-2-ouvrir-l-outil-même-quand-le-serveur-dort: done
   1-3-créer-une-session-et-en-partager-le-lien: done

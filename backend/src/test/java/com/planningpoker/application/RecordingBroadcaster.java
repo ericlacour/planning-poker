@@ -1,0 +1,45 @@
+package com.planningpoker.application;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import com.planningpoker.domain.Session;
+
+/** Diffuseur de test : retient les rattachements et les sessions publiées. */
+final class RecordingBroadcaster implements SessionBroadcaster {
+
+    record Published(Session session, String onlyTo) {
+    }
+
+    final Map<String, UUID> attached = new HashMap<>();
+    final List<Published> published = new ArrayList<>();
+    /** Connexions déjà fermées : leur rattachement échoue. */
+    final List<String> closed = new ArrayList<>();
+
+    @Override
+    public boolean attach(String connectionId, String sessionId, UUID participantId) {
+        if (closed.contains(connectionId) || attached.containsKey(connectionId)) {
+            return false;
+        }
+        attached.put(connectionId, participantId);
+        return true;
+    }
+
+    @Override
+    public boolean detach(String connectionId) {
+        return attached.remove(connectionId) != null;
+    }
+
+    @Override
+    public void publish(Session session) {
+        published.add(new Published(session, null));
+    }
+
+    @Override
+    public void publishTo(Session session, String connectionId) {
+        published.add(new Published(session, connectionId));
+    }
+}

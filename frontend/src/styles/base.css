@@ -48,6 +48,18 @@ app-root {
   color: var(--primary-foreground);
 }
 
+.btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+/* Un bouton inactif passe à 40 % d'opacité (DESIGN.md, action-bar). */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;

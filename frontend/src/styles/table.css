@@ -1,0 +1,134 @@
+/* Écran Session : table des participants (seat-card-empty, presence-dot) et état « Session vide ». */
+/* Géométrie de l'écran (hauteur, zone qui défile, tiroir du téléphone) : session-layout.css. */
+.session-page {
+  width: var(--spacing-content-max);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.session-table {
+  padding: var(--spacing-4);
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: 0 1px 3px rgb(31 35 48 / 6%);
+}
+
+.invite {
+  margin-top: var(--spacing-5);
+  padding: var(--spacing-6) var(--spacing-4);
+  border-radius: var(--rounded-lg);
+  background: var(--surface-muted);
+  text-align: center;
+}
+
+.invite-text {
+  margin-bottom: var(--spacing-2);
+}
+
+.invite-url {
+  margin-bottom: var(--spacing-4);
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.seats {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-3) var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  min-width: 0;
+  min-height: 108px;
+}
+
+.seat-card {
+  flex: none;
+  width: var(--spacing-seat-card-width-pc);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--rounded-card);
+}
+
+.seat-card-empty {
+  border: 2px dashed var(--muted-foreground);
+  background: transparent;
+}
+
+.seat-card-observer {
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.seat-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 20px;
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  white-space: nowrap;
+}
+
+.seat-pseudo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seat-me {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.presence-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--rounded-full);
+}
+
+.presence-online {
+  background: var(--presence-online);
+}
+
+.presence-offline {
+  background: var(--presence-offline);
+}
+
+/* En attente du premier instantané : places vides, sans pseudo. */
+.seat-pending .seat-card-empty {
+  opacity: 0.5;
+}
+
+@media (max-width: 899px) {
+  .seats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .seats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

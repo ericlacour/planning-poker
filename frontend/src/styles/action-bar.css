@@ -1,0 +1,104 @@
+/* Barre d'action (action-bar) : compteur « N votes sur M » ou résultat à gauche ; boutons à droite. */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  min-height: 72px;
+  margin-top: var(--spacing-3);
+  padding: 0 var(--spacing-4) 0 20px;
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: 0 1px 3px rgb(31 35 48 / 6%);
+}
+
+.vote-counter {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+.action-buttons {
+  display: flex;
+  flex: none;
+  gap: var(--spacing-3);
+}
+
+/* Panneau de résultat (result-panel) intégré à la barre d'action sur PC, sur une seule rangée. */
+.result-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-6);
+  min-width: 0;
+  padding: var(--spacing-2) 0;
+}
+
+.result-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.result-label {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.result-value {
+  margin-top: 2px;
+  font-family: var(--typography-result-stat-font-family);
+  font-size: var(--typography-result-stat-font-size);
+  font-weight: var(--typography-result-stat-font-weight);
+  line-height: var(--typography-result-stat-line-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Moyenne : result-stat agrandi à 28 px, séparée des autres chiffres par un filet. */
+.result-average {
+  padding-right: var(--spacing-6);
+  border-right: 1px solid var(--border);
+}
+
+.result-average .result-value {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.result-count {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.result-none {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+/* Badge « Consensus ! » (consensus-badge) : vert, l'information est aussi dans le texte. */
+.consensus-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 var(--spacing-3);
+  border-radius: var(--rounded-full);
+  background: var(--success-soft);
+  color: var(--success);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: 700;
+  line-height: var(--typography-label-line-height);
+  white-space: nowrap;
+}

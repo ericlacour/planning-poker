@@ -54,7 +54,7 @@ Le texte de l'interface est court, direct et chaleureux, et **tutoie** l'utilisa
 Libellés fixes, à reprendre tels quels :
 - **Boutons :** « Créer une session », « Rejoindre », « Copier le lien », « Révéler les votes », « Masquer », « Nouveau tour », « Effacer les votes », « Réessayer ».
 - **Choix du rôle :** « Je vote », « J'observe », « Je veux voter ».
-- **Champs et messages :** « Ton pseudo », « Ton rôle », « Choisis ta carte », « Tu observes », « Connexion… », « Partage le lien pour inviter ton équipe », « Aucun votant », « visible par toi seul », « votera au prochain tour », « Impossible de joindre le serveur. ».
+- **Champs et messages :** « Ton pseudo », « Ton rôle », « Choisis ta carte », « Tu observes », « Connexion… », « Partage le lien pour inviter ton équipe », « Aucun votant », « visible par toi seul », « votera au prochain tour », « Impossible de joindre le serveur. », « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. », « Trop de sessions créées depuis ton réseau. Patiente une minute. », « Cette session est complète. » (story 2.6, validés par Eric le 2026-10-03).
 
 ## Component Patterns
 
@@ -95,6 +95,9 @@ Ce tableau décrit le **comportement** des composants. Leur apparence est décri
 | Envoi en cours | Accueil, Rejoindre | Le bouton affiche « Connexion… » et devient inactif. Le champ reste lisible. |
 | Échec réseau à l'envoi | Accueil, Rejoindre | Le message « Impossible de joindre le serveur. » s'affiche sous le bouton, avec une icône. La saisie est conservée, et le bouton redevient actif pour réessayer. |
 | Pseudo refusé | Rejoindre | Message sous le champ : « Ce pseudo est déjà pris dans cette session. » La comparaison ignore les majuscules et les espaces en début et en fin (FR-2). |
+| Trop de sessions ouvertes | Accueil | Le serveur refuse la création, parce que le plafond de sessions en mémoire est atteint (story 2.6). Message sous le bouton : « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. » La saisie est conservée, et le bouton redevient actif. |
+| Trop de créations depuis le même réseau | Accueil | Le serveur refuse la création, parce que trop de sessions ont été créées depuis la même adresse en une minute (story 2.6). Message sous le bouton : « Trop de sessions créées depuis ton réseau. Patiente une minute. » La saisie est conservée. |
+| Session complète | Rejoindre | Le serveur refuse l'arrivée, parce que la session a atteint son plafond de participants (story 2.6). Message sous le champ : « Cette session est complète. » La saisie est conservée. |
 | Réveil du serveur (0 à 3 min) | Réveil du serveur | Petite animation de cartes qui se battent, texte « Réveil du serveur… Ça peut prendre jusqu'à 2 minutes. » (NFR-2). |
 | Serveur indisponible (au-delà de 3 min) | Réveil du serveur | Texte « Le serveur ne répond pas. », bouton principal « Réessayer » (NFR-2). |
 

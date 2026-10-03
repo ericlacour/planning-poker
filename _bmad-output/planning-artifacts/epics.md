@@ -783,7 +783,7 @@ Plafonds retenus par Eric le 2026-10-03 : de 2 à 4 fois au-dessus des minimums 
 **Quand** la story est livrée
 **Alors** `openapi.yaml` décrit les réponses `413`, `429` et `503` et les codes `SESSION_FULL`, `SESSION_LIMIT_REACHED` et `TOO_MANY_REQUESTS`, avec un exemple chacun. Le contrat n'évolue que par ajout (AD-13).
 **Et** `asyncapi.yaml` décrit la fermeture `1009`.
-**Et** les nouveaux libellés sont ajoutés à EXPERIENCE › Voice and Tone et validés par Eric avant l'implémentation (UX-DR18).
+**Et** les nouveaux libellés, validés par Eric le 2026-10-03, figurent dans EXPERIENCE › Voice and Tone et State Patterns. L'interface les reprend mot pour mot (UX-DR18).
 
 **Étant donné** les plafonds
 **Quand** on les teste

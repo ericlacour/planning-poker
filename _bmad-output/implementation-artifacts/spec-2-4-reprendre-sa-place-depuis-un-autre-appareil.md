@@ -2,9 +2,10 @@
 title: 'Story 2.4 : reprendre sa place depuis un autre appareil'
 type: 'feature'
 created: '2026-10-04'
-status: 'draft'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '083031da3dcbc3882e4d146849929352cf0c296f'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-2-context.md'
 ---

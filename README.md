@@ -38,3 +38,7 @@ bash deploy/render-deploy.test.sh
 
 - Webservice : `PORT` (8080 par défaut) et `ALLOWED_ORIGINS` (origines `http(s)://hôte[:port]` du front, séparées par des virgules ; aucune par défaut ; un joker `*` ou un chemin empêche le démarrage).
 - Front : `API_BASE_URL` au build, qui produit `config.json` et la CSP du `index.html`.
+
+## Suivi du sprint
+
+`node scripts/sprint-board.mjs` régénère `_bmad-output/implementation-artifacts/sprint-board.md`, une vue lisible de `sprint-status.yaml` : avancement par epic, stories avec lien vers leur spec, actions de rétrospective groupées par statut. Ajouter `--stdout` pour l'afficher dans le terminal.

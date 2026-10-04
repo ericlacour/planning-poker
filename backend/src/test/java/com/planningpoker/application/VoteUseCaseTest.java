@@ -19,14 +19,17 @@ import com.planningpoker.domain.VoteRejectedException;
 
 class VoteUseCaseTest {
 
+    private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
+
     private final InMemorySessionStore store = new InMemorySessionStore();
     private final SessionLocks locks = new SessionLocks();
     private final IdGenerator ids = new IdGenerator(new SplittableRandom(7));
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
     private final VoteUseCase votes = new VoteUseCase(store, locks, broadcaster);
     private final CreateSessionResult alice = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(Instant.parse("2026-10-02T09:00:00Z"), ZoneOffset.UTC)).create("Alice", Role.VOTER);
-    private final JoinSessionResult emma = new JoinSessionUseCase(store, locks, ids, broadcaster)
+            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+    private final JoinSessionResult emma = new JoinSessionUseCase(store, locks, ids, broadcaster,
+            Clock.fixed(NOW, ZoneOffset.UTC))
             .join(alice.sessionId(), "Emma", Role.OBSERVER);
 
     private Session session() {

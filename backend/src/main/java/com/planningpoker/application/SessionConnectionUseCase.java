@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.planningpoker.domain.Participant;
+import com.planningpoker.domain.PseudoTakenException;
 import com.planningpoker.domain.Session;
 
 /**
@@ -34,6 +35,8 @@ public class SessionConnectionUseCase {
     /**
      * Poignée de main : session d'abord ({@code 4404}), puis jeton ({@code 4401}), puis rattachement de la
      * connexion et instantané. Seule la première connexion du participant change l'état observable.
+     * Le jeton d'un participant retiré après une longue absence le remet à sa place si son pseudo est libre
+     * ({@code JOIN}, déjà connecté, une seule diffusion) ; sinon {@code 4401} et rien ne change (AD-7).
      */
     public ConnectResult connect(String sessionId, String participantToken, String connectionId) {
         if (sessionId == null) {
@@ -46,7 +49,9 @@ public class SessionConnectionUseCase {
             }
             Participant participant = session.participantWithToken(participantToken).orElse(null);
             if (participant == null) {
-                return new ConnectResult.UnknownToken();
+                return session.departedWithToken(participantToken)
+                        .map(departed -> rejoin(session, departed, connectionId))
+                        .orElseGet(ConnectResult.UnknownToken::new);
             }
             if (!broadcaster.attach(connectionId, sessionId, participant.id())) {
                 return new ConnectResult.ConnectionClosed();
@@ -67,6 +72,25 @@ public class SessionConnectionUseCase {
         return result;
     }
 
+    /** Remet à sa place un participant retiré, sous le verrou de la session : une mutation, une diffusion. */
+    private ConnectResult rejoin(Session session, Participant departed, String connectionId) {
+        Session rejoined;
+        try {
+            rejoined = session.rejoin(departed.id(), connectionId, clock.instant());
+        } catch (PseudoTakenException e) {
+            // Ni jeton, ni pseudo, ni identifiant de session (le lien) dans les journaux.
+            LOG.info("Participant {} could not come back: pseudo taken", departed.id());
+            return new ConnectResult.UnknownToken();
+        }
+        if (!broadcaster.attach(connectionId, session.id(), departed.id())) {
+            return new ConnectResult.ConnectionClosed();
+        }
+        store.save(rejoined);
+        broadcaster.publish(rejoined);
+        LOG.info("Participant {} came back after a long absence", departed.id());
+        return new ConnectResult.Connected(departed.id());
+    }
+
     /**
      * Fermeture d'une connexion. Sans effet si elle n'était pas rattachée (ou déjà détachée) ; seule la dernière
      * connexion du participant change l'état observable.
@@ -77,7 +101,7 @@ public class SessionConnectionUseCase {
                 return false;
             }
             store.find(sessionId).ifPresent(session -> {
-                Session disconnected = session.disconnect(participantId, connectionId);
+                Session disconnected = session.disconnect(participantId, connectionId, clock.instant());
                 if (disconnected != session) {
                     store.save(disconnected);
                     if (disconnected.version() != session.version()) {

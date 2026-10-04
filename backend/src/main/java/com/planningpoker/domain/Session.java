@@ -24,10 +24,13 @@ import java.util.UUID;
  * @param votes          vote de chaque participant qui a voté pendant le tour courant
  * @param lateArrivals   participants arrivés pendant un tour révélé : ils ne votent qu'à partir du prochain tour
  *                       ({@code clear})
+ * @param departed       participants retirés après une longue absence (AD-7) : hors de {@code participants}, donc
+ *                       absents de l'instantané et du contrôle d'unicité du pseudo, mais leur jeton reste valable
+ *                       pour revenir ({@link #rejoin})
  */
 public record Session(String id, List<Participant> participants, long version, String roundId, int nextJoinOrder,
         Instant createdAt, LastChange lastChange, RoundStatus roundStatus, Map<UUID, Card> votes,
-        Set<UUID> lateArrivals) {
+        Set<UUID> lateArrivals, List<Participant> departed) {
 
     /** Le contrat impose {@code joinOrder >= 1} : le créateur reçoit 1. */
     public static final int FIRST_JOIN_ORDER = 1;
@@ -41,37 +44,110 @@ public record Session(String id, List<Participant> participants, long version, S
         participants = List.copyOf(participants);
         votes = Map.copyOf(votes);
         lateArrivals = Set.copyOf(lateArrivals);
+        departed = List.copyOf(departed);
     }
 
     /** Crée une session avec son créateur pour seul participant. Le créateur n'a aucun droit particulier. */
     public static Session create(String id, String roundId, UUID creatorId, Pseudo pseudo, Role role,
             ParticipantToken token, Instant now) {
-        Participant creator = new Participant(creatorId, pseudo, role, FIRST_JOIN_ORDER, token);
+        Participant creator = new Participant(creatorId, pseudo, role, FIRST_JOIN_ORDER, token, now);
         return new Session(id, List.of(creator), 1, roundId, FIRST_JOIN_ORDER + 1, now,
-                LastChange.of(ChangeAction.JOIN, creatorId), RoundStatus.HIDDEN, Map.of(), Set.of());
+                LastChange.of(ChangeAction.JOIN, creatorId), RoundStatus.HIDDEN, Map.of(), Set.of(), List.of());
     }
 
     /**
-     * Fait entrer un nouveau participant, avec l'ordre d'arrivée suivant (FR-2). Il n'a encore aucune connexion.
-     * Arrivé pendant un tour révélé, il ne vote qu'à partir du prochain tour.
+     * Fait entrer un nouveau participant à {@code now}, avec l'ordre d'arrivée suivant (FR-2). Il n'a encore
+     * aucune connexion. Arrivé pendant un tour révélé, il ne vote qu'à partir du prochain tour.
      *
-     * @throws PseudoTakenException si un participant de la session porte déjà ce pseudo (casse ignorée)
+     * @throws PseudoTakenException si un participant de la session porte déjà ce pseudo (casse ignorée) ; les
+     *                              participants retirés ne comptent pas
      */
-    public Session join(UUID participantId, Pseudo pseudo, Role role, ParticipantToken token) {
+    public Session join(UUID participantId, Pseudo pseudo, Role role, ParticipantToken token, Instant now) {
         Objects.requireNonNull(pseudo, "pseudo");
+        requireFreePseudo(pseudo);
+        return withNewcomer(new Participant(participantId, pseudo, role, nextJoinOrder, token, now));
+    }
+
+    /**
+     * Ajoute {@code newcomer} (qui porte déjà l'ordre d'arrivée {@code nextJoinOrder}) : {@code version + 1},
+     * {@code JOIN}, arrivée tardive pendant un tour révélé.
+     */
+    private Session withNewcomer(Participant newcomer) {
+        List<Participant> joined = new ArrayList<>(participants);
+        joined.add(newcomer);
+        Set<UUID> late = lateArrivals;
+        if (roundStatus == RoundStatus.REVEALED) {
+            late = new HashSet<>(lateArrivals);
+            late.add(newcomer.id());
+        }
+        List<Participant> stillDeparted = departed.stream().filter(p -> !p.id().equals(newcomer.id())).toList();
+        return new Session(id, joined, version + 1, roundId, nextJoinOrder + 1, createdAt,
+                LastChange.of(ChangeAction.JOIN, newcomer.id()), roundStatus, votes, late, stillDeparted);
+    }
+
+    private void requireFreePseudo(Pseudo pseudo) {
         String key = pseudo.uniquenessKey();
         if (participants.stream().anyMatch(p -> p.pseudo().uniquenessKey().equals(key))) {
             throw new PseudoTakenException();
         }
-        List<Participant> joined = new ArrayList<>(participants);
-        joined.add(new Participant(participantId, pseudo, role, nextJoinOrder, token));
-        Set<UUID> late = lateArrivals;
-        if (roundStatus == RoundStatus.REVEALED) {
-            late = new HashSet<>(lateArrivals);
-            late.add(participantId);
+    }
+
+    /**
+     * Participants sans aucune connexion depuis {@code timeout} ou plus à {@code now} (AD-7, AD-8) : le balayeur
+     * les retire. Une connexion ouverte, même muette, empêche le retrait.
+     */
+    public List<UUID> absentParticipants(Instant now, Duration timeout) {
+        Instant deadline = now.minus(timeout);
+        return participants.stream()
+                .filter(p -> p.offlineSince() != null && !p.offlineSince().isAfter(deadline))
+                .map(Participant::id)
+                .toList();
+    }
+
+    /**
+     * Retire le participant (FR-9) : sa place, son vote du tour et sa marque d'arrivée tardive disparaissent ;
+     * il est conservé parmi les participants retirés pour pouvoir revenir avec son jeton. {@code version + 1},
+     * {@code LEAVE}. Sans effet (même instance) pour un participant qui n'est pas à la table.
+     */
+    public Session remove(UUID participantId) {
+        Participant leaving = participant(participantId).orElse(null);
+        if (leaving == null) {
+            return this;
         }
-        return new Session(id, joined, version + 1, roundId, nextJoinOrder + 1, createdAt,
-                LastChange.of(ChangeAction.JOIN, participantId), roundStatus, votes, late);
+        List<Participant> remaining = participants.stream().filter(p -> !p.id().equals(participantId)).toList();
+        Map<UUID, Card> remainingVotes = new HashMap<>(votes);
+        remainingVotes.remove(participantId);
+        Set<UUID> late = new HashSet<>(lateArrivals);
+        late.remove(participantId);
+        List<Participant> nowDeparted = new ArrayList<>(departed);
+        nowDeparted.add(leaving);
+        return new Session(id, remaining, version + 1, roundId, nextJoinOrder, createdAt,
+                LastChange.of(ChangeAction.LEAVE, participantId), roundStatus, remainingVotes, late, nowDeparted);
+    }
+
+    /** Le participant retiré dont {@code token} est le jeton, s'il y en a un. */
+    public Optional<Participant> departedWithToken(String token) {
+        return departed.stream().filter(p -> p.token().matches(token)).findFirst();
+    }
+
+    /**
+     * Remet à sa place un participant retiré, en une seule mutation (AD-7) : même identifiant, pseudo, rôle et
+     * jeton, ordre d'arrivée suivant, déjà connecté par {@code connectionId} actif à {@code now} ;
+     * {@code version + 1}, {@code JOIN}. Revenu pendant un tour révélé, il ne vote qu'à partir du prochain tour.
+     *
+     * @throws PseudoTakenException     si un participant de la session porte désormais son pseudo (casse ignorée) ;
+     *                                  rien ne change et il reste parmi les retirés
+     * @throws IllegalArgumentException si le participant n'est pas parmi les retirés
+     */
+    public Session rejoin(UUID participantId, String connectionId, Instant now) {
+        Objects.requireNonNull(connectionId, "connectionId");
+        Objects.requireNonNull(now, "now");
+        Participant returning = departed.stream()
+                .filter(p -> p.id().equals(participantId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("unknown departed participant"));
+        requireFreePseudo(returning.pseudo());
+        return withNewcomer(returning.returning(nextJoinOrder, now).withActivity(connectionId, now));
     }
 
     /** Le participant dont {@code token} est le jeton, s'il y en a un. */
@@ -97,13 +173,15 @@ public record Session(String id, List<Participant> participants, long version, S
     }
 
     /**
-     * Une connexion du participant se ferme. Seule la dernière change l'état observable ({@code PRESENCE}).
-     * Sans effet (même instance) pour un participant absent ou une connexion qu'il ne porte pas, ou plus.
+     * Une connexion du participant se ferme à {@code now}. Seule la dernière change l'état observable
+     * ({@code PRESENCE}) ; le participant est alors hors ligne depuis {@code now}. Sans effet (même instance) pour
+     * un participant absent ou une connexion qu'il ne porte pas, ou plus.
      */
-    public Session disconnect(UUID participantId, String connectionId) {
+    public Session disconnect(UUID participantId, String connectionId, Instant now) {
+        Objects.requireNonNull(now, "now");
         return participant(participantId)
                 .filter(p -> p.connections().containsKey(connectionId))
-                .map(p -> withParticipant(p, p.withoutConnection(connectionId)))
+                .map(p -> withParticipant(p, p.withoutConnection(connectionId, now)))
                 .orElse(this);
     }
 
@@ -151,10 +229,10 @@ public record Session(String id, List<Participant> participants, long version, S
                 .toList();
         if (before.connected() == after.connected()) {
             return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
-                    votes, lateArrivals);
+                    votes, lateArrivals, departed);
         }
         return new Session(id, updated, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.PRESENCE, before.id()), roundStatus, votes, lateArrivals);
+                LastChange.of(ChangeAction.PRESENCE, before.id()), roundStatus, votes, lateArrivals, departed);
     }
 
     /** Le vote du participant pendant le tour courant, s'il a voté. */
@@ -204,7 +282,7 @@ public record Session(String id, List<Participant> participants, long version, S
             updated.put(participantId, chosen);
         }
         return new Session(id, participants, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.VOTE, participantId), roundStatus, updated, lateArrivals);
+                LastChange.of(ChangeAction.VOTE, participantId), roundStatus, updated, lateArrivals, departed);
     }
 
     /**
@@ -220,7 +298,7 @@ public record Session(String id, List<Participant> participants, long version, S
             return this;
         }
         return new Session(id, participants, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.REVEAL, participantId), RoundStatus.REVEALED, votes, lateArrivals);
+                LastChange.of(ChangeAction.REVEAL, participantId), RoundStatus.REVEALED, votes, lateArrivals, departed);
     }
 
     /**
@@ -241,7 +319,7 @@ public record Session(String id, List<Participant> participants, long version, S
             throw new IllegalArgumentException("a new round needs a new roundId");
         }
         return new Session(id, participants, version + 1, newRoundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.CLEAR, participantId), RoundStatus.HIDDEN, Map.of(), Set.of());
+                LastChange.of(ChangeAction.CLEAR, participantId), RoundStatus.HIDDEN, Map.of(), Set.of(), departed);
     }
 
     /** Synthèse du tour révélé ; vide pendant un tour caché (FR-14). */

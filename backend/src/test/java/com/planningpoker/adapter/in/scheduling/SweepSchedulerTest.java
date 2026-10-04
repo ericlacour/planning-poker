@@ -20,7 +20,8 @@ class SweepSchedulerTest {
         final CountDownLatch runs = new CountDownLatch(3);
 
         FailingSweep() {
-            super(new InMemorySessionStore(), new SessionLocks(), null, Clock.systemUTC(), Duration.ofSeconds(15));
+            super(new InMemorySessionStore(), new SessionLocks(), null, Clock.systemUTC(), Duration.ofSeconds(15),
+                    Duration.ofMinutes(5));
         }
 
         @Override

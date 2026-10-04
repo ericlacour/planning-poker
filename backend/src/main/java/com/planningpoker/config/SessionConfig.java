@@ -58,8 +58,8 @@ public class SessionConfig {
 
     @Bean
     public JoinSessionUseCase joinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
-            SessionBroadcaster broadcaster) {
-        return new JoinSessionUseCase(store, locks, ids, broadcaster);
+            SessionBroadcaster broadcaster, Clock clock) {
+        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock);
     }
 
     @Bean
@@ -70,8 +70,9 @@ public class SessionConfig {
 
     @Bean
     public SweepUseCase sweepUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster,
-            Clock clock, @Value("${planning-poker.liveness-timeout:15s}") Duration livenessTimeout) {
-        return new SweepUseCase(store, locks, broadcaster, clock, livenessTimeout);
+            Clock clock, @Value("${planning-poker.liveness-timeout:15s}") Duration livenessTimeout,
+            @Value("${planning-poker.absence-timeout:5m}") Duration absenceTimeout) {
+        return new SweepUseCase(store, locks, broadcaster, clock, livenessTimeout, absenceTimeout);
     }
 
     @Bean

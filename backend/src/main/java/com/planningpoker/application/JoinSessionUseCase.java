@@ -1,5 +1,6 @@
 package com.planningpoker.application;
 
+import java.time.Clock;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -13,7 +14,7 @@ import com.planningpoker.domain.Session;
 
 /**
  * Fait entrer un participant dans une session existante par son lien (FR-2), puis diffuse le nouvel état à ceux qui
- * y sont déjà connectés (AD-3).
+ * y sont déjà connectés (AD-3). L'heure n'est lue que par {@link Clock}.
  */
 public class JoinSessionUseCase {
 
@@ -23,13 +24,15 @@ public class JoinSessionUseCase {
     private final SessionLocks locks;
     private final IdGenerator ids;
     private final SessionBroadcaster broadcaster;
+    private final Clock clock;
 
     public JoinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
-            SessionBroadcaster broadcaster) {
+            SessionBroadcaster broadcaster, Clock clock) {
         this.store = store;
         this.locks = locks;
         this.ids = ids;
         this.broadcaster = broadcaster;
+        this.clock = clock;
     }
 
     /**
@@ -48,7 +51,8 @@ public class JoinSessionUseCase {
         locks.withLock(sessionId, () -> {
             Session session = store.find(sessionId).orElseThrow(SessionNotFoundException::new);
             Pseudo pseudo = Pseudo.of(rawPseudo);
-            Session joined = session.join(participantId, pseudo, role, ParticipantToken.of(token));
+            Session joined = session.join(participantId, pseudo, role, ParticipantToken.of(token),
+                    clock.instant());
             store.save(joined);
             broadcaster.publish(joined);
             return null;

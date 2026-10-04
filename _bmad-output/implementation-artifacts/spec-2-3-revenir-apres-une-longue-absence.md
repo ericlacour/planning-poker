@@ -2,7 +2,7 @@
 title: 'Story 2.3 : revenir après une longue absence'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '099130b7d80caf2ae640271576c91db29bffc01d'
 route: 'dispatch'
 review_loop_iteration: 0

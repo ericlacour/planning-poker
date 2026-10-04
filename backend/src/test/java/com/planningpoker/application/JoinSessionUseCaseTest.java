@@ -34,7 +34,8 @@ class JoinSessionUseCaseTest {
     private final CreateSessionUseCase create = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC));
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
-    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster);
+    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster,
+            Clock.fixed(NOW, ZoneOffset.UTC));
     private final CheckSessionUseCase check = new CheckSessionUseCase(store);
 
     private String sessionOf(String creator) {
@@ -121,7 +122,7 @@ class JoinSessionUseCaseTest {
         String sessionId = new CreateSessionUseCase(memory, locks, secureIds, Clock.fixed(NOW, ZoneOffset.UTC))
                 .create("Sofia", Role.VOTER).sessionId();
         JoinSessionUseCase concurrentJoin = new JoinSessionUseCase(memory, locks, secureIds,
-                new RecordingBroadcaster());
+                new RecordingBroadcaster(), Clock.fixed(NOW, ZoneOffset.UTC));
 
         int arrivals = 20;
         ExecutorService pool = Executors.newFixedThreadPool(arrivals);

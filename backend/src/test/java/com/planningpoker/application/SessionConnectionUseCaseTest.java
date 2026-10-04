@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.planningpoker.adapter.out.memory.InMemorySessionStore;
 import com.planningpoker.domain.ChangeAction;
 import com.planningpoker.domain.IdGenerator;
+import com.planningpoker.domain.LastChange;
 import com.planningpoker.domain.Role;
 import com.planningpoker.domain.Session;
 
@@ -29,9 +30,20 @@ class SessionConnectionUseCaseTest {
             clock);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, Duration.ofSeconds(15),
+            Duration.ofMinutes(5));
 
     private Session session() {
         return store.find(created.sessionId()).orElseThrow();
+    }
+
+    /** Alice se connecte puis se déconnecte, et reste absente cinq minutes : le balayeur la retire. */
+    private void aliceLeavesForFiveMinutes() {
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        clock.advance(Duration.ofMinutes(5));
+        sweep.sweep();
+        assertThat(session().participants()).isEmpty();
     }
 
     @Test
@@ -133,5 +145,74 @@ class SessionConnectionUseCaseTest {
         connections.touch(created.sessionId(), "c9");
         connections.touch("k3Jx9QvT2mLpZ8wR4nYb7A", "c9");
         assertThat(session()).isSameAs(before);
+    }
+
+    @Test
+    void aRemovedParticipantWhosePseudoIsFreeIsBackAtTheTableWithASingleJoin() {
+        aliceLeavesForFiveMinutes();
+        broadcaster.published.clear();
+        long version = session().version();
+
+        ConnectResult result = connections.connect(created.sessionId(), created.participantToken(), "c2");
+
+        assertThat(result).isEqualTo(new ConnectResult.Connected(created.participantId()));
+        assertThat(broadcaster.attached).containsEntry("c2", created.participantId());
+        assertThat(session().version()).isEqualTo(version + 1);
+        assertThat(session().lastChange()).isEqualTo(LastChange.of(ChangeAction.JOIN, created.participantId()));
+        assertThat(session().participant(created.participantId()).orElseThrow()).satisfies(p -> {
+            assertThat(p.connected()).isTrue();
+            assertThat(p.pseudo().value()).isEqualTo("Alice");
+            assertThat(p.role()).isEqualTo(Role.VOTER);
+            assertThat(p.joinOrder()).isEqualTo(2);
+        });
+        assertThat(broadcaster.published).singleElement().satisfies(p -> {
+            assertThat(p.session()).isSameAs(session());
+            assertThat(p.onlyTo()).isNull();
+        });
+    }
+
+    @Test
+    void aRemovedParticipantWhosePseudoWasTakenIsRefusedAndNothingChanges() {
+        aliceLeavesForFiveMinutes();
+        new JoinSessionUseCase(store, locks, ids, broadcaster, clock).join(created.sessionId(), "ALICE",
+                Role.OBSERVER);
+        broadcaster.published.clear();
+        Session before = session();
+
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c2"))
+                .isInstanceOf(ConnectResult.UnknownToken.class);
+
+        assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.attached).doesNotContainKey("c2");
+        assertThat(broadcaster.published).isEmpty();
+        assertThat(session().departedWithToken(created.participantToken())).isPresent();
+    }
+
+    @Test
+    void aRemovedParticipantWhoseConnectionClosedBeforeItsHelloStaysRemoved() {
+        aliceLeavesForFiveMinutes();
+        broadcaster.published.clear();
+        Session before = session();
+        broadcaster.closed.add("c2");
+
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c2"))
+                .isInstanceOf(ConnectResult.ConnectionClosed.class);
+
+        assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void aParticipantCanBeRemovedAndComeBackAgain() {
+        aliceLeavesForFiveMinutes();
+        connections.connect(created.sessionId(), created.participantToken(), "c2");
+        connections.disconnect(created.sessionId(), created.participantId(), "c2");
+        clock.advance(Duration.ofMinutes(5));
+        sweep.sweep();
+        assertThat(session().participants()).isEmpty();
+
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c3"))
+                .isEqualTo(new ConnectResult.Connected(created.participantId()));
+        assertThat(session().participant(created.participantId()).orElseThrow().joinOrder()).isEqualTo(3);
     }
 }

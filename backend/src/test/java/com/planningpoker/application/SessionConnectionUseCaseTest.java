@@ -27,9 +27,9 @@ class SessionConnectionUseCaseTest {
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
     private final MutableClock clock = new MutableClock(NOW);
     private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
-            clock);
+            clock, 30);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+            Clock.fixed(NOW, ZoneOffset.UTC), 50).create("Alice", Role.VOTER);
     private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, Duration.ofSeconds(15),
             Duration.ofMinutes(5), Duration.ofHours(24));
 
@@ -174,12 +174,31 @@ class SessionConnectionUseCaseTest {
     @Test
     void aRemovedParticipantWhosePseudoWasTakenIsRefusedAndNothingChanges() {
         aliceLeavesForFiveMinutes();
-        new JoinSessionUseCase(store, locks, ids, broadcaster, clock).join(created.sessionId(), "ALICE",
+        new JoinSessionUseCase(store, locks, ids, broadcaster, clock, 30).join(created.sessionId(), "ALICE",
                 Role.OBSERVER);
         broadcaster.published.clear();
         Session before = session();
 
         assertThat(connections.connect(created.sessionId(), created.participantToken(), "c2"))
+                .isInstanceOf(ConnectResult.UnknownToken.class);
+
+        assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.attached).doesNotContainKey("c2");
+        assertThat(broadcaster.published).isEmpty();
+        assertThat(session().departedWithToken(created.participantToken())).isPresent();
+    }
+
+    @Test
+    void aRemovedParticipantComingBackToAFullSessionIsRefusedAndStaysRemoved() {
+        aliceLeavesForFiveMinutes();
+        JoinSessionUseCase joinOfTwo = new JoinSessionUseCase(store, locks, ids, broadcaster, clock, 2);
+        joinOfTwo.join(created.sessionId(), "Bob", Role.VOTER);
+        joinOfTwo.join(created.sessionId(), "Chloé", Role.VOTER);
+        broadcaster.published.clear();
+        Session before = session();
+        SessionConnectionUseCase connectionsOfTwo = new SessionConnectionUseCase(store, locks, broadcaster, clock, 2);
+
+        assertThat(connectionsOfTwo.connect(created.sessionId(), created.participantToken(), "c2"))
                 .isInstanceOf(ConnectResult.UnknownToken.class);
 
         assertThat(session()).isSameAs(before);
@@ -220,7 +239,7 @@ class SessionConnectionUseCaseTest {
     void afterATakeOverTheOldTokenIsRefusedAndTheNewOneConnectsTheSameParticipant() {
         connections.connect(created.sessionId(), created.participantToken(), "c1");
         connections.disconnect(created.sessionId(), created.participantId(), "c1");
-        JoinSessionResult takenOver = new JoinSessionUseCase(store, locks, ids, broadcaster, clock)
+        JoinSessionResult takenOver = new JoinSessionUseCase(store, locks, ids, broadcaster, clock, 30)
                 .join(created.sessionId(), "alice", Role.OBSERVER);
         assertThat(takenOver.participantId()).isEqualTo(created.participantId());
         broadcaster.published.clear();

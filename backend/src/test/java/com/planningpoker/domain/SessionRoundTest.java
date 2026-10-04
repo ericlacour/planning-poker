@@ -26,9 +26,9 @@ class SessionRoundTest {
     private static Session table() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW)
-                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW)
-                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW);
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW, 30)
+                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW, 30)
+                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW, 30);
     }
 
     private static SessionSnapshot.Seat seat(SessionSnapshot snapshot, UUID participantId) {
@@ -182,7 +182,7 @@ class SessionRoundTest {
     void aVoterJoiningDuringARevealedRoundVotesFromTheNextRound() {
         Session revealed = table().vote(ALICE, ROUND, "8").reveal(ALICE, ROUND);
         Session joined = revealed.join(FARID, Pseudo.of("Farid"), Role.VOTER,
-                ParticipantToken.of("farid"), NOW);
+                ParticipantToken.of("farid"), NOW, 30);
 
         SessionSnapshot snapshot = SessionSnapshot.forRecipient(joined, FARID);
         assertThat(seat(snapshot, FARID).canVoteThisRound()).isFalse();
@@ -199,7 +199,7 @@ class SessionRoundTest {
 
     @Test
     void aVoterJoiningDuringAHiddenRoundVotesAtOnce() {
-        Session joined = table().join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW);
+        Session joined = table().join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW, 30);
         assertThat(seat(SessionSnapshot.forRecipient(joined, FARID), FARID).canVoteThisRound()).isTrue();
         assertThat(joined.lateArrivals()).isEmpty();
     }
@@ -207,7 +207,7 @@ class SessionRoundTest {
     @Test
     void presenceKeepsTheLateArrivals() {
         Session joined = table().reveal(ALICE, ROUND)
-                .join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW)
+                .join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW, 30)
                 .connect(FARID, "farid-1", NOW).disconnect(FARID, "farid-1", NOW);
         assertThat(seat(SessionSnapshot.forRecipient(joined, FARID), FARID).canVoteThisRound()).isFalse();
     }

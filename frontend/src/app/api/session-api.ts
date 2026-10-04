@@ -24,10 +24,20 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 /**
  * - `invalidPseudo` : 400 `INVALID_PSEUDO` ;
  * - `pseudoTaken` : 409 `PSEUDO_TAKEN` ;
+ * - `sessionFull` : 409 `SESSION_FULL` ;
  * - `notFound` : 404 `SESSION_NOT_FOUND` ;
- * - `network` : échec réseau, délai dépassé, 5xx, ou toute réponse inattendue.
+ * - `sessionLimitReached` : 503 `SESSION_LIMIT_REACHED` ;
+ * - `tooManyRequests` : 429 `TOO_MANY_REQUESTS` ;
+ * - `network` : échec réseau, délai dépassé, 5xx (sauf le 503 ci-dessus), 413, ou toute réponse inattendue.
  */
-export type SessionApiErrorKind = 'invalidPseudo' | 'pseudoTaken' | 'notFound' | 'network';
+export type SessionApiErrorKind =
+  | 'invalidPseudo'
+  | 'pseudoTaken'
+  | 'sessionFull'
+  | 'notFound'
+  | 'sessionLimitReached'
+  | 'tooManyRequests'
+  | 'network';
 
 export class SessionApiError extends Error {
   constructor(readonly kind: SessionApiErrorKind) {
@@ -41,6 +51,9 @@ const KNOWN_PROBLEMS: readonly { status: number; code: ProblemCode; kind: Sessio
   { status: 400, code: 'INVALID_PSEUDO', kind: 'invalidPseudo' },
   { status: 404, code: 'SESSION_NOT_FOUND', kind: 'notFound' },
   { status: 409, code: 'PSEUDO_TAKEN', kind: 'pseudoTaken' },
+  { status: 409, code: 'SESSION_FULL', kind: 'sessionFull' },
+  { status: 429, code: 'TOO_MANY_REQUESTS', kind: 'tooManyRequests' },
+  { status: 503, code: 'SESSION_LIMIT_REACHED', kind: 'sessionLimitReached' },
 ];
 
 /** Appels REST des sessions (contrat : openapi.yaml). */
@@ -55,7 +68,7 @@ export class SessionApi {
     if (response.status === 201) {
       return parseOrNetwork(response, parseCreateSessionResponse);
     }
-    throw await errorOf(response, ['invalidPseudo']);
+    throw await errorOf(response, ['invalidPseudo', 'tooManyRequests', 'sessionLimitReached']);
   }
 
   /** `GET /api/sessions/{sessionId}` : résout si la session existe, sinon `notFound` ou `network`. */
@@ -75,7 +88,7 @@ export class SessionApi {
     if (response.status === 200) {
       return parseOrNetwork(response, parseJoinSessionResponse);
     }
-    throw await errorOf(response, ['invalidPseudo', 'notFound', 'pseudoTaken']);
+    throw await errorOf(response, ['invalidPseudo', 'notFound', 'pseudoTaken', 'sessionFull']);
   }
 
   private async send(path: string, method: 'GET' | 'POST', body?: unknown): Promise<Response> {

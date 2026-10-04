@@ -3,20 +3,27 @@ package com.planningpoker.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.SplittableRandom;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.random.RandomGenerator;
 
 import org.junit.jupiter.api.Test;
 
+import com.planningpoker.adapter.out.memory.InMemorySessionStore;
 import com.planningpoker.domain.IdGenerator;
 import com.planningpoker.domain.InvalidPseudoException;
 import com.planningpoker.domain.Role;
@@ -52,13 +59,18 @@ class CreateSessionUseCaseTest {
         public Collection<Session> all() {
             return sessions.values();
         }
+
+        @Override
+        public int count() {
+            return sessions.size();
+        }
     }
 
     private final RecordingStore store = new RecordingStore();
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
     private CreateSessionUseCase useCase(RandomGenerator random) {
-        return new CreateSessionUseCase(store, new SessionLocks(), new IdGenerator(random), clock);
+        return new CreateSessionUseCase(store, new SessionLocks(), new IdGenerator(random), clock, 50);
     }
 
     @Test
@@ -102,6 +114,66 @@ class CreateSessionUseCaseTest {
         assertThat(store.sessions).hasSize(2);
         assertThat(store.sessions.get(first.sessionId()).participants().getFirst().pseudo().value())
                 .isEqualTo("Alice");
+    }
+
+    @Test
+    void refusesBeyondTheSessionLimitWithoutWritingAnything() {
+        CreateSessionUseCase useCase = new CreateSessionUseCase(store, new SessionLocks(),
+                new IdGenerator(new SplittableRandom(5)), clock, 2);
+        useCase.create("Alice", Role.VOTER);
+        useCase.create("Bob", Role.VOTER);
+        store.calls.clear();
+
+        assertThatThrownBy(() -> useCase.create("Chloé", Role.VOTER))
+                .isInstanceOf(SessionLimitReachedException.class);
+        assertThat(store.sessions).hasSize(2);
+        assertThat(store.calls).isEmpty();
+    }
+
+    @Test
+    void aDeletedSessionFreesItsPlace() {
+        CreateSessionUseCase useCase = new CreateSessionUseCase(store, new SessionLocks(),
+                new IdGenerator(new SplittableRandom(6)), clock, 1);
+        CreateSessionResult first = useCase.create("Alice", Role.VOTER);
+        assertThatThrownBy(() -> useCase.create("Bob", Role.VOTER)).isInstanceOf(SessionLimitReachedException.class);
+
+        store.delete(first.sessionId());
+
+        assertThat(store.sessions.get(useCase.create("Bob", Role.VOTER).sessionId())).isNotNull();
+    }
+
+    @Test
+    void theLimitHoldsUnderSimultaneousCreations() throws Exception {
+        InMemorySessionStore memory = new InMemorySessionStore();
+        CreateSessionUseCase useCase = new CreateSessionUseCase(memory, new SessionLocks(),
+                new IdGenerator(new SecureRandom()), clock, 5);
+        int attempts = 40;
+        ExecutorService pool = Executors.newFixedThreadPool(attempts);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> futures = new ArrayList<>();
+        try {
+            for (int i = 0; i < attempts; i++) {
+                String pseudo = "Créateur " + i;
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    try {
+                        useCase.create(pseudo, Role.VOTER);
+                        return true;
+                    } catch (SessionLimitReachedException e) {
+                        return false;
+                    }
+                }));
+            }
+            start.countDown();
+            int created = 0;
+            for (Future<Boolean> future : futures) {
+                created += future.get() ? 1 : 0;
+            }
+            assertThat(created).isEqualTo(5);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(memory.count()).isEqualTo(5);
     }
 
     @Test

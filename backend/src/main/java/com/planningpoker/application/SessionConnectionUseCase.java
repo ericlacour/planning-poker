@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import com.planningpoker.domain.Participant;
 import com.planningpoker.domain.PseudoTakenException;
 import com.planningpoker.domain.Session;
+import com.planningpoker.domain.SessionFullException;
 
 /**
  * Ouverture, activité et fermeture d'une connexion WebSocket à une session (FR-6, FR-16, AD-8). Chaque mutation
@@ -23,9 +24,11 @@ public class SessionConnectionUseCase {
     private final SessionLocks locks;
     private final SessionBroadcaster broadcaster;
     private final Clock clock;
+    private final int maxParticipants;
 
     public SessionConnectionUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster,
-            Clock clock) {
+            Clock clock, int maxParticipants) {
+        this.maxParticipants = maxParticipants;
         this.store = store;
         this.locks = locks;
         this.broadcaster = broadcaster;
@@ -36,7 +39,8 @@ public class SessionConnectionUseCase {
      * Poignée de main : session d'abord ({@code 4404}), puis jeton ({@code 4401}), puis rattachement de la
      * connexion et instantané. Seule la première connexion du participant change l'état observable.
      * Le jeton d'un participant retiré après une longue absence le remet à sa place si son pseudo est libre
-     * ({@code JOIN}, déjà connecté, une seule diffusion) ; sinon {@code 4401} et rien ne change (AD-7).
+     * ({@code JOIN}, déjà connecté, une seule diffusion) ; sinon (pseudo repris entre-temps, ou session pleine)
+     * {@code 4401} et rien ne change : il reste parmi les retirés (AD-7).
      */
     public ConnectResult connect(String sessionId, String participantToken, String connectionId) {
         if (sessionId == null) {
@@ -76,10 +80,13 @@ public class SessionConnectionUseCase {
     private ConnectResult rejoin(Session session, Participant departed, String connectionId) {
         Session rejoined;
         try {
-            rejoined = session.rejoin(departed.id(), connectionId, clock.instant());
+            rejoined = session.rejoin(departed.id(), connectionId, clock.instant(), maxParticipants);
         } catch (PseudoTakenException e) {
             // Ni jeton, ni pseudo, ni identifiant de session (le lien) dans les journaux.
             LOG.info("Participant {} could not come back: pseudo taken", departed.id());
+            return new ConnectResult.UnknownToken();
+        } catch (SessionFullException e) {
+            LOG.info("A removed participant could not come back: session full");
             return new ConnectResult.UnknownToken();
         }
         if (!broadcaster.attach(connectionId, session.id(), departed.id())) {

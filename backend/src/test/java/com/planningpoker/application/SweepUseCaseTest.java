@@ -34,10 +34,10 @@ class SweepUseCaseTest {
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
     private final MutableClock clock = new MutableClock(NOW);
     private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
-            clock);
+            clock, 30);
     private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT, ABSENCE, LIFETIME);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+            Clock.fixed(NOW, ZoneOffset.UTC), 50).create("Alice", Role.VOTER);
 
     private Session session() {
         return store.find(created.sessionId()).orElseThrow();
@@ -161,6 +161,11 @@ class SweepUseCaseTest {
             public Collection<Session> all() {
                 return List.of(session());
             }
+
+            @Override
+            public int count() {
+                return 1;
+            }
         };
         new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT, ABSENCE, LIFETIME).sweep();
         assertThat(broadcaster.closeRequested).isEmpty();
@@ -168,7 +173,7 @@ class SweepUseCaseTest {
 
     @Test
     void theRuleIsAppliedToEverySession() {
-        CreateSessionResult other = new CreateSessionUseCase(store, locks, ids, Clock.fixed(NOW, ZoneOffset.UTC))
+        CreateSessionResult other = new CreateSessionUseCase(store, locks, ids, Clock.fixed(NOW, ZoneOffset.UTC), 50)
                 .create("Bob", Role.VOTER);
         connect("c1");
         connections.connect(other.sessionId(), other.participantToken(), "c2");
@@ -182,7 +187,7 @@ class SweepUseCaseTest {
     @Test
     void eachParticipantSweptInTheSamePassGetsItsOwnPresenceChange() {
         JoinSessionResult bob = new JoinSessionUseCase(store, locks, ids, broadcaster,
-                Clock.fixed(NOW, ZoneOffset.UTC))
+                Clock.fixed(NOW, ZoneOffset.UTC), 30)
                 .join(created.sessionId(), "Bob", Role.VOTER);
         connect("c1");
         connections.connect(created.sessionId(), bob.participantToken(), "c2");
@@ -200,7 +205,7 @@ class SweepUseCaseTest {
     }
 
     private JoinSessionResult bobJoins() {
-        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock)
+        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock, 30)
                 .join(created.sessionId(), "Bob", Role.VOTER);
     }
 
@@ -368,7 +373,7 @@ class SweepUseCaseTest {
     @Test
     void onlyTheExpiredSessionIsDeletedTheOtherIsSweptAsUsual() {
         CreateSessionResult younger = new CreateSessionUseCase(store, locks, ids,
-                Clock.fixed(NOW.plus(Duration.ofHours(1)), ZoneOffset.UTC)).create("Bob", Role.VOTER);
+                Clock.fixed(NOW.plus(Duration.ofHours(1)), ZoneOffset.UTC), 50).create("Bob", Role.VOTER);
         clock.advance(LIFETIME.minus(TIMEOUT));
         connect("c1");
         connections.connect(younger.sessionId(), younger.participantToken(), "c2");

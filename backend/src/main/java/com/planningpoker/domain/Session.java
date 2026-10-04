@@ -68,10 +68,17 @@ public record Session(String id, List<Participant> participants, long version, S
      * (AD-3) ; {@code participantId} n'est pas utilisé. Le participant repris est celui que désigne désormais
      * {@code token} ({@link #participantWithToken}). Un participant retiré n'est pas repris : son pseudo est libre.
      *
+     * <p>
+     * Un nouvel arrivant n'entre que si la session compte moins de {@code maxParticipants} participants ; les
+     * participants retirés ne comptent pas. La reprise n'ajoute personne : elle reste possible sur une session pleine.
+     *
      * @throws PseudoTakenException si un participant connecté de la session porte déjà ce pseudo (casse ignorée) ;
      *                              rien ne change
+     * @throws SessionFullException si un nouvel arrivant trouve la session pleine (contrôlé après le pseudo) ; rien
+     *                              ne change
      */
-    public Session join(UUID participantId, Pseudo pseudo, Role role, ParticipantToken token, Instant now) {
+    public Session join(UUID participantId, Pseudo pseudo, Role role, ParticipantToken token, Instant now,
+            int maxParticipants) {
         Objects.requireNonNull(pseudo, "pseudo");
         Objects.requireNonNull(token, "token");
         Optional<Participant> holder = participantWithPseudo(pseudo);
@@ -86,7 +93,14 @@ public record Session(String id, List<Participant> participants, long version, S
             return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
                     votes, lateArrivals, departed);
         }
+        requireRoomFor(maxParticipants);
         return withNewcomer(new Participant(participantId, pseudo, role, nextJoinOrder, token, now));
+    }
+
+    private void requireRoomFor(int maxParticipants) {
+        if (participants.size() >= maxParticipants) {
+            throw new SessionFullException();
+        }
     }
 
     private Optional<Participant> participantWithPseudo(Pseudo pseudo) {
@@ -162,9 +176,11 @@ public record Session(String id, List<Participant> participants, long version, S
      *
      * @throws PseudoTakenException     si un participant de la session porte désormais son pseudo (casse ignorée) ;
      *                                  rien ne change et il reste parmi les retirés
+     * @throws SessionFullException     si la session compte déjà {@code maxParticipants} participants (contrôlé
+     *                                  après le pseudo) ; rien ne change et il reste parmi les retirés
      * @throws IllegalArgumentException si le participant n'est pas parmi les retirés
      */
-    public Session rejoin(UUID participantId, String connectionId, Instant now) {
+    public Session rejoin(UUID participantId, String connectionId, Instant now, int maxParticipants) {
         Objects.requireNonNull(connectionId, "connectionId");
         Objects.requireNonNull(now, "now");
         Participant returning = departed.stream()
@@ -172,6 +188,7 @@ public record Session(String id, List<Participant> participants, long version, S
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("unknown departed participant"));
         requireFreePseudo(returning.pseudo());
+        requireRoomFor(maxParticipants);
         return withNewcomer(returning.returning(nextJoinOrder, now).withActivity(connectionId, now));
     }
 

@@ -15,4 +15,7 @@ public interface SessionStore {
     void delete(String sessionId);
 
     Collection<Session> all();
+
+    /** Nombre de sessions en mémoire. */
+    int count();
 }

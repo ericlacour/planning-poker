@@ -6,6 +6,10 @@ import created from '../../../../contract/examples/create-session-response/creat
 import invalidPseudo from '../../../../contract/examples/problem/bad-request-invalid-pseudo.json';
 import malformedBody from '../../../../contract/examples/problem/bad-request-malformed-body.json';
 import pseudoTaken from '../../../../contract/examples/problem/pseudo-taken.json';
+import payloadTooLarge from '../../../../contract/examples/problem/payload-too-large.json';
+import sessionFull from '../../../../contract/examples/problem/session-full.json';
+import sessionLimitReached from '../../../../contract/examples/problem/session-limit-reached.json';
+import tooManyRequests from '../../../../contract/examples/problem/too-many-requests.json';
 import sessionNotFound from '../../../../contract/examples/problem/session-not-found.json';
 import joinVoter from '../../../../contract/examples/join-session-request/voter.json';
 import joined from '../../../../contract/examples/join-session-response/joined.json';
@@ -38,7 +42,16 @@ describe('contract round trip', () => {
     expect(JSON.parse(JSON.stringify(parseJoinSessionResponse(joined)))).toEqual(joined);
   });
 
-  it.each([invalidPseudo, malformedBody, pseudoTaken, sessionNotFound])('problem %j', (example) => {
+  it.each([
+    invalidPseudo,
+    malformedBody,
+    pseudoTaken,
+    sessionNotFound,
+    sessionFull,
+    payloadTooLarge,
+    tooManyRequests,
+    sessionLimitReached,
+  ])('problem %j', (example) => {
     expect(JSON.parse(JSON.stringify(parseProblem(example)))).toEqual(example);
   });
 });

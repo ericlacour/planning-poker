@@ -52,3 +52,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-une-session-qui-s-efface-d-elle-meme.md`
   summary: Vérifier par un test que le contexte sans surcharge donne aux cas d'usage les délais de production (`session-lifetime` 24 h, `absence-timeout` 5 min, `liveness-timeout` 15 s).
   evidence: Tous les tests injectent leur propre `Duration` ou surchargent la propriété ; une faute dans `application.properties` (ex. `24m`) passerait la suite (relecture verification-gap de la story 2.5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-un-service-qui-tient-face-aux-abus.md`
+  summary: Ajouter à `CreationRateLimiterTest` un test concurrent (verrou de départ, N > max `acquire` simultanés depuis la même IP) qui vérifie qu'exactement `max` réussissent.
+  evidence: Le plafond par IP sous rafale simultanée ne dépend que de `synchronized`. Tous les tests actuels appellent `acquire` depuis un seul fil, donc une régression passerait inaperçue.

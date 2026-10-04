@@ -26,7 +26,7 @@ class SessionTakeOverTest {
     private static Session table() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW)
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW, 30)
                 .connect(ALICE, "alice-1", NOW)
                 .connect(BOB, "bob-1", NOW)
                 .vote(BOB, ROUND, "5");
@@ -38,7 +38,7 @@ class SessionTakeOverTest {
     }
 
     private static Session takeOver(Session session, String pseudo, Role role) {
-        return session.join(NEWCOMER, Pseudo.of(pseudo), role, ParticipantToken.of("bob-new"), LATER);
+        return session.join(NEWCOMER, Pseudo.of(pseudo), role, ParticipantToken.of("bob-new"), LATER, 30);
     }
 
     @ParameterizedTest
@@ -93,7 +93,7 @@ class SessionTakeOverTest {
     void aParticipantWhoNeverConnectedIsTakenOver() {
         Session before = Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW);
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW, 30);
 
         Session taken = takeOver(before, "Bob", Role.VOTER);
 
@@ -107,7 +107,7 @@ class SessionTakeOverTest {
         Session before = Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
                 .reveal(ALICE, ROUND)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW);
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob-old"), NOW, 30);
         assertThat(before.lateArrivals()).containsExactly(BOB);
 
         Session taken = takeOver(before, "Bob", Role.VOTER);

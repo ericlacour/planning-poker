@@ -359,6 +359,21 @@ describe('SessionEntryComponent', () => {
       expect(stored.has(TOKEN_KEY)).toBe(false);
     });
 
+    it('shows « Cette session est complète. » under the field on SESSION_FULL and keeps the input', async () => {
+      render(async () => undefined, fail('sessionFull'));
+      const { element, settle, submit, input, type } = await mount();
+      type('David');
+      submit().click();
+      await settle();
+
+      expect(element.querySelector('#entry-pseudo-error')?.textContent?.trim()).toBe('Cette session est complète.');
+      expect(element.querySelector('.submit-error')).toBeNull();
+      expect(input().value).toBe('David');
+      expect(submit().disabled).toBe(false);
+      expect(submit().textContent?.trim()).toBe('Rejoindre');
+      expect(stored.has(TOKEN_KEY)).toBe(false);
+    });
+
     it('shows « Impossible de joindre le serveur. » under the button on a network failure', async () => {
       render(async () => undefined, fail('network'));
       const { element, settle, submit, input, type } = await mount();

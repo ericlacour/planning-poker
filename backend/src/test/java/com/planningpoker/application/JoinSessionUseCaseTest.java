@@ -23,6 +23,7 @@ import com.planningpoker.domain.Participant;
 import com.planningpoker.domain.PseudoTakenException;
 import com.planningpoker.domain.Role;
 import com.planningpoker.domain.Session;
+import com.planningpoker.domain.SessionFullException;
 
 class JoinSessionUseCaseTest {
 
@@ -32,10 +33,10 @@ class JoinSessionUseCaseTest {
     private final SessionLocks locks = new SessionLocks();
     private final IdGenerator ids = new IdGenerator(new SplittableRandom(11));
     private final CreateSessionUseCase create = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC), 50);
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
     private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster,
-            Clock.fixed(NOW, ZoneOffset.UTC));
+            Clock.fixed(NOW, ZoneOffset.UTC), 30);
     private final CheckSessionUseCase check = new CheckSessionUseCase(store);
 
     private String sessionOf(String creator) {
@@ -141,6 +142,39 @@ class JoinSessionUseCaseTest {
     }
 
     @Test
+    void aNewcomerToAFullSessionIsRejectedWithoutWritingNorBroadcast() {
+        JoinSessionUseCase joinOfTwo = new JoinSessionUseCase(store, locks, ids, broadcaster,
+                Clock.fixed(NOW, ZoneOffset.UTC), 2);
+        String sessionId = sessionOf("Sofia");
+        joinOfTwo.join(sessionId, "Bob", Role.VOTER);
+        connectCreator(sessionId);
+        broadcaster.published.clear();
+        Session before = store.sessions.get(sessionId);
+
+        assertThatThrownBy(() -> joinOfTwo.join(sessionId, "Karim", Role.VOTER))
+                .isInstanceOf(SessionFullException.class);
+        assertThatThrownBy(() -> joinOfTwo.join(sessionId, "SOFIA", Role.VOTER))
+                .isInstanceOf(PseudoTakenException.class);
+
+        assertThat(store.calls).containsExactly("find", "find");
+        assertThat(store.sessions.get(sessionId)).isSameAs(before);
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void aDisconnectedParticipantTakesOverHisPlaceInAFullSession() {
+        JoinSessionUseCase joinOfTwo = new JoinSessionUseCase(store, locks, ids, broadcaster,
+                Clock.fixed(NOW, ZoneOffset.UTC), 2);
+        String sessionId = sessionOf("Sofia");
+        JoinSessionResult bob = joinOfTwo.join(sessionId, "Bob", Role.VOTER);
+
+        JoinSessionResult again = joinOfTwo.join(sessionId, "bob", Role.VOTER);
+
+        assertThat(again.participantId()).isEqualTo(bob.participantId());
+        assertThat(store.sessions.get(sessionId).participants()).hasSize(2);
+    }
+
+    @Test
     void checkTellsWhetherTheSessionExists() {
         String sessionId = sessionOf("Sofia");
         check.check(sessionId);
@@ -152,10 +186,10 @@ class JoinSessionUseCaseTest {
     void twentySimultaneousArrivalsAllGetDistinctJoinOrders() throws Exception {
         InMemorySessionStore memory = new InMemorySessionStore();
         IdGenerator secureIds = new IdGenerator(new java.security.SecureRandom());
-        String sessionId = new CreateSessionUseCase(memory, locks, secureIds, Clock.fixed(NOW, ZoneOffset.UTC))
+        String sessionId = new CreateSessionUseCase(memory, locks, secureIds, Clock.fixed(NOW, ZoneOffset.UTC), 50)
                 .create("Sofia", Role.VOTER).sessionId();
         JoinSessionUseCase concurrentJoin = new JoinSessionUseCase(memory, locks, secureIds,
-                new RecordingBroadcaster(), Clock.fixed(NOW, ZoneOffset.UTC));
+                new RecordingBroadcaster(), Clock.fixed(NOW, ZoneOffset.UTC), 30);
 
         int arrivals = 20;
         ExecutorService pool = Executors.newFixedThreadPool(arrivals);

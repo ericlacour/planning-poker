@@ -122,6 +122,25 @@ describe('HomeComponent', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['sessionLimitReached', 'Trop de sessions sont ouvertes en ce moment. Réessaie plus tard.'],
+    ['tooManyRequests', 'Trop de sessions créées depuis ton réseau. Patiente une minute.'],
+  ] as const)('on %s, shows « %s » under the button, keeps the input and re-enables it', async (kind, message) => {
+    const { navigate } = render(async () => Promise.reject(new SessionApiError(kind)));
+    const { fixture, element, input, submit, type } = mount();
+    type('Sofia');
+    submit.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(element.querySelector('.submit-error')?.textContent?.trim()).toBe(message);
+    expect(element.querySelector('#entry-pseudo-error')).toBeNull();
+    expect(input.value).toBe('Sofia');
+    expect(submit.disabled).toBe(false);
+    expect(submit.textContent?.trim()).toBe('Créer une session');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('shows « Ce pseudo n\'est pas valide. » under the field on INVALID_PSEUDO', async () => {
     render(async () => Promise.reject(new SessionApiError('invalidPseudo')));
     const { fixture, element, submit, type } = mount();

@@ -71,6 +71,30 @@ test('une réponse d\'erreur REST sans exemple est signalée', async () => {
   assert.ok(hasError(errors, 'pseudo-taken', 'PseudoTaken'), errors.join('\n'));
 });
 
+test('chaque réponse de plafond (413, 429, 503, 409 SESSION_FULL) a son exemple', async () => {
+  for (const [file, response] of [['payload-too-large', 'PayloadTooLarge'], ['too-many-requests', 'TooManyRequests'],
+    ['session-limit-reached', 'SessionLimitReached'], ['session-full', 'SessionFull']]) {
+    const dir = copyContract();
+    rmSync(join(dir, `examples/problem/${file}.json`));
+    const { errors } = await validateContract(dir);
+    assert.ok(hasError(errors, file, response), errors.join('\n'));
+  }
+});
+
+test('un 413 porteur d\'un code est refusé', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/problem/payload-too-large.json', (p) => { p.code = 'TOO_MANY_REQUESTS'; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'payload-too-large.json', 'PayloadTooLarge'), errors.join('\n'));
+});
+
+test('SESSION_FULL ne peut pas porter un autre statut que 409', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/problem/session-full.json', (p) => { p.status = 503; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'session-full.json', 'SessionFull'), errors.join('\n'));
+});
+
 test('un code d\'erreur qui ne correspond pas à sa réponse est refusé', async () => {
   const dir = copyContract();
   editJson(dir, 'examples/problem/pseudo-taken.json', (p) => { p.code = 'SESSION_NOT_FOUND'; });

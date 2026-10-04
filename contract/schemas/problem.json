@@ -14,7 +14,7 @@
     "instance": { "type": "string" },
     "code": {
       "type": "string",
-      "enum": ["PSEUDO_TAKEN", "INVALID_PSEUDO", "SESSION_NOT_FOUND"]
+      "enum": ["PSEUDO_TAKEN", "INVALID_PSEUDO", "SESSION_NOT_FOUND", "SESSION_FULL", "SESSION_LIMIT_REACHED", "TOO_MANY_REQUESTS"]
     }
   }
 }

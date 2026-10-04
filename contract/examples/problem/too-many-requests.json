@@ -1,0 +1,1 @@
+{ "type": "about:blank", "title": "Too Many Requests", "status": 429, "detail": "Too many sessions created from your network.", "instance": "/api/sessions", "code": "TOO_MANY_REQUESTS" }

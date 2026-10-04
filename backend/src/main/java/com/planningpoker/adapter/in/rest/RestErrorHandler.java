@@ -3,6 +3,8 @@ package com.planningpoker.adapter.in.rest;
 import java.net.URI;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -14,9 +16,11 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import com.planningpoker.application.SessionLimitReachedException;
 import com.planningpoker.application.SessionNotFoundException;
 import com.planningpoker.domain.InvalidPseudoException;
 import com.planningpoker.domain.PseudoTakenException;
+import com.planningpoker.domain.SessionFullException;
 
 /**
  * Erreurs REST en {@code application/problem+json} (RFC 9457), conformes à {@code problem.json} :
@@ -27,6 +31,7 @@ import com.planningpoker.domain.PseudoTakenException;
 public class RestErrorHandler extends ResponseEntityExceptionHandler {
 
     static final String CODE = "code";
+    private static final Logger LOG = LoggerFactory.getLogger(RestErrorHandler.class);
     static final URI ABOUT_BLANK = URI.create("about:blank");
 
     @ExceptionHandler(InvalidPseudoException.class)
@@ -48,6 +53,32 @@ public class RestErrorHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = problem(HttpStatus.CONFLICT, e.getMessage());
         problem.setProperty(CODE, "PSEUDO_TAKEN");
         return problem;
+    }
+
+    @ExceptionHandler(SessionFullException.class)
+    ProblemDetail sessionFull(SessionFullException e) {
+        ProblemDetail problem = problem(HttpStatus.CONFLICT, e.getMessage());
+        problem.setProperty(CODE, "SESSION_FULL");
+        return problem;
+    }
+
+    @ExceptionHandler(SessionLimitReachedException.class)
+    ProblemDetail sessionLimitReached(SessionLimitReachedException e) {
+        ProblemDetail problem = problem(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage());
+        problem.setProperty(CODE, "SESSION_LIMIT_REACHED");
+        return problem;
+    }
+
+    /** {@code Retry-After} : secondes entières avant que la plus ancienne création sorte de la fenêtre. */
+    @ExceptionHandler(TooManyCreationsException.class)
+    ResponseEntity<ProblemDetail> tooManyCreations(TooManyCreationsException e) {
+        // Une ligne par refus, sans IP ni autre détail identifiant.
+        LOG.info("Session creation refused: too many creations from one client");
+        ProblemDetail problem = problem(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
+        problem.setProperty(CODE, "TOO_MANY_REQUESTS");
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(e.retryAfterSeconds()))
+                .body(problem);
     }
 
     @ExceptionHandler(MalformedRequestException.class)

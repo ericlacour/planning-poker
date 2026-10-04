@@ -14,6 +14,8 @@ import com.planningpoker.application.CreateSessionUseCase;
 import com.planningpoker.application.JoinSessionResult;
 import com.planningpoker.application.JoinSessionUseCase;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 /**
  * {@code POST /api/sessions} (createSession), {@code GET /api/sessions/{sessionId}} (checkSession) et
  * {@code POST /api/sessions/{sessionId}/participants} (joinSession).
@@ -24,21 +26,34 @@ public class SessionController {
     private final CreateSessionUseCase createSession;
     private final CheckSessionUseCase checkSession;
     private final JoinSessionUseCase joinSession;
+    private final CreationRateLimiter creationRateLimiter;
 
     public SessionController(CreateSessionUseCase createSession, CheckSessionUseCase checkSession,
-            JoinSessionUseCase joinSession) {
+            JoinSessionUseCase joinSession, CreationRateLimiter creationRateLimiter) {
         this.createSession = createSession;
         this.checkSession = checkSession;
         this.joinSession = joinSession;
+        this.creationRateLimiter = creationRateLimiter;
     }
 
+    /**
+     * Ordre : corps malformé (400) → trop de créations depuis cette IP (429) → pseudo invalide (400) → trop de
+     * sessions (503). Seule une création réussie compte pour l'IP.
+     */
     @PostMapping("/api/sessions")
     @ResponseStatus(HttpStatus.CREATED)
-    public CreateSessionResponse create(@RequestBody CreateSessionRequest request) {
+    public CreateSessionResponse create(@RequestBody CreateSessionRequest request, HttpServletRequest http) {
         if (!request.isWellFormed()) {
             throw new MalformedRequestException();
         }
-        CreateSessionResult result = createSession.create(request.pseudo(), request.role());
+        CreationRateLimiter.Slot slot = creationRateLimiter.acquire(ClientAddress.of(http));
+        CreateSessionResult result;
+        try {
+            result = createSession.create(request.pseudo(), request.role());
+        } catch (RuntimeException e) {
+            creationRateLimiter.release(slot);
+            throw e;
+        }
         return new CreateSessionResponse(result.sessionId(), result.participantId().toString(),
                 result.participantToken());
     }
@@ -50,7 +65,10 @@ public class SessionController {
         checkSession.check(sessionId);
     }
 
-    /** Ordre : corps malformé (400) → session inconnue (404) → pseudo invalide (400) → pseudo pris (409). */
+    /**
+     * Ordre : corps malformé (400) → session inconnue (404) → pseudo invalide (400) → pseudo pris (409
+     * {@code PSEUDO_TAKEN}) → session pleine (409 {@code SESSION_FULL}).
+     */
     @PostMapping("/api/sessions/{sessionId}/participants")
     public JoinSessionResponse join(@PathVariable String sessionId, @RequestBody JoinSessionRequest request) {
         if (!request.isWellFormed()) {

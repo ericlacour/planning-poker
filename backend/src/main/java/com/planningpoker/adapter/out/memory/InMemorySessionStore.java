@@ -33,4 +33,9 @@ public class InMemorySessionStore implements SessionStore {
     public Collection<Session> all() {
         return List.copyOf(sessions.values());
     }
+
+    @Override
+    public int count() {
+        return sessions.size();
+    }
 }

@@ -24,9 +24,9 @@ class SessionVoteTest {
     private static Session table() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"))
-                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"))
-                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"))
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW)
+                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW)
+                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW)
                 .connect(ALICE, "alice-1", NOW)
                 .connect(BOB, "bob-1", NOW);
     }
@@ -186,7 +186,8 @@ class SessionVoteTest {
     void joiningKeepsTheVotes() {
         UUID farid = UUID.fromString("1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d");
         Session voted = table().vote(ALICE, ROUND, "8");
-        Session joined = voted.join(farid, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"));
+        Session joined = voted.join(farid, Pseudo.of("Farid"), Role.VOTER,
+                ParticipantToken.of("farid"), NOW);
 
         assertThat(joined.voteOf(ALICE)).contains(Card.EIGHT);
         assertThat(joined.roundStatus()).isEqualTo(voted.roundStatus());
@@ -196,7 +197,8 @@ class SessionVoteTest {
 
     @Test
     void presenceChangesKeepTheVotes() {
-        Session session = table().vote(BOB, ROUND, "13").disconnect(BOB, "bob-1").connect(BOB, "bob-2", NOW);
+        Session session = table().vote(BOB, ROUND, "13").disconnect(BOB, "bob-1", NOW)
+                .connect(BOB, "bob-2", NOW);
         assertThat(session.voteOf(BOB)).contains(Card.THIRTEEN);
     }
 

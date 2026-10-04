@@ -19,7 +19,7 @@ class SessionPresenceTest {
     private static Session session() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", "round-1", ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"));
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW);
     }
 
     private static boolean connected(Session session, UUID id) {
@@ -58,7 +58,7 @@ class SessionPresenceTest {
     @Test
     void closingOneTabOfTwoKeepsTheParticipantConnected() {
         Session two = session().connect(BOB, "bob-1", NOW).connect(BOB, "bob-2", NOW);
-        Session closedOne = two.disconnect(BOB, "bob-1");
+        Session closedOne = two.disconnect(BOB, "bob-1", NOW);
         assertThat(connected(closedOne, BOB)).isTrue();
         assertThat(closedOne.version()).isEqualTo(two.version());
         assertThat(closedOne.lastChange()).isEqualTo(two.lastChange());
@@ -67,7 +67,7 @@ class SessionPresenceTest {
     @Test
     void closingTheLastConnectionMakesTheParticipantDisconnected() {
         Session connected = session().connect(BOB, "bob-1", NOW).connect(ALICE, "alice-1", NOW);
-        Session after = connected.disconnect(BOB, "bob-1");
+        Session after = connected.disconnect(BOB, "bob-1", NOW);
         assertThat(connected(after, BOB)).isFalse();
         assertThat(after.version()).isEqualTo(connected.version() + 1);
         assertThat(after.lastChange()).isEqualTo(LastChange.of(ChangeAction.PRESENCE, BOB));
@@ -75,16 +75,16 @@ class SessionPresenceTest {
 
     @Test
     void closingAConnectionTwiceChangesNothingTheSecondTime() {
-        Session closed = session().connect(BOB, "bob-1", NOW).disconnect(BOB, "bob-1");
-        assertThat(closed.disconnect(BOB, "bob-1")).isSameAs(closed);
+        Session closed = session().connect(BOB, "bob-1", NOW).disconnect(BOB, "bob-1", NOW);
+        assertThat(closed.disconnect(BOB, "bob-1", NOW)).isSameAs(closed);
     }
 
     @Test
     void disconnectingWithoutConnectionOrUnknownParticipantChangesNothing() {
         Session session = session().connect(BOB, "bob-1", NOW);
-        assertThat(session.disconnect(BOB, "other")).isSameAs(session);
-        assertThat(session.disconnect(ALICE, "bob-1")).isSameAs(session);
-        assertThat(session.disconnect(UUID.randomUUID(), "bob-1")).isSameAs(session);
+        assertThat(session.disconnect(BOB, "other", NOW)).isSameAs(session);
+        assertThat(session.disconnect(ALICE, "bob-1", NOW)).isSameAs(session);
+        assertThat(session.disconnect(UUID.randomUUID(), "bob-1", NOW)).isSameAs(session);
     }
 
     @Test
@@ -105,7 +105,7 @@ class SessionPresenceTest {
 
     @Test
     void activityOfAnUnknownConnectionIsIgnored() {
-        Session closed = session().connect(BOB, "bob-1", NOW).disconnect(BOB, "bob-1");
+        Session closed = session().connect(BOB, "bob-1", NOW).disconnect(BOB, "bob-1", NOW);
         assertThat(closed.touch("bob-1", NOW)).isSameAs(closed);
     }
 

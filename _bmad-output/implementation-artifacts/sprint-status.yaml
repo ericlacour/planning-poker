@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-03-2026 18:30
+last_updated: 10-04-2026 15:50
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -48,9 +48,9 @@ development_status:
 
   epic-2: in-progress
   2-1-voir-qui-est-vraiment-là: done
-  2-2-se-reconnecter-tout-seul-après-une-coupure: review
-  2-3-revenir-après-une-longue-absence: backlog
-  2-4-reprendre-sa-place-depuis-un-autre-appareil: backlog
+  2-2-se-reconnecter-tout-seul-après-une-coupure: done
+  2-3-revenir-après-une-longue-absence: done
+  2-4-reprendre-sa-place-depuis-un-autre-appareil: done
   2-5-une-session-qui-s-efface-d-elle-même: backlog
   2-6-un-service-qui-tient-face-aux-abus: backlog
   epic-2-retrospective: optional

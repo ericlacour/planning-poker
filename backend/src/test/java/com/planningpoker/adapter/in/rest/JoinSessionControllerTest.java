@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -86,6 +87,12 @@ class JoinSessionControllerTest {
         return store.find(sessionId).orElseThrow();
     }
 
+    /** Le créateur ouvre une connexion : son pseudo est pris, pas repris (FR-8). */
+    private void connectCreator(String sessionId) {
+        Session session = stored(sessionId);
+        store.save(session.connect(session.participants().get(0).id(), "c-creator", Instant.now()));
+    }
+
     /** Le corps du problème est celui de l'exemple du contrat, {@code instance} suivant le chemin réel. */
     private void expectProblem(ResultActions actions, int status, String example, String path) throws Exception {
         String body = actions
@@ -161,14 +168,39 @@ class JoinSessionControllerTest {
     @ValueSource(strings = { " sofia  ", "SOFIA", "Sofia" })
     void answersPseudoTakenIgnoringCaseAndSpaces(String pseudo) throws Exception {
         String sessionId = createSession("Sofia");
+        connectCreator(sessionId);
+        Session before = stored(sessionId);
         expectProblem(join(sessionId, pseudo, "VOTER"), 409, "pseudo-taken", participantsPath(sessionId));
-        assertThat(stored(sessionId).participants()).hasSize(1);
+        assertThat(stored(sessionId)).isEqualTo(before);
     }
 
     @Test
     void answersPseudoTakenAfterNfcNormalization() throws Exception {
         String sessionId = createSession("Élodie");
+        connectCreator(sessionId);
         expectProblem(join(sessionId, "E\\u0301lodie", "VOTER"), 409, "pseudo-taken", participantsPath(sessionId));
+    }
+
+    @Test
+    void aDisconnectedPseudoIsTakenOverWithTheSameParticipantId() throws Exception {
+        String sessionId = createSession("Sofia");
+        JsonNode first = joined(sessionId, "{\"pseudo\":\"Bob\",\"role\":\"VOTER\"}");
+        Session before = stored(sessionId);
+
+        JsonNode again = joined(sessionId, "{\"pseudo\":\" bob \",\"role\":\"OBSERVER\"}");
+
+        assertThat(again.get("participantId").asString()).isEqualTo(first.get("participantId").asString());
+        assertThat(again.get("participantToken").asString()).matches(BASE64URL_128_BITS)
+                .isNotEqualTo(first.get("participantToken").asString());
+        Session after = stored(sessionId);
+        assertThat(after.version()).isEqualTo(before.version());
+        assertThat(after.participants()).hasSize(2);
+        assertThat(after.participantWithToken(first.get("participantToken").asString())).isEmpty();
+        assertThat(after.participantWithToken(again.get("participantToken").asString())).hasValueSatisfying(p -> {
+            assertThat(p.id()).isEqualTo(UUID.fromString(first.get("participantId").asString()));
+            assertThat(p.pseudo().value()).isEqualTo("Bob");
+            assertThat(p.role()).isEqualTo(Role.VOTER);
+        });
     }
 
     @ParameterizedTest

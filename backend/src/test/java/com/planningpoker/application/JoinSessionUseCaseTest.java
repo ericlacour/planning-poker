@@ -34,7 +34,8 @@ class JoinSessionUseCaseTest {
     private final CreateSessionUseCase create = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC));
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
-    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster);
+    private final JoinSessionUseCase join = new JoinSessionUseCase(store, locks, ids, broadcaster,
+            Clock.fixed(NOW, ZoneOffset.UTC));
     private final CheckSessionUseCase check = new CheckSessionUseCase(store);
 
     private String sessionOf(String creator) {
@@ -96,13 +97,46 @@ class JoinSessionUseCaseTest {
         assertThat(store.calls).containsExactly("find");
     }
 
+    /** Le créateur ouvre une connexion : son pseudo est pris, pas repris (FR-8). */
+    private void connectCreator(String sessionId) {
+        Session session = store.sessions.get(sessionId);
+        store.sessions.put(sessionId, session.connect(session.participants().get(0).id(), "c-creator", NOW));
+        store.calls.clear();
+    }
+
     @Test
     void aTakenPseudoIsRejectedWithoutWriting() {
         String sessionId = sessionOf("Sofia");
+        connectCreator(sessionId);
         assertThatThrownBy(() -> join.join(sessionId, " sofia  ", Role.VOTER))
                 .isInstanceOf(PseudoTakenException.class);
         assertThat(store.calls).containsExactly("find");
-        assertThat(store.sessions.get(sessionId).version()).isEqualTo(1);
+        assertThat(store.sessions.get(sessionId).version()).isEqualTo(2);
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void aDisconnectedPseudoIsTakenOverWithoutBroadcast() {
+        String sessionId = sessionOf("Sofia");
+        JoinSessionResult bob = join.join(sessionId, "Bob", Role.VOTER);
+        Session before = store.sessions.get(sessionId);
+        broadcaster.published.clear();
+        store.calls.clear();
+
+        JoinSessionResult again = join.join(sessionId, " BOB ", Role.OBSERVER);
+
+        assertThat(again.participantId()).isEqualTo(bob.participantId());
+        assertThat(again.participantToken()).isNotEqualTo(bob.participantToken());
+        Session after = store.sessions.get(sessionId);
+        assertThat(after.version()).isEqualTo(before.version());
+        assertThat(after.participants()).hasSize(2);
+        assertThat(after.participantWithToken(again.participantToken())).hasValueSatisfying(p -> {
+            assertThat(p.id()).isEqualTo(bob.participantId());
+            assertThat(p.pseudo().value()).isEqualTo("Bob");
+            assertThat(p.role()).isEqualTo(Role.VOTER);
+        });
+        assertThat(after.participantWithToken(bob.participantToken())).isEmpty();
+        assertThat(store.calls).containsExactly("find", "save");
         assertThat(broadcaster.published).isEmpty();
     }
 
@@ -121,7 +155,7 @@ class JoinSessionUseCaseTest {
         String sessionId = new CreateSessionUseCase(memory, locks, secureIds, Clock.fixed(NOW, ZoneOffset.UTC))
                 .create("Sofia", Role.VOTER).sessionId();
         JoinSessionUseCase concurrentJoin = new JoinSessionUseCase(memory, locks, secureIds,
-                new RecordingBroadcaster());
+                new RecordingBroadcaster(), Clock.fixed(NOW, ZoneOffset.UTC));
 
         int arrivals = 20;
         ExecutorService pool = Executors.newFixedThreadPool(arrivals);

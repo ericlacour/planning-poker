@@ -25,6 +25,7 @@ class SweepUseCaseTest {
 
     private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
+    private static final Duration ABSENCE = Duration.ofMinutes(5);
 
     private final InMemorySessionStore store = new InMemorySessionStore();
     private final SessionLocks locks = new SessionLocks();
@@ -33,7 +34,7 @@ class SweepUseCaseTest {
     private final MutableClock clock = new MutableClock(NOW);
     private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
             clock);
-    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT);
+    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT, ABSENCE);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
 
@@ -160,7 +161,7 @@ class SweepUseCaseTest {
                 return List.of(session());
             }
         };
-        new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT).sweep();
+        new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT, ABSENCE).sweep();
         assertThat(broadcaster.closeRequested).isEmpty();
     }
 
@@ -179,7 +180,8 @@ class SweepUseCaseTest {
 
     @Test
     void eachParticipantSweptInTheSamePassGetsItsOwnPresenceChange() {
-        JoinSessionResult bob = new JoinSessionUseCase(store, locks, ids, broadcaster)
+        JoinSessionResult bob = new JoinSessionUseCase(store, locks, ids, broadcaster,
+                Clock.fixed(NOW, ZoneOffset.UTC))
                 .join(created.sessionId(), "Bob", Role.VOTER);
         connect("c1");
         connections.connect(created.sessionId(), bob.participantToken(), "c2");
@@ -194,5 +196,114 @@ class SweepUseCaseTest {
                 .containsExactly(version + 1, version + 2);
         assertThat(broadcaster.published).extracting(p -> p.session().lastChange().byParticipantId())
                 .containsExactlyInAnyOrder(created.participantId(), bob.participantId());
+    }
+
+    private JoinSessionResult bobJoins() {
+        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock)
+                .join(created.sessionId(), "Bob", Role.VOTER);
+    }
+
+    @Test
+    void aParticipantWithoutConnectionForTheAbsenceTimeoutIsRemovedAndTheLeaveIsPublished() {
+        connect("c1");
+        JoinSessionResult bob = bobJoins();
+        connections.connect(created.sessionId(), bob.participantToken(), "c2");
+        clock.advance(Duration.ofSeconds(1));
+        connections.disconnect(created.sessionId(), bob.participantId(), "c2");
+        broadcaster.published.clear();
+        long version = session().version();
+
+        // Alice garde une connexion vivante pendant toute l'absence de Bob.
+        for (int i = 0; i < 59; i++) {
+            clock.advance(Duration.ofSeconds(5));
+            connections.touch(created.sessionId(), "c1");
+            sweep.sweep();
+        }
+        clock.advance(Duration.ofSeconds(5).minusMillis(1));
+        connections.touch(created.sessionId(), "c1");
+        sweep.sweep();
+        assertThat(session().participant(bob.participantId())).isPresent();
+        assertThat(broadcaster.published).isEmpty();
+
+        clock.advance(Duration.ofMillis(1));
+        sweep.sweep();
+
+        assertThat(session().participant(bob.participantId())).isEmpty();
+        assertThat(session().participant(created.participantId()).orElseThrow().connected()).isTrue();
+        assertThat(session().version()).isEqualTo(version + 1);
+        assertThat(session().lastChange()).isEqualTo(LastChange.of(ChangeAction.LEAVE, bob.participantId()));
+        assertThat(broadcaster.published).singleElement().satisfies(p -> {
+            assertThat(p.session()).isSameAs(session());
+            assertThat(p.onlyTo()).isNull();
+        });
+    }
+
+    @Test
+    void aSilentConnectionClosedAtFifteenSecondsLeadsToARemovalFiveMinutesLater() {
+        connect("c1");
+        clock.advance(TIMEOUT);
+        sweep.sweep();
+        assertThat(connected()).isFalse();
+        broadcaster.published.clear();
+
+        clock.advance(ABSENCE.minusMillis(1));
+        sweep.sweep();
+        assertThat(session().participant(created.participantId())).isPresent();
+        assertThat(broadcaster.published).isEmpty();
+
+        clock.advance(Duration.ofMillis(1));
+        sweep.sweep();
+        assertThat(session().participants()).isEmpty();
+        assertThat(session().lastChange()).isEqualTo(LastChange.of(ChangeAction.LEAVE, created.participantId()));
+        assertThat(broadcaster.published).singleElement().satisfies(p -> assertThat(p.onlyTo()).isNull());
+    }
+
+    @Test
+    void aParticipantWhoNeverConnectedIsRemovedFiveMinutesAfterJoining() {
+        connect("c1");
+        for (int i = 0; i < 12; i++) {
+            clock.advance(Duration.ofSeconds(5));
+            connections.touch(created.sessionId(), "c1");
+            sweep.sweep();
+        }
+        JoinSessionResult bob = bobJoins();
+        broadcaster.published.clear();
+
+        // Alice garde sa connexion vivante jusqu'à l'arrivée + ABSENCE − 1 ms.
+        for (int i = 0; i < 59; i++) {
+            clock.advance(Duration.ofSeconds(5));
+            connections.touch(created.sessionId(), "c1");
+            sweep.sweep();
+        }
+        clock.advance(Duration.ofSeconds(5).minusMillis(1));
+        connections.touch(created.sessionId(), "c1");
+        sweep.sweep();
+        assertThat(session().participant(bob.participantId())).isPresent();
+        assertThat(broadcaster.published).isEmpty();
+
+        clock.advance(Duration.ofMillis(1));
+        sweep.sweep();
+
+        assertThat(session().participant(bob.participantId())).isEmpty();
+        assertThat(broadcaster.published).singleElement().satisfies(
+                p -> assertThat(p.session().lastChange()).isEqualTo(LastChange.of(ChangeAction.LEAVE,
+                        bob.participantId())));
+    }
+
+    @Test
+    void eachParticipantRemovedInTheSamePassGetsItsOwnLeave() {
+        JoinSessionResult bob = bobJoins();
+        broadcaster.published.clear();
+        long version = session().version();
+
+        clock.advance(ABSENCE);
+        sweep.sweep();
+
+        assertThat(session().participants()).isEmpty();
+        assertThat(broadcaster.published).extracting(p -> p.session().version())
+                .containsExactly(version + 1, version + 2);
+        assertThat(broadcaster.published).extracting(p -> p.session().lastChange())
+                .containsExactlyInAnyOrder(LastChange.of(ChangeAction.LEAVE, created.participantId()),
+                        LastChange.of(ChangeAction.LEAVE, bob.participantId()));
     }
 }

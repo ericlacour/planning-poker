@@ -49,12 +49,19 @@ class SessionTest {
                 ParticipantToken.of("creator-secret"), NOW);
     }
 
+    /** Session dont le créateur a une connexion ouverte : son pseudo est pris, pas repris (FR-8). */
+    private static Session sessionWithConnectedCreator(String pseudo) {
+        Session created = sessionCreatedBy(pseudo);
+        return created.connect(created.participants().get(0).id(), "c-creator", NOW);
+    }
+
     @Test
     void joiningAddsAParticipantAfterTheCreator() {
         Session created = sessionCreatedBy("Sofia");
         UUID bobId = UUID.randomUUID();
 
-        Session joined = created.join(bobId, Pseudo.of("  Bob "), Role.OBSERVER, ParticipantToken.of("bob-secret"));
+        Session joined = created.join(bobId, Pseudo.of("  Bob "), Role.OBSERVER,
+                ParticipantToken.of("bob-secret"), NOW);
 
         assertThat(joined).isNotSameAs(created);
         assertThat(created.participants()).hasSize(1);
@@ -76,7 +83,8 @@ class SessionTest {
     void successiveArrivalsGetIncreasingJoinOrdersAndVersions() {
         Session session = sessionCreatedBy("Sofia");
         for (String pseudo : new String[] { "Bob", "Karim", "Paul" }) {
-            session = session.join(UUID.randomUUID(), Pseudo.of(pseudo), Role.VOTER, ParticipantToken.of(pseudo));
+            session = session.join(UUID.randomUUID(), Pseudo.of(pseudo), Role.VOTER,
+                    ParticipantToken.of(pseudo), NOW);
         }
         assertThat(session.participants()).extracting(Participant::joinOrder).containsExactly(1, 2, 3, 4);
         assertThat(session.version()).isEqualTo(4);
@@ -86,26 +94,27 @@ class SessionTest {
     @ParameterizedTest
     @ValueSource(strings = { "Sofia", " sofia  ", "SOFIA", "\u2003sOfIa\t" })
     void aPseudoAlreadyPresentIgnoringCaseAndSpacesIsTaken(String pseudo) {
-        Session created = sessionCreatedBy("Sofia");
+        Session created = sessionWithConnectedCreator("Sofia");
         assertThatThrownBy(() -> created.join(UUID.randomUUID(), Pseudo.of(pseudo), Role.VOTER,
-                ParticipantToken.of("x"))).isInstanceOf(PseudoTakenException.class);
+                ParticipantToken.of("x"), NOW)).isInstanceOf(PseudoTakenException.class);
     }
 
     @Test
     void uniquenessComparesNormalizedPseudos() {
-        Session created = sessionCreatedBy("\u00c9lodie");
+        Session created = sessionWithConnectedCreator("\u00c9lodie");
         assertThatThrownBy(() -> created.join(UUID.randomUUID(), Pseudo.of("E\u0301lodie"), Role.VOTER,
-                ParticipantToken.of("x"))).isInstanceOf(PseudoTakenException.class);
+                ParticipantToken.of("x"), NOW)).isInstanceOf(PseudoTakenException.class);
         assertThatThrownBy(() -> created.join(UUID.randomUUID(), Pseudo.of("\u00e9LODIE"), Role.VOTER,
-                ParticipantToken.of("x"))).isInstanceOf(PseudoTakenException.class);
+                ParticipantToken.of("x"), NOW)).isInstanceOf(PseudoTakenException.class);
     }
 
     @Test
     void aTakenPseudoAmongLaterArrivalsIsAlsoRejected() {
-        Session session = sessionCreatedBy("Sofia").join(UUID.randomUUID(), Pseudo.of("Bob"), Role.OBSERVER,
-                ParticipantToken.of("b"));
+        UUID bobId = UUID.randomUUID();
+        Session session = sessionCreatedBy("Sofia").join(bobId, Pseudo.of("Bob"), Role.OBSERVER,
+                ParticipantToken.of("b"), NOW).connect(bobId, "c-bob", NOW);
         Session finalSession = session;
         assertThatThrownBy(() -> finalSession.join(UUID.randomUUID(), Pseudo.of("bob"), Role.VOTER,
-                ParticipantToken.of("x"))).isInstanceOf(PseudoTakenException.class);
+                ParticipantToken.of("x"), NOW)).isInstanceOf(PseudoTakenException.class);
     }
 }

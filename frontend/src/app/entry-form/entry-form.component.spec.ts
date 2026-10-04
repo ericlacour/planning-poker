@@ -110,4 +110,20 @@ describe('EntryFormComponent', () => {
     expect(error?.querySelector('svg')).not.toBeNull();
     expect(submit().nextElementSibling).toBe(error);
   });
+
+  it('shows no notice by default', () => {
+    expect(element.querySelector('.entry-notice')).toBeNull();
+    expect(element.querySelector('[role="status"]')).toBeNull();
+  });
+
+  it('shows a neutral notice above the field, as a status', () => {
+    set('notice', 'Ta place a été reprise depuis un autre appareil.');
+    const notice = element.querySelector('.entry-notice');
+    expect(notice?.textContent?.trim()).toBe('Ta place a été reprise depuis un autre appareil.');
+    expect(notice?.getAttribute('role')).toBe('status');
+    expect(notice?.classList).not.toContain('error-msg');
+    expect(notice?.querySelector('svg')).toBeNull();
+    expect(notice!.compareDocumentPosition(input()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(input().getAttribute('aria-invalid')).toBeNull();
+  });
 });

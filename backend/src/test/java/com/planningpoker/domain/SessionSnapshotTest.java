@@ -19,8 +19,8 @@ class SessionSnapshotTest {
     private static Session observerFirst() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", "round-1", EMMA, Pseudo.of("Emma"), Role.OBSERVER,
                 ParticipantToken.of("emma"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"))
-                .join(ALICE, Pseudo.of("Alice"), Role.VOTER, ParticipantToken.of("alice"));
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW)
+                .join(ALICE, Pseudo.of("Alice"), Role.VOTER, ParticipantToken.of("alice"), NOW);
     }
 
     @Test
@@ -36,8 +36,8 @@ class SessionSnapshotTest {
         // votants Bob(2), Alice(1), observatrice Emma(3) → Alice, Bob, Emma
         Session session = Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", "round-1", ALICE, Pseudo.of("Alice"),
                 Role.VOTER, ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"))
-                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"));
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW)
+                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW);
         assertThat(SessionSnapshot.forRecipient(session, EMMA).participants())
                 .extracting(s -> s.pseudo().value()).containsExactly("Alice", "Bob", "Emma");
     }

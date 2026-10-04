@@ -25,7 +25,8 @@ context:
 - Le plafond de 50 sessions est strict même en cas de créations simultanées : on compte puis on enregistre dans une même section critique propre à la création. Une session expirée (2.5) libère sa place.
 - `SESSION_FULL` ne vise qu'un **nouvel** participant. La reprise d'un participant déconnecté (2.4) n'ajoute personne, elle reste donc possible quand la session est pleine. Ordre de contrôle : session inconnue (404), pseudo invalide (400), pseudo pris (409 `PSEUDO_TAKEN`), session pleine (409 `SESSION_FULL`). Un retiré (2.3) ne compte plus.
 - `429` : seules les créations réussies sont comptées. On refuse dès que l'IP a 10 créations dans la fenêtre glissante d'une minute. `Retry-After` donne en secondes entières (arrondi au supérieur, au moins 1) le temps avant que la plus ancienne sorte de la fenêtre. Les compteurs ne vivent qu'en mémoire et une IP sans création depuis 1 min est oubliée. Le contrôle du `429` passe avant celui du `503`.
-- IP cliente : voir la question ouverte n° 1. La lecture est isolée dans une seule classe et testée, y compris sur un en-tête falsifié par le client.
+- IP cliente (décision d'Eric, 2026-10-04) : `CF-Connecting-IP` s'il est présent (Cloudflare l'écrit en écrasant toute valeur du client) ; sinon la **dernière** entrée de `X-Forwarded-For` ; sinon `remoteAddr`. Jamais l'entrée la plus à gauche de `X-Forwarded-For`, falsifiable. La lecture est isolée dans une seule classe et testée, y compris sur un en-tête falsifié par le client.
+- Retour d'un participant retiré (2.3) sur une session pleine (décision d'Eric, 2026-10-04) : fermeture `4401`, comme pour un pseudo pris entre-temps ; rien ne change et il reste parmi les retirés. Le client affiche Rejoindre prérempli (avec le texte existant de la 2.4), puis « Cette session est complète. » s'il valide. Ni le front ni le contrat WebSocket ne changent pour ce cas.
 - Journaux : jamais d'IP, de pseudo, de jeton ni d'identifiant de session. Une ligne par refus, sans détail identifiant.
 - Front : « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. » et « Trop de sessions créées depuis ton réseau. Patiente une minute. » s'affichent sous le bouton de l'accueil. « Cette session est complète. » s'affiche sous le champ de Rejoindre. La saisie est conservée et le bouton redevient actif. Un `413` est traité comme aujourd'hui une réponse inattendue (« Impossible de joindre le serveur. »).
 
@@ -52,16 +53,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. **D'où lire l'IP cliente derrière Render ?** Render passe par Cloudflare puis par son répartiteur. Cloudflare **ajoute** son entrée à `X-Forwarded-For` sans écraser celle du client, donc l'entrée la plus à gauche est falsifiable. La doc de Render recommande `CF-Connecting-IP`, que Cloudflare écrit sur chaque requête en écrasant toute valeur envoyée par le client.
-   - **A (recommandée) :** `CF-Connecting-IP` si présent, sinon la dernière entrée de `X-Forwarded-For`, sinon `remoteAddr`. Fiable sur Render, mais l'en-tête principal n'est plus celui que nomme le critère.
-   - **B :** la dernière entrée de `X-Forwarded-For` (« trust proxy 1 »), sinon `remoteAddr`. C'est la lettre du critère. Si Render ajoute une seconde étape de proxy, tous les clients partagent la même IP et le même quota de 10 créations par minute.
-   - **C :** l'entrée de `X-Forwarded-For` à la position N en partant de la droite, N étant réglable (défaut 1). C'est B avec un levier de correction sans redéploiement de code.
-2. **Retour d'un participant retiré quand la session est pleine** (sa poignée de main `hello` alors que 30 autres sont à la table) :
-   - **A (recommandée) :** fermeture `4401`, comme pour un pseudo pris entre-temps. Il voit Rejoindre, prérempli, avec « Ta place a été reprise depuis un autre appareil. » (texte inexact), puis « Cette session est complète. » s'il valide. Aucun changement du front ni du contrat WebSocket.
-   - **B :** il revient quand même et dépasse 30. Le plafond devient contournable par des allers-retours.
-
 ## Code Map
 
 - `backend/…/adapter/in/rest/SessionController.java` -- `create` : contrôle du `429` (nouveau `CreationRateLimiter`, IP lue par un `ClientAddress`) avant l'appel, comptage après succès. `RestErrorHandler.java` -- nouvelles exceptions → `503`/`429` (+ `Retry-After`)/`409 SESSION_FULL`, même forme que `pseudoTaken`.
@@ -78,8 +69,8 @@ context:
 
 **Execution:**
 - [ ] `domain/Session.java`, `domain/SessionFullException.java` + tests domaine -- plafond des participants, reprise permise, retirés non comptés.
-- [ ] `application/CreateSessionUseCase.java`, `SessionLimitReachedException`, `SessionStore.count`, `JoinSessionUseCase`, `SessionConnectionUseCase` + tests -- 50 sessions strict (test concurrent), place libérée par `delete`, retour d'un retiré sur session pleine (Q2).
-- [ ] `adapter/in/rest/*` + `RestErrorHandler` + tests MockMvc -- `413` (avec et sans `Content-Length`, limite exacte), `429` + `Retry-After` (horloge contrôlée), IP lue selon Q1 y compris avec un en-tête falsifié, `503`, `409 SESSION_FULL`.
+- [ ] `application/CreateSessionUseCase.java`, `SessionLimitReachedException`, `SessionStore.count`, `JoinSessionUseCase`, `SessionConnectionUseCase` + tests -- 50 sessions strict (test concurrent), place libérée par `delete`, retour d'un retiré sur session pleine (`4401`, rien ne change).
+- [ ] `adapter/in/rest/*` + `RestErrorHandler` + tests MockMvc -- `413` (avec et sans `Content-Length`, limite exacte), `429` + `Retry-After` (horloge contrôlée), IP lue par `ClientAddress` (`CF-Connecting-IP`, puis dernière entrée de `X-Forwarded-For`, puis `remoteAddr`) y compris avec un en-tête falsifié, `503`, `409 SESSION_FULL`.
 - [ ] `config/*`, `application.properties` -- propriétés et assemblage. Test WS de bout en bout : un message de 4097 caractères ferme en `1009`.
 - [ ] `contract/*` -- réponses, codes, exemples, `1009`, puis `npm test`.
 - [ ] `frontend/*` + specs -- trois libellés, saisie conservée, bouton réactivé.

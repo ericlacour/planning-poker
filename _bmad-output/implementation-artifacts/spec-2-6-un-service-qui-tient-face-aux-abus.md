@@ -2,7 +2,7 @@
 title: 'Story 2.6 : un service qui tient face aux abus'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '357a6eae4e51a2a7cbadee907afe0995e5391a99'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -69,12 +69,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `domain/Session.java`, `domain/SessionFullException.java` + tests domaine -- plafond des participants, reprise permise, retirés non comptés.
-- [ ] `application/CreateSessionUseCase.java`, `SessionLimitReachedException`, `SessionStore.count`, `JoinSessionUseCase`, `SessionConnectionUseCase` + tests -- 50 sessions strict (test concurrent), place libérée par `delete`, retour d'un retiré sur session pleine (`4401`, rien ne change).
-- [ ] `adapter/in/rest/*` + `RestErrorHandler` + tests MockMvc -- `413` (avec et sans `Content-Length`, limite exacte), `429` + `Retry-After` (horloge contrôlée), IP lue par `ClientAddress` (`CF-Connecting-IP`, puis dernière entrée de `X-Forwarded-For`, puis `remoteAddr`) y compris avec un en-tête falsifié, `503`, `409 SESSION_FULL`.
-- [ ] `config/*`, `application.properties` -- propriétés et assemblage. Test WS de bout en bout : un message de 4097 caractères ferme en `1009`.
-- [ ] `contract/*` -- réponses, codes, exemples, `1009`, puis `npm test`.
-- [ ] `frontend/*` + specs -- trois libellés, saisie conservée, bouton réactivé.
+- [x] `domain/Session.java`, `domain/SessionFullException.java` + tests domaine -- plafond des participants, reprise permise, retirés non comptés.
+- [x] `application/CreateSessionUseCase.java`, `SessionLimitReachedException`, `SessionStore.count`, `JoinSessionUseCase`, `SessionConnectionUseCase` + tests -- 50 sessions strict (test concurrent), place libérée par `delete`, retour d'un retiré sur session pleine (`4401`, rien ne change).
+- [x] `adapter/in/rest/*` + `RestErrorHandler` + tests MockMvc -- `413` (avec et sans `Content-Length`, limite exacte), `429` + `Retry-After` (horloge contrôlée), IP lue par `ClientAddress` (`CF-Connecting-IP`, puis dernière entrée de `X-Forwarded-For`, puis `remoteAddr`) y compris avec un en-tête falsifié, `503`, `409 SESSION_FULL`.
+- [x] `config/*`, `application.properties` -- propriétés et assemblage. Test WS de bout en bout : un message de 4097 caractères ferme en `1009`.
+- [x] `contract/*` -- réponses, codes, exemples, `1009`, puis `npm test`.
+- [x] `frontend/*` + specs -- trois libellés, saisie conservée, bouton réactivé.
 
 **Acceptance Criteria:**
 - Given les plafonds, when les refus se produisent, then aucune IP, aucun pseudo, aucun jeton ni identifiant de session n'apparaît dans les journaux.
@@ -92,3 +92,24 @@ context:
 - `cd backend && JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64 ./mvnw -B verify` -- expected: vert.
 - `cd frontend && npx -y node@24 node_modules/@angular/cli/bin/ng.js test --watch=false` -- expected: vert.
 - `cd contract && npm test` -- expected: vert.
+
+## Review Triage Log
+
+| # | Source | Finding | Verdict | Preuve | Route |
+|---|--------|---------|---------|--------|-------|
+| 1 | blind, edge | `RequestBodyLimitFilter` compare l'URI brute à la regex : `/api/sessions;x=y` et `/api/session%73` passent sans limite | medium | Sonde sur vrai serveur avec 5 Ko : `/api/sessions` → 413, `;x=y` → 201, `%73` → 201. Spring route le chemin décodé et sans paramètres. | patch |
+| 2 | blind, edge | `CF-Connecting-IP` falsifiable si l'origine est jointe sans Cloudflare | maybe-false | Le service n'est exposé que par `*.onrender.com`, derrière le bord Cloudflare de Render (hypothèse de la décision d'Eric). Il faudrait envoyer un en-tête forgé au service déployé et voir si la valeur survit. Même vraie, la gravité serait faible : 5 IP suffisent déjà à atteindre le plafond de 50 sessions. | rejet (faible) |
+| 3 | blind | IPv6 : une /64 permet de changer d'adresse à chaque requête | low | Réel, mais le plafond global de 50 sessions borne le dommage, que 5 IPv4 atteignent déjà. Corriger demande une logique de préfixe. | rejet |
+| 4 | blind, edge | `max-creations-per-ip=0` → NPE puis 500 | low | Réel mais seulement sur une mauvaise configuration. Corriger demande une garde de validation. | rejet |
+| 5 | blind | `Retry-After` non exposé en CORS et message « Patiente une minute » figé | false | Le libellé est imposé mot pour mot par la spec, et le front n'a pas besoin de l'en-tête. | rejet |
+| 6 | blind, edge, verif | Retiré qui revient sur une session pleine : `4401` puis « Ta place a été reprise… » | false | Comportement voulu par la décision d'Eric (Boundaries) : « texte existant de la 2.4 », ni le front ni le contrat WS ne changent. | rejet |
+| 7 | blind | `SESSION_FULL` affiché sous le champ pseudo | false | Imposé par la spec : « sous le champ de Rejoindre ». | rejet |
+| 8 | blind | `413` sans en-têtes CORS, vu comme une erreur réseau | false | Accepté par la Design Note et par les Boundaries. | rejet |
+| 9 | blind | Valeurs par défaut dupliquées entre `@Value`, `application.properties` et le contrat | low | `ApplicationDefaultsTest` couvre la production. Corriger serait un refactor de configuration. | rejet |
+| 10 | blind, edge | Limite WS en caractères alors que le contrat dit « 4 KB » | low | `setMaxTextMessageBufferSize` compte des caractères, donc jusqu'à environ 16 Ko d'UTF-8. La mémoire reste bornée et la matrice parle de 4097 caractères. Correction directe : préciser le contrat. | patch |
+| 11 | blind | Statut de la spec (`in-review`) différent de sprint-status (`in-progress`) | false | Étapes du workflow : sprint-status se synchronise à la présentation. | rejet |
+| 12 | blind | Nombre d'IP suivies sans borne, et `forgetOutside` en O(n) | false | Une entrée par création réussie dans la fenêtre, avec au plus 50 sessions vivantes. La table reste petite. | rejet |
+| 13 | blind | Le nouveau journal « could not come back: session full » contient l'identifiant du participant | low | Contraire à « une ligne par refus, sans détail identifiant ». Correction directe : retirer le paramètre de cette nouvelle ligne. | patch |
+| 14 | blind | `Content-Length` sous la limite mais corps plus long | false | Le conteneur arrête le flux à `Content-Length`. `readNBytes` ne lit que ce qu'il fournit. | rejet |
+| 15 | blind | Requêtes au pseudo invalide jamais limitées | false | Voulu par la spec : seules les créations réussies comptent. | rejet |
+| 16 | verif | Aucun test concurrent du limiteur par IP pour une même IP | gap (pré-vérifié) | Le code est correct (`synchronized`). La spec ne demandait que le test concurrent des 50 sessions. | defer |

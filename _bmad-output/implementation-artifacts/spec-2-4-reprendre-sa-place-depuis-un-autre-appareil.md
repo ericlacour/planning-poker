@@ -2,7 +2,7 @@
 title: 'Story 2.4 : reprendre sa place depuis un autre appareil'
 type: 'feature'
 created: '2026-10-04'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '083031da3dcbc3882e4d146849929352cf0c296f'
@@ -61,12 +61,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `domain/Participant.java`, `domain/Session.java` -- `withToken`, règle de reprise dans `join`.
-- [ ] `domain/SessionTakeOverTest.java` (nouveau) -- lignes de la matrice côté domaine : casse, rôle ignoré, vote / arrivée tardive / `joinOrder` / `offlineSince` gardés, même `version`, ancien jeton ne correspond plus, nouveau oui ; connecté → exception ; `departed` non repris.
-- [ ] `application/JoinSessionUseCase.java` + `JoinSessionUseCaseTest.java` -- id du repris renvoyé, aucune diffusion à la reprise.
-- [ ] `application/SessionConnectionUseCaseTest.java` -- ancien jeton → `UnknownToken` ; nouveau → `Connected` avec le même id.
-- [ ] `SessionTest.java`, `JoinSessionControllerTest.java` -- adapter les tests 409 ; ajouter au contrôleur un 200 de reprise (même `participantId`).
-- [ ] Front : `entry-messages.ts`, `entry-form.component.ts`, `session-entry.component.ts` et leurs specs -- message après `4401`, absent à l'arrivée directe, effacé à l'envoi.
+- [x] `domain/Participant.java`, `domain/Session.java` -- `withToken`, règle de reprise dans `join`.
+- [x] `domain/SessionTakeOverTest.java` (nouveau) -- lignes de la matrice côté domaine : casse, rôle ignoré, vote / arrivée tardive / `joinOrder` / `offlineSince` gardés, même `version`, ancien jeton ne correspond plus, nouveau oui ; connecté → exception ; `departed` non repris.
+- [x] `application/JoinSessionUseCase.java` + `JoinSessionUseCaseTest.java` -- id du repris renvoyé, aucune diffusion à la reprise.
+- [x] `application/SessionConnectionUseCaseTest.java` -- ancien jeton → `UnknownToken` ; nouveau → `Connected` avec le même id.
+- [x] `SessionTest.java`, `JoinSessionControllerTest.java` -- adapter les tests 409 ; ajouter au contrôleur un 200 de reprise (même `participantId`).
+- [x] Front : `entry-messages.ts`, `entry-form.component.ts`, `session-entry.component.ts` et leurs specs -- message après `4401`, absent à l'arrivée directe, effacé à l'envoi.
 
 **Acceptance Criteria:**
 - Given un participant déconnecté qui a voté, when il rejoint depuis un autre appareil avec son pseudo puis s'y connecte, then il retrouve sa place, son rôle et son vote, et les autres le voient seulement repasser connecté.
@@ -78,6 +78,23 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Source | Constat | Verdict | Route / preuve |
+|---|--------|---------|---------|----------------|
+| 1 | edge-case | Un participant entré par REST, sans `hello` encore, peut être repris par un homonyme | false | Voulu : ligne « Jamais connecté → reprise » de la matrice figée ; usurpation acceptée par FR-8. Rejeté. |
+| 2 | edge-case | Deux appareils peuvent se reprendre la place l'un l'autre avant de se connecter | false | Conséquence directe de la règle figée (reprise de tout participant sans connexion) ; risque accepté par FR-8. Rejeté. |
+| 3 | edge-case, blind | Le message « reprise depuis un autre appareil » s'affiche aussi pour un `4401` après retrait ou un jeton disparu | false | Imposé par le bloc figé (« à chaque fin `unknownToken` ») et justifié en Design Notes ; le corriger demanderait de modifier la spec. Rejeté. |
+| 4 | blind | Pendant ≤ 15 s après un arrêt brutal de l'ancien appareil, la reprise répond 409 | low | Réel, mais imposé par l'intention (« connecté → 409 ») et la détection FR-16 existante ; un nouvel essai suffit. Rejeté. |
+| 5 | blind | Le rôle choisi est ignoré sans le dire à l'utilisateur | false | Imposé par l'intention figée ; `openapi.yaml` (`joinSession`) dit déjà que le rôle est conservé. Rejeté. |
+| 6 | blind | `JoinSessionUseCase` détecte la reprise par comparaison de `version` et d'identifiant | low | Couplage réel mais couvert par `aDisconnectedPseudoIsTakenOverWithoutBroadcast` ; un résultat typé ajouterait de la surface. Rejeté. |
+| 7 | blind | `participantId` et `now` inutilisés lors d'une reprise | low | Documenté dans la Javadoc ; changer la signature ajoute de la complexité. Rejeté. |
+| 8 | blind | Pas de test WebSocket bout en bout ancien jeton → `4401` | false | `SessionConnectionUseCase` et `SessionSocketHandler` inchangés ; `UnknownToken` → `4401` déjà couvert ; ancien jeton → `UnknownToken` couvert. Rejeté. |
+| 9 | blind | Reprise juste avant le retrait non testée | low | Le participant retiré porte le nouveau jeton et revient par `departedWithToken`/`rejoin` (story 2.3, couvert) ; aucun chemin nouveau. Rejeté. |
+| 10 | blind | `<p role="status">` créé déjà rempli : peut ne pas être annoncé par les lecteurs d'écran | maybe-false | Le formulaire entier est créé avec le message (changement d'écran) : à vérifier avec NVDA/VoiceOver ; medium si vrai. Reporté. |
+| 11 | blind | `last_updated` recule et statuts incohérents dans `sprint-status.yaml` | false | Heure système UTC réelle ; le statut du sprint est synchronisé en fin de workflow (étape 5). Rejeté. |
+| 12 | blind | `connectCreator` utilise `Instant.now()` | false | Le test démarre l'application avec l'horloge système : `Instant.now()` est cohérent avec elle ; un participant connecté n'est jamais retiré. Rejeté. |
+| 13 | blind | Pas de métrique de reprise | low | Hors besoin ; une ligne de journal suffit (FR-8). Rejeté. |
+| 14 | verification-gap | Aucun manque de vérification | — | Rien à faire. |
 
 ## Design Notes
 

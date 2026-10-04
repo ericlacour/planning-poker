@@ -24,6 +24,10 @@ const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
       <div class="entry-form-mark card-back" aria-hidden="true"></div>
       <h1>Planning Poker</h1>
 
+      @if (notice(); as message) {
+        <p class="entry-notice" role="status">{{ message }}</p>
+      }
+
       <div class="field" [class.field-error]="pseudoError()">
         <label class="field-label" for="entry-pseudo">Ton pseudo</label>
         <input
@@ -96,6 +100,8 @@ export class EntryFormComponent {
   readonly initialPseudo = input('');
   /** Envoi en cours : « Connexion… », bouton inactif, champ lisible. */
   readonly busy = input(false);
+  /** Information neutre au-dessus du champ (place reprise depuis un autre appareil). */
+  readonly notice = input<string | null>(null);
   /** Erreur sous le champ (pseudo refusé). */
   readonly pseudoError = input<string | null>(null);
   /** Erreur sous le bouton (serveur injoignable). */

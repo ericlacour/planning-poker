@@ -215,4 +215,28 @@ class SessionConnectionUseCaseTest {
                 .isEqualTo(new ConnectResult.Connected(created.participantId()));
         assertThat(session().participant(created.participantId()).orElseThrow().joinOrder()).isEqualTo(3);
     }
+
+    @Test
+    void afterATakeOverTheOldTokenIsRefusedAndTheNewOneConnectsTheSameParticipant() {
+        connections.connect(created.sessionId(), created.participantToken(), "c1");
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        JoinSessionResult takenOver = new JoinSessionUseCase(store, locks, ids, broadcaster, clock)
+                .join(created.sessionId(), "alice", Role.OBSERVER);
+        assertThat(takenOver.participantId()).isEqualTo(created.participantId());
+        broadcaster.published.clear();
+        Session before = session();
+
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c2"))
+                .isInstanceOf(ConnectResult.UnknownToken.class);
+        assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.attached).doesNotContainKey("c2");
+        assertThat(broadcaster.published).isEmpty();
+
+        assertThat(connections.connect(created.sessionId(), takenOver.participantToken(), "c3"))
+                .isEqualTo(new ConnectResult.Connected(created.participantId()));
+        assertThat(session().version()).isEqualTo(before.version() + 1);
+        assertThat(session().lastChange()).isEqualTo(LastChange.of(ChangeAction.PRESENCE, created.participantId()));
+        assertThat(session().participant(created.participantId()).orElseThrow().role()).isEqualTo(Role.VOTER);
+        assertThat(broadcaster.published).singleElement().satisfies(p -> assertThat(p.onlyTo()).isNull());
+    }
 }

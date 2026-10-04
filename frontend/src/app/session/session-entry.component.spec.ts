@@ -210,6 +210,50 @@ describe('SessionEntryComponent', () => {
       expect(stored.has(TOKEN_KEY)).toBe(false);
     });
 
+    it('4401 shows « Ta place a été reprise depuis un autre appareil. » above the field', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle } = await mount();
+      sockets[0].open();
+      sockets[0].closeWith(4401);
+      await settle();
+      const notice = element.querySelector('.entry-notice');
+      expect(notice?.textContent?.trim()).toBe('Ta place a été reprise depuis un autre appareil.');
+      expect(notice?.getAttribute('role')).toBe('status');
+      expect(element.querySelector('#entry-pseudo-error')).toBeNull();
+    });
+
+    it('a token gone before reconnecting also shows the notice', async () => {
+      render(async () => undefined);
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle } = await mount();
+      stored.delete(TOKEN_KEY);
+      sockets[0].closeWith(1006);
+      await vi.waitFor(async () => {
+        await settle();
+        expect(element.querySelector('.entry-notice')?.textContent?.trim()).toBe('Ta place a été reprise depuis un autre appareil.');
+      });
+    });
+
+    it('the notice disappears at the first submit', async () => {
+      let resolve!: (value: unknown) => void;
+      render(
+        async () => undefined,
+        () => new Promise((r) => (resolve = r)),
+      );
+      stored.set(TOKEN_KEY, 'token');
+      const { element, settle, submit, type, fixture } = await mount();
+      sockets[0].open();
+      sockets[0].closeWith(4401);
+      await settle();
+      type('Bob');
+      submit().click();
+      fixture.detectChanges();
+      expect(element.querySelector('.entry-notice')).toBeNull();
+      resolve(joined);
+      await settle();
+    });
+
     it('rejoining after 4401 opens a new connection with the new token', async () => {
       render(async () => undefined);
       stored.set(TOKEN_KEY, 'token');
@@ -248,6 +292,13 @@ describe('SessionEntryComponent', () => {
       expect(submit().disabled).toBe(false);
       expect(input().value).toBe('Sofia');
       expect(element.querySelector('[role="radio"][aria-checked="true"]')?.textContent?.trim()).toBe('Je vote');
+    });
+
+    it('does not show the taken-over notice when arriving directly', async () => {
+      render(async () => undefined);
+      const { element } = await mount();
+      expect(element.querySelector('.entry-notice')).toBeNull();
+      expect(element.querySelector('[role="status"]')).toBeNull();
     });
 
     it('keeps « Rejoindre » inactive on an empty pseudo', async () => {

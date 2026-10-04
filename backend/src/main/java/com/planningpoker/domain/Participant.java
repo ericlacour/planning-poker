@@ -58,6 +58,14 @@ public record Participant(UUID id, Pseudo pseudo, Role role, int joinOrder, Part
         return new Participant(id, pseudo, role, joinOrder, token, updated, updated.isEmpty() ? now : null);
     }
 
+    /**
+     * Le même participant, dont le jeton est désormais {@code newToken} (reprise depuis un autre appareil) : tout le
+     * reste est gardé.
+     */
+    Participant withToken(ParticipantToken newToken) {
+        return new Participant(id, pseudo, role, joinOrder, newToken, connections, offlineSince);
+    }
+
     /** Le même participant, de retour avec un nouvel ordre d'arrivée, hors ligne depuis {@code now}. */
     Participant returning(int newJoinOrder, Instant now) {
         return new Participant(id, pseudo, role, newJoinOrder, token, now);

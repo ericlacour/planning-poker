@@ -4,7 +4,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { joinSessionRequest } from '../api/contract';
 import { SessionApi, SessionApiError } from '../api/session-api';
 import { EntryFormComponent, EntryFormValue } from '../entry-form/entry-form.component';
-import { INVALID_PSEUDO_MESSAGE, NETWORK_MESSAGE, PSEUDO_TAKEN_MESSAGE } from '../entry-form/entry-messages';
+import {
+  INVALID_PSEUDO_MESSAGE,
+  NETWORK_MESSAGE,
+  PSEUDO_TAKEN_MESSAGE,
+  TAKEN_OVER_MESSAGE,
+} from '../entry-form/entry-messages';
 import { BrowserStorage } from '../storage/browser-storage';
 import { SessionPageComponent } from './session-page.component';
 import { SessionService } from './session.service';
@@ -22,7 +27,8 @@ export type SessionEntryState = 'checking' | 'notFound' | 'unreachable' | 'join'
 /**
  * Ouverture d'un lien de session `/s/{sessionId}` (FR-2, FR-3) : vérifie d'abord la session, puis aiguille vers
  * « Session introuvable », l'écran Rejoindre, ou la page de session si un jeton est déjà rangé. Une fermeture
- * `4404` du WebSocket ramène à « Session introuvable », une fermeture `4401` à l'écran Rejoindre prérempli.
+ * `4404` du WebSocket ramène à « Session introuvable », une fermeture `4401` à l'écran Rejoindre prérempli,
+ * avec « Ta place a été reprise depuis un autre appareil. ».
  */
 @Component({
   selector: 'app-session-entry',
@@ -63,6 +69,7 @@ export type SessionEntryState = 'checking' | 'notFound' | 'unreachable' | 'join'
             submitLabel="Rejoindre"
             [initialPseudo]="initialPseudo()"
             [busy]="busy()"
+            [notice]="notice()"
             [pseudoError]="pseudoError()"
             [submitError]="submitError()"
             (submitted)="join($event)"
@@ -86,6 +93,8 @@ export class SessionEntryComponent implements OnInit {
 
   protected readonly initialPseudo = signal(this.storage.readPseudo() ?? '');
   protected readonly busy = signal(false);
+  /** « Ta place a été reprise depuis un autre appareil. » après une fin `unknownToken`, jusqu'au premier envoi. */
+  protected readonly notice = signal<string | null>(null);
   protected readonly pseudoError = signal<string | null>(null);
   protected readonly submitError = signal<string | null>(null);
 
@@ -98,7 +107,9 @@ export class SessionEntryComponent implements OnInit {
         if (end === 'notFound') {
           this.state.set('notFound');
         } else {
+          // `4401` couvre la reprise et le pseudo pris après retrait : dans les deux cas, la place est occupée.
           this.initialPseudo.set(this.storage.readPseudo() ?? '');
+          this.notice.set(TAKEN_OVER_MESSAGE);
           this.state.set('join');
         }
       });
@@ -127,6 +138,7 @@ export class SessionEntryComponent implements OnInit {
 
   protected async join({ pseudo, role }: EntryFormValue): Promise<void> {
     this.busy.set(true);
+    this.notice.set(null);
     this.pseudoError.set(null);
     this.submitError.set(null);
     try {

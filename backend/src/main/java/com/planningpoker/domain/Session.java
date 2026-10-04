@@ -58,14 +58,40 @@ public record Session(String id, List<Participant> participants, long version, S
     /**
      * Fait entrer un nouveau participant à {@code now}, avec l'ordre d'arrivée suivant (FR-2). Il n'a encore
      * aucune connexion. Arrivé pendant un tour révélé, il ne vote qu'à partir du prochain tour.
+     * <p>
+     * Reprise depuis un autre appareil (FR-8, AD-7) : si le pseudo (normalisé, casse ignorée) est porté par un
+     * participant <b>sans aucune connexion ouverte</b>, en attente de retrait ou non, c'est ce participant qui
+     * reprend sa place avec {@code token} : son ancien jeton est révoqué, et il garde son identifiant, son pseudo
+     * tel qu'il était affiché, son rôle ({@code role} est ignoré), son ordre d'arrivée, son vote, sa marque
+     * d'arrivée tardive et sa date de mise hors ligne (le délai de retrait continue de courir). Seule l'empreinte
+     * du jeton change : changement caché, même {@code version} et même {@code lastChange}, qui ne se diffuse pas
+     * (AD-3) ; {@code participantId} n'est pas utilisé. Le participant repris est celui que désigne désormais
+     * {@code token} ({@link #participantWithToken}). Un participant retiré n'est pas repris : son pseudo est libre.
      *
-     * @throws PseudoTakenException si un participant de la session porte déjà ce pseudo (casse ignorée) ; les
-     *                              participants retirés ne comptent pas
+     * @throws PseudoTakenException si un participant connecté de la session porte déjà ce pseudo (casse ignorée) ;
+     *                              rien ne change
      */
     public Session join(UUID participantId, Pseudo pseudo, Role role, ParticipantToken token, Instant now) {
         Objects.requireNonNull(pseudo, "pseudo");
-        requireFreePseudo(pseudo);
+        Objects.requireNonNull(token, "token");
+        Optional<Participant> holder = participantWithPseudo(pseudo);
+        if (holder.isPresent()) {
+            Participant existing = holder.get();
+            if (existing.connected()) {
+                throw new PseudoTakenException();
+            }
+            List<Participant> updated = participants.stream()
+                    .map(p -> p.id().equals(existing.id()) ? existing.withToken(token) : p)
+                    .toList();
+            return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
+                    votes, lateArrivals, departed);
+        }
         return withNewcomer(new Participant(participantId, pseudo, role, nextJoinOrder, token, now));
+    }
+
+    private Optional<Participant> participantWithPseudo(Pseudo pseudo) {
+        String key = pseudo.uniquenessKey();
+        return participants.stream().filter(p -> p.pseudo().uniquenessKey().equals(key)).findFirst();
     }
 
     /**
@@ -86,8 +112,7 @@ public record Session(String id, List<Participant> participants, long version, S
     }
 
     private void requireFreePseudo(Pseudo pseudo) {
-        String key = pseudo.uniquenessKey();
-        if (participants.stream().anyMatch(p -> p.pseudo().uniquenessKey().equals(key))) {
+        if (participantWithPseudo(pseudo).isPresent()) {
             throw new PseudoTakenException();
         }
     }

@@ -149,3 +149,13 @@
     align-items: flex-start;
   }
 }
+
+/* Information neutre au-dessus du champ (place reprise depuis un autre appareil). */
+.entry-notice {
+  margin-bottom: var(--spacing-5);
+  color: var(--foreground);
+  font-family: var(--typography-body-font-family);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-body-font-weight);
+  line-height: var(--typography-body-line-height);
+}

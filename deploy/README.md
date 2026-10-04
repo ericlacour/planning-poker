@@ -61,6 +61,7 @@ Les deux services dépendent chacun de l'URL de l'autre :
 - Aucun déploiement automatique à chaque push.
 - On déploie en posant une étiquette Git `v*` (par exemple `v0.1`), **en dehors des ateliers**, puisqu'un déploiement efface les sessions en cours.
 - L'étiquette doit pointer sur la tête de `main`, puisque Render déploie la branche `main`. Le workflow refuse sinon.
+- **Avant de poser l'étiquette, vérifier que la CI de `main` est verte sur ce commit** (onglet Actions → workflow **CI** → branche `main` : le run déclenché par le *push* du dernier commit porte une coche verte). Le workflow de déploiement ne le vérifie pas : une étiquette posée sur une CI rouge ou encore en cours déploie quand même. Contrôle manuel retenu le 2026-10-04 (action V3 de la rétrospective de l'epic 1).
 - Le workflow `.github/workflows/deploy.yml` appelle le **Deploy Hook** du webservice, attend par l'API Render que ce déploiement soit `live` sur le commit étiqueté (30 minutes au plus), puis fait de même pour le front (`deploy/render-deploy.sh`, testé par `deploy/render-deploy.test.sh`).
 - Réglages GitHub du dépôt (Settings → Secrets and variables → Actions) :
 

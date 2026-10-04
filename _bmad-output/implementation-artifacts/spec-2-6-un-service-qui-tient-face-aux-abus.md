@@ -2,7 +2,7 @@
 title: 'Story 2.6 : un service qui tient face aux abus'
 type: 'feature'
 created: '2026-10-04'
-status: 'draft'
+status: 'ready-for-dev'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

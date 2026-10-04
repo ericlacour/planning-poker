@@ -42,3 +42,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-voir-qui-est-vraiment-la.md`
   summary: Couvrir par un test qu'un message binaire après la poignée de main compte comme activité (variante binaire de `LivenessTest.anyMessageCountsAsActivity`).
   evidence: `SessionSocketHandler.handleBinaryMessage` appelle `touch`, mais le retirer ne casse aucun test ; seul un client hors contrat (le front envoie du texte) serait touché.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-revenir-apres-une-longue-absence.md`
+  summary: Borner la liste des participants retirés (`Session.departed`), qui ne se vide qu'au retour de chacun.
+  evidence: Des `join` REST sans connexion la remplissent 5 min plus tard ; le plafond de 30 participants (story 2.6) ne la compte pas ; seule l'expiration à 24 h (2.5) la libère.

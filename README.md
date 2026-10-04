@@ -8,7 +8,7 @@ Planning poker pour les ateliers d'affinage : sans compte, sans publicité, sur 
 | `backend/` | Webservice Java 25 / Spring Boot 4.1 (architecture hexagonale), et son image Docker. |
 | `frontend/` | Front Angular 22. |
 | `deploy/` | Blueprint et mode d'emploi du déploiement sur Render. Voir `deploy/README.md`. |
-| `.github/workflows/` | CI (`ci.yml`) et déploiement sur étiquette `v*` (`deploy.yml`). |
+| `.github/workflows/` | CI (`ci.yml`), déploiement sur étiquette `v*` (`deploy.yml`) et régénération de la vue du suivi de sprint (`sprint-board.yml`). |
 
 ## Lancer en local
 
@@ -42,3 +42,5 @@ bash deploy/render-deploy.test.sh
 ## Suivi du sprint
 
 `node scripts/sprint-board.mjs` régénère `_bmad-output/implementation-artifacts/sprint-board.md`, une vue lisible de `sprint-status.yaml` : avancement par epic, stories avec lien vers leur spec, actions de rétrospective groupées par statut. Ajouter `--stdout` pour l'afficher dans le terminal.
+
+Sur `main`, le workflow `sprint-board.yml` la régénère et la pousse tout seul à chaque modification de `sprint-status.yaml` ; on peut aussi le lancer à la main depuis l'onglet Actions (« Sprint board » → « Run workflow »).

@@ -1,0 +1,44 @@
+# Régénère la vue lisible du suivi de sprint (sprint-board.md) sur main, sans passer par une copie locale :
+# à chaque push sur main qui touche sprint-status.yaml, epics.md ou le script, et à la demande (onglet Actions).
+# Le commit poussé avec GITHUB_TOKEN ne relance aucun workflow, donc pas de boucle.
+name: Sprint board
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - _bmad-output/implementation-artifacts/sprint-status.yaml
+      - _bmad-output/planning-artifacts/epics.md
+      - scripts/sprint-board.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sprint-board
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - run: node scripts/sprint-board.mjs
+      - name: Pousser sprint-board.md s'il a changé
+        run: |
+          board=_bmad-output/implementation-artifacts/sprint-board.md
+          if git diff --quiet -- "$board"; then
+            echo "sprint-board.md est déjà à jour."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add "$board"
+          git commit -m "Suivi de sprint : régénérer sprint-board.md"
+          git pull --rebase origin main
+          git push origin HEAD:main

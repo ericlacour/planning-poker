@@ -95,6 +95,8 @@ channels:
         reason: Session does not exist or has expired. The client shows the "session not found" screen.
       - code: 1008
         reason: First message is not a valid hello, or hello did not arrive within 5 s.
+      - code: 1009
+        reason: Incoming message larger than the limit (4096 characters by default). The client reconnects, as for any code other than 4401 and 4404.
 
 operations:
   receiveHello:

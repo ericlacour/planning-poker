@@ -8,6 +8,7 @@ import {
   INVALID_PSEUDO_MESSAGE,
   NETWORK_MESSAGE,
   PSEUDO_TAKEN_MESSAGE,
+  SESSION_FULL_MESSAGE,
   TAKEN_OVER_MESSAGE,
 } from '../entry-form/entry-messages';
 import { BrowserStorage } from '../storage/browser-storage';
@@ -152,6 +153,8 @@ export class SessionEntryComponent implements OnInit {
         this.showNotFound();
       } else if (kind === 'pseudoTaken') {
         this.pseudoError.set(PSEUDO_TAKEN_MESSAGE);
+      } else if (kind === 'sessionFull') {
+        this.pseudoError.set(SESSION_FULL_MESSAGE);
       } else if (kind === 'invalidPseudo') {
         this.pseudoError.set(INVALID_PSEUDO_MESSAGE);
       } else {

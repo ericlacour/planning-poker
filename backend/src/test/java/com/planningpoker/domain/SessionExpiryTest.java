@@ -36,7 +36,7 @@ class SessionExpiryTest {
     @Test
     void openConnectionsListsEveryConnectionOfEveryParticipant() {
         Session session = session()
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), CREATED)
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), CREATED, 30)
                 .connect(ALICE, "alice-1", CREATED)
                 .connect(ALICE, "alice-2", CREATED)
                 .connect(BOB, "bob-1", CREATED);

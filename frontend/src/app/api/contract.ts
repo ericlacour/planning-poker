@@ -32,7 +32,13 @@ export interface JoinSessionResponse {
 }
 
 /** `problem.json#/properties/code` */
-export type ProblemCode = 'PSEUDO_TAKEN' | 'INVALID_PSEUDO' | 'SESSION_NOT_FOUND';
+export type ProblemCode =
+  | 'PSEUDO_TAKEN'
+  | 'INVALID_PSEUDO'
+  | 'SESSION_NOT_FOUND'
+  | 'SESSION_FULL'
+  | 'SESSION_LIMIT_REACHED'
+  | 'TOO_MANY_REQUESTS';
 
 /** `problem.json` (RFC 9457). Le texte affiché vient du front, d'après `code`. */
 export interface Problem {
@@ -46,7 +52,14 @@ export interface Problem {
 
 const BASE64URL_128_BITS = /^[A-Za-z0-9_-]{22}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PROBLEM_CODES: readonly ProblemCode[] = ['PSEUDO_TAKEN', 'INVALID_PSEUDO', 'SESSION_NOT_FOUND'];
+const PROBLEM_CODES: readonly ProblemCode[] = [
+  'PSEUDO_TAKEN',
+  'INVALID_PSEUDO',
+  'SESSION_NOT_FOUND',
+  'SESSION_FULL',
+  'SESSION_LIMIT_REACHED',
+  'TOO_MANY_REQUESTS',
+];
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);

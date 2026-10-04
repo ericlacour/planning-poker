@@ -47,8 +47,8 @@ public class SessionConfig {
 
     @Bean
     public CreateSessionUseCase createSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
-            Clock clock) {
-        return new CreateSessionUseCase(store, locks, ids, clock);
+            Clock clock, @Value("${planning-poker.max-sessions:50}") int maxSessions) {
+        return new CreateSessionUseCase(store, locks, ids, clock, maxSessions);
     }
 
     @Bean
@@ -58,14 +58,16 @@ public class SessionConfig {
 
     @Bean
     public JoinSessionUseCase joinSessionUseCase(SessionStore store, SessionLocks locks, IdGenerator ids,
-            SessionBroadcaster broadcaster, Clock clock) {
-        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock);
+            SessionBroadcaster broadcaster, Clock clock,
+            @Value("${planning-poker.max-participants:30}") int maxParticipants) {
+        return new JoinSessionUseCase(store, locks, ids, broadcaster, clock, maxParticipants);
     }
 
     @Bean
     public SessionConnectionUseCase sessionConnectionUseCase(SessionStore store, SessionLocks locks,
-            SessionBroadcaster broadcaster, Clock clock) {
-        return new SessionConnectionUseCase(store, locks, broadcaster, clock);
+            SessionBroadcaster broadcaster, Clock clock,
+            @Value("${planning-poker.max-participants:30}") int maxParticipants) {
+        return new SessionConnectionUseCase(store, locks, broadcaster, clock, maxParticipants);
     }
 
     @Bean

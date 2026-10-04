@@ -5,6 +5,10 @@ import created from '../../../../contract/examples/create-session-response/creat
 import invalidPseudo from '../../../../contract/examples/problem/bad-request-invalid-pseudo.json';
 import malformedBody from '../../../../contract/examples/problem/bad-request-malformed-body.json';
 import pseudoTaken from '../../../../contract/examples/problem/pseudo-taken.json';
+import payloadTooLarge from '../../../../contract/examples/problem/payload-too-large.json';
+import sessionFull from '../../../../contract/examples/problem/session-full.json';
+import sessionLimitReached from '../../../../contract/examples/problem/session-limit-reached.json';
+import tooManyRequests from '../../../../contract/examples/problem/too-many-requests.json';
 import sessionNotFound from '../../../../contract/examples/problem/session-not-found.json';
 import joined from '../../../../contract/examples/join-session-response/joined.json';
 import { APP_CONFIG } from '../config/app-config';
@@ -50,6 +54,16 @@ describe('SessionApi.createSession', () => {
     expect(await kindOf(api(fetchFn as typeof fetch).createSession({ pseudo: ' ', role: 'VOTER' }))).toBe(
       'invalidPseudo',
     );
+  });
+
+  it.each([
+    ['503 SESSION_LIMIT_REACHED', async () => problem(sessionLimitReached, 503), 'sessionLimitReached'],
+    ['429 TOO_MANY_REQUESTS', async () => problem(tooManyRequests, 429), 'tooManyRequests'],
+    ['a 429 without the contract code', async () => problem({ ...tooManyRequests, code: undefined }, 429), 'network'],
+    ['a 503 with another code', async () => problem({ ...sessionLimitReached, code: 'SESSION_FULL' }, 503), 'network'],
+    ['a 413', async () => problem(payloadTooLarge, 413), 'network'],
+  ])('maps %s', async (_, fetchFn, kind) => {
+    expect(await kindOf(api(fetchFn as typeof fetch).createSession({ pseudo: 'Alice', role: 'VOTER' }))).toBe(kind);
   });
 
   it.each([
@@ -139,6 +153,9 @@ describe('SessionApi.joinSession', () => {
 
   it.each([
     ['409 PSEUDO_TAKEN', async () => problem(pseudoTaken, 409), 'pseudoTaken'],
+    ['409 SESSION_FULL', async () => problem(sessionFull, 409), 'sessionFull'],
+    ['a 413', async () => problem(payloadTooLarge, 413), 'network'],
+    ['a 503 SESSION_LIMIT_REACHED on join', async () => problem(sessionLimitReached, 503), 'network'],
     ['404 SESSION_NOT_FOUND', async () => problem(sessionNotFound, 404), 'notFound'],
     ['400 INVALID_PSEUDO', async () => problem(invalidPseudo, 400), 'invalidPseudo'],
     ['a malformed-body 400', async () => problem(malformedBody, 400), 'network'],

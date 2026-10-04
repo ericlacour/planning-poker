@@ -55,7 +55,8 @@ class ContractRoundTripTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "bad-request-invalid-pseudo", "bad-request-malformed-body", "pseudo-taken",
-            "session-not-found" })
+            "session-not-found", "session-full", "payload-too-large", "too-many-requests",
+            "session-limit-reached" })
     void problems(String example) throws Exception {
         JsonNode json = jsonMapper.readTree(ContractExamples.read("problem", example));
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(

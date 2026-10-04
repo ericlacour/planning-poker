@@ -135,6 +135,10 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        if (status.getCode() == CloseStatus.TOO_BIG_TO_PROCESS.getCode()) {
+            // Plafond du message entrant (story 2.6) : une ligne, sans détail identifiant.
+            LOG.info("WebSocket message refused: too large");
+        }
         cancelTimeout(session);
         WsConnection.Attachment attachment = broadcaster.closed(session.getId());
         if (attachment != null) {

@@ -16,6 +16,14 @@ info:
     - Any other status (5xx, or a 502/503 from the host's proxy during a
       cold start) is `default`: its body is not guaranteed. The front treats
       it as "server not available yet" and keeps polling `/api/health`.
+      A `503` counts as `SessionLimitReached` only when its body is a problem
+      with `code: SESSION_LIMIT_REACHED`.
+    - Abuse limits (NFR4, NFR6), set by configuration: request body of 2 KB
+      at most (`413`, no `code`), 50 sessions in memory
+      (`503 SESSION_LIMIT_REACHED`), 10 session creations per minute per
+      client IP (`429 TOO_MANY_REQUESTS` with `Retry-After`), 30 participants
+      per session (`409 SESSION_FULL`). Session expiry and the removal of
+      absent participants free places.
     - The contract only evolves by addition (AD-13).
   license:
     name: Proprietary
@@ -74,6 +82,12 @@ paths:
                 $ref: './schemas/create-session-response.json'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/SessionLimitReached'
         default:
           $ref: '#/components/responses/Unexpected'
 
@@ -124,7 +138,19 @@ paths:
         '404':
           $ref: '#/components/responses/SessionNotFound'
         '409':
-          $ref: '#/components/responses/PseudoTaken'
+          description: |
+            The pseudo belongs to a connected participant (`PSEUDO_TAKEN`), or
+            the session is full and the caller would be a new participant
+            (`SESSION_FULL`). Checked in that order; taking over a
+            disconnected participant adds nobody, so it is never `SESSION_FULL`.
+          content:
+            application/problem+json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/responses/PseudoTaken/content/application~1problem+json/schema'
+                  - $ref: '#/components/responses/SessionFull/content/application~1problem+json/schema'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
         default:
           $ref: '#/components/responses/Unexpected'
 
@@ -179,3 +205,61 @@ components:
                     const: 409
                   code:
                     const: PSEUDO_TAKEN
+    SessionFull:
+      description: The session already has the maximum number of participants (30 by default) and the caller would be a new one. Removed participants do not count.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - required: [code]
+                properties:
+                  status:
+                    const: 409
+                  code:
+                    const: SESSION_FULL
+    PayloadTooLarge:
+      description: The request body is larger than the limit (2 KB by default). Refused without reading the body beyond the limit. No `code`, and no CORS headers.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - not:
+                  required: [code]
+                properties:
+                  status:
+                    const: 413
+    TooManyRequests:
+      description: This client IP already created the maximum number of sessions (10 by default) within the sliding window (1 minute by default). Only successful creations count.
+      headers:
+        Retry-After:
+          description: Whole seconds (rounded up, at least 1) until the oldest creation leaves the window.
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - required: [code]
+                properties:
+                  status:
+                    const: 429
+                  code:
+                    const: TOO_MANY_REQUESTS
+    SessionLimitReached:
+      description: The service already holds the maximum number of sessions in memory (50 by default). An expired session frees its place.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: './schemas/problem.json'
+              - required: [code]
+                properties:
+                  status:
+                    const: 503
+                  code:
+                    const: SESSION_LIMIT_REACHED

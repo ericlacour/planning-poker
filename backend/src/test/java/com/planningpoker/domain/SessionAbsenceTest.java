@@ -23,7 +23,7 @@ class SessionAbsenceTest {
     private static Session table() {
         return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
-                .join(BOB, Pseudo.of("bob"), Role.VOTER, ParticipantToken.of("bob"), NOW)
+                .join(BOB, Pseudo.of("bob"), Role.VOTER, ParticipantToken.of("bob"), NOW, 30)
                 .connect(ALICE, "alice-1", NOW)
                 .connect(BOB, "bob-1", NOW)
                 .vote(BOB, ROUND, "5");
@@ -49,7 +49,7 @@ class SessionAbsenceTest {
         Session session = Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
                 ParticipantToken.of("alice"), NOW)
                 .connect(ALICE, "alice-1", NOW)
-                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW.plusSeconds(10));
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW.plusSeconds(10), 30);
         assertThat(session.participant(BOB).orElseThrow().offlineSince()).isEqualTo(NOW.plusSeconds(10));
         assertThat(session.absentParticipants(NOW.plusSeconds(10).plus(ABSENCE).minusMillis(1), ABSENCE))
                 .isEmpty();
@@ -89,7 +89,7 @@ class SessionAbsenceTest {
     @Test
     void theRemovalAlsoDeletesTheLateArrivalMark() {
         Session session = table().reveal(ALICE, ROUND)
-                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW);
+                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW, 30);
         assertThat(session.lateArrivals()).contains(CHLOE);
         Session removed = session.remove(CHLOE);
         assertThat(removed.lateArrivals()).doesNotContain(CHLOE);
@@ -110,7 +110,7 @@ class SessionAbsenceTest {
         assertThat(removed.departedWithToken("alice")).isEmpty();
         assertThat(removed.departedWithToken(null)).isEmpty();
 
-        Session taken = removed.join(CHLOE, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("chloe"), NOW);
+        Session taken = removed.join(CHLOE, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("chloe"), NOW, 30);
         assertThat(taken.participant(CHLOE)).isPresent();
     }
 
@@ -119,7 +119,7 @@ class SessionAbsenceTest {
         Session removed = bobRemoved();
         Instant later = NOW.plus(Duration.ofMinutes(7));
 
-        Session back = removed.rejoin(BOB, "bob-2", later);
+        Session back = removed.rejoin(BOB, "bob-2", later, 30);
 
         assertThat(back.version()).isEqualTo(removed.version() + 1);
         assertThat(back.lastChange()).isEqualTo(LastChange.of(ChangeAction.JOIN, BOB));
@@ -138,7 +138,7 @@ class SessionAbsenceTest {
 
     @Test
     void comingBackDuringARevealedRoundIsALateArrivalUntilTheClear() {
-        Session back = bobRemoved().reveal(ALICE, ROUND).rejoin(BOB, "bob-2", NOW.plus(ABSENCE));
+        Session back = bobRemoved().reveal(ALICE, ROUND).rejoin(BOB, "bob-2", NOW.plus(ABSENCE), 30);
         Participant bob = back.participant(BOB).orElseThrow();
         assertThat(back.canVoteThisRound(bob)).isFalse();
         assertThat(SessionSnapshot.forRecipient(back, BOB).participants())
@@ -152,27 +152,28 @@ class SessionAbsenceTest {
 
     @Test
     void comingBackIsRefusedWhenThePseudoWasTakenIgnoringCase() {
-        Session taken = bobRemoved().join(CHLOE, Pseudo.of("BOB"), Role.OBSERVER, ParticipantToken.of("chloe"), NOW);
-        assertThatThrownBy(() -> taken.rejoin(BOB, "bob-2", NOW.plus(ABSENCE)))
+        Session taken = bobRemoved().join(CHLOE, Pseudo.of("BOB"), Role.OBSERVER, ParticipantToken.of("chloe"),
+                NOW, 30);
+        assertThatThrownBy(() -> taken.rejoin(BOB, "bob-2", NOW.plus(ABSENCE), 30))
                 .isInstanceOf(PseudoTakenException.class);
         assertThat(taken.departedWithToken("bob")).map(Participant::id).contains(BOB);
     }
 
     @Test
     void onlyARemovedParticipantCanComeBack() {
-        assertThatThrownBy(() -> table().rejoin(BOB, "bob-2", NOW)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> table().rejoin(BOB, "bob-2", NOW, 30)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void aParticipantCanBeRemovedAgainAndComeBackAgain() {
         Instant back = NOW.plus(ABSENCE);
-        Session again = bobRemoved().rejoin(BOB, "bob-2", back).disconnect(BOB, "bob-2", back);
+        Session again = bobRemoved().rejoin(BOB, "bob-2", back, 30).disconnect(BOB, "bob-2", back);
         assertThat(again.absentParticipants(back.plus(ABSENCE).minusMillis(1), ABSENCE)).isEmpty();
         assertThat(again.absentParticipants(back.plus(ABSENCE), ABSENCE)).containsExactly(BOB);
 
         Session removedAgain = again.remove(BOB);
         assertThat(removedAgain.departed()).extracting(Participant::id).containsExactly(BOB);
-        Session backAgain = removedAgain.rejoin(BOB, "bob-3", back.plus(ABSENCE));
+        Session backAgain = removedAgain.rejoin(BOB, "bob-3", back.plus(ABSENCE), 30);
         assertThat(backAgain.participant(BOB).orElseThrow().joinOrder()).isEqualTo(4);
         assertThat(backAgain.departed()).isEmpty();
     }

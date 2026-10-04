@@ -27,9 +27,9 @@ class VoteUseCaseTest {
     private final RecordingBroadcaster broadcaster = new RecordingBroadcaster();
     private final VoteUseCase votes = new VoteUseCase(store, locks, broadcaster);
     private final CreateSessionResult alice = new CreateSessionUseCase(store, locks, ids,
-            Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
+            Clock.fixed(NOW, ZoneOffset.UTC), 50).create("Alice", Role.VOTER);
     private final JoinSessionResult emma = new JoinSessionUseCase(store, locks, ids, broadcaster,
-            Clock.fixed(NOW, ZoneOffset.UTC))
+            Clock.fixed(NOW, ZoneOffset.UTC), 30)
             .join(alice.sessionId(), "Emma", Role.OBSERVER);
 
     private Session session() {

@@ -4,7 +4,12 @@ import { Router } from '@angular/router';
 import { createSessionRequest } from '../api/contract';
 import { SessionApi, SessionApiError } from '../api/session-api';
 import { EntryFormComponent, EntryFormValue } from '../entry-form/entry-form.component';
-import { INVALID_PSEUDO_MESSAGE, NETWORK_MESSAGE } from '../entry-form/entry-messages';
+import {
+  INVALID_PSEUDO_MESSAGE,
+  NETWORK_MESSAGE,
+  SESSION_LIMIT_REACHED_MESSAGE,
+  TOO_MANY_REQUESTS_MESSAGE,
+} from '../entry-form/entry-messages';
 import { BrowserStorage } from '../storage/browser-storage';
 
 /** Accueil : créer une session (FR-1). */
@@ -46,8 +51,13 @@ export class HomeComponent {
       this.storage.saveToken(sessionId, response.participantToken);
       this.storage.savePseudo(pseudo.trim());
     } catch (e) {
-      if (e instanceof SessionApiError && e.kind === 'invalidPseudo') {
+      const kind = e instanceof SessionApiError ? e.kind : 'network';
+      if (kind === 'invalidPseudo') {
         this.pseudoError.set(INVALID_PSEUDO_MESSAGE);
+      } else if (kind === 'sessionLimitReached') {
+        this.submitError.set(SESSION_LIMIT_REACHED_MESSAGE);
+      } else if (kind === 'tooManyRequests') {
+        this.submitError.set(TOO_MANY_REQUESTS_MESSAGE);
       } else {
         this.submitError.set(NETWORK_MESSAGE);
       }

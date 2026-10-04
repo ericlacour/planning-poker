@@ -1,0 +1,1 @@
+{ "type": "about:blank", "title": "Service Unavailable", "status": 503, "detail": "Too many sessions are open right now.", "instance": "/api/sessions", "code": "SESSION_LIMIT_REACHED" }

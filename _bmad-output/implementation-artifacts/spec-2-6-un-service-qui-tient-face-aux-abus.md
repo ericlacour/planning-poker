@@ -2,7 +2,8 @@
 title: 'Story 2.6 : un service qui tient face aux abus'
 type: 'feature'
 created: '2026-10-04'
-status: 'ready-for-dev'
+status: 'in-progress'
+baseline_commit: '357a6eae4e51a2a7cbadee907afe0995e5391a99'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

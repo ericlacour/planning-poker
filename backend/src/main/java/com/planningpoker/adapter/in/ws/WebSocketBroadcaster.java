@@ -113,7 +113,7 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
 
     /**
      * Détache la connexion. Encore ouverte, elle reste connue jusqu'à sa fermeture, pour pouvoir être fermée
-     * ({@link #close}) ; sa fermeture renverra alors {@code null} ({@link #closed}).
+     * ({@link #close}, {@link #closeSessionNotFound}) ; sa fermeture renverra alors {@code null} ({@link #closed}).
      */
     @Override
     public boolean detach(String connectionId) {
@@ -176,6 +176,14 @@ public class WebSocketBroadcaster implements SessionBroadcaster, DisposableBean 
         WsConnection connection = connections.get(connectionId);
         if (connection != null) {
             connection.closeLater(CloseStatus.SESSION_NOT_RELIABLE);
+        }
+    }
+
+    @Override
+    public void closeSessionNotFound(String connectionId) {
+        WsConnection connection = connections.get(connectionId);
+        if (connection != null) {
+            connection.closeLater(SessionSocketHandler.SESSION_NOT_FOUND);
         }
     }
 

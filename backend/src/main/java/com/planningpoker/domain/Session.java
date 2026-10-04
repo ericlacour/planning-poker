@@ -240,6 +240,24 @@ public record Session(String id, List<Participant> participants, long version, S
         return List.copyOf(silent);
     }
 
+    /** Toutes les connexions ouvertes de la session. */
+    public List<OpenConnection> openConnections() {
+        List<OpenConnection> open = new ArrayList<>();
+        for (Participant participant : participants) {
+            participant.connections().keySet()
+                    .forEach(connectionId -> open.add(new OpenConnection(participant.id(), connectionId)));
+        }
+        return List.copyOf(open);
+    }
+
+    /**
+     * Vrai si la session a atteint sa durée de vie à {@code now} ({@code now >= createdAt + lifetime}, FR-4) : le
+     * balayeur la supprime avec ses pseudos, ses votes et ses jetons.
+     */
+    public boolean isExpired(Instant now, Duration lifetime) {
+        return Duration.between(createdAt, now).compareTo(lifetime) >= 0;
+    }
+
     /** Une connexion ouverte et le participant qui la porte. */
     public record OpenConnection(UUID participantId, String connectionId) {
     }

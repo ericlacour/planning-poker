@@ -2,9 +2,10 @@
 title: 'Story 2.5 : une session qui s''efface d''elle-même'
 type: 'feature'
 created: '2026-10-04'
-status: 'draft'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: '4bd2e718ca478ee4b89d916113ae5228944f103f'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-2-context.md'
 ---
@@ -56,11 +57,11 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `domain/Session.java` + `domain/SessionExpiryTest.java` (nouveau) -- `isExpired` à T + 23 h 59 (faux) et T + 24 h (vrai), `openConnections`.
-- [ ] `application/SessionBroadcaster.java`, `adapter/in/ws/WebSocketBroadcaster.java`, `RecordingBroadcaster.java` -- `closeSessionNotFound` ; test adaptateur dans `WebSocketBroadcasterTest` (fermeture reçue en `4404`, connexion inconnue sans effet).
-- [ ] `application/SweepUseCase.java` + `SweepUseCaseTest.java` -- lignes de la matrice : avant / à l'échéance, sans connexion, plusieurs sessions, aucune publication, connexions détachées, puis `connect` → `SessionNotFound`.
-- [ ] `config/SessionConfig.java`, `application.properties` -- propriété et assemblage.
-- [ ] `adapter/in/ws/SessionExpiryTest.java` (nouveau, bout en bout comme `LivenessTest`, `session-lifetime=1s`, `sweep-interval=100ms`) -- un client connecté reçoit la fermeture `4404`, puis `GET /api/sessions/{id}` répond 404.
+- [x] `domain/Session.java` + `domain/SessionExpiryTest.java` (nouveau) -- `isExpired` à T + 23 h 59 (faux) et T + 24 h (vrai), `openConnections`.
+- [x] `application/SessionBroadcaster.java`, `adapter/in/ws/WebSocketBroadcaster.java`, `RecordingBroadcaster.java` -- `closeSessionNotFound` ; test adaptateur dans `WebSocketBroadcasterTest` (fermeture reçue en `4404`, connexion inconnue sans effet).
+- [x] `application/SweepUseCase.java` + `SweepUseCaseTest.java` -- lignes de la matrice : avant / à l'échéance, sans connexion, plusieurs sessions, aucune publication, connexions détachées, puis `connect` → `SessionNotFound`.
+- [x] `config/SessionConfig.java`, `application.properties` -- propriété et assemblage.
+- [x] `adapter/in/ws/SessionExpiryTest.java` (nouveau, bout en bout comme `LivenessTest`, `session-lifetime=1s`, `sweep-interval=100ms`) -- un client connecté reçoit la fermeture `4404`, puis `GET /api/sessions/{id}` répond 404.
 
 **Acceptance Criteria:**
 - Given une session créée à T avec des participants connectés, when le balayeur passe à T + 24 h, then elle n'existe plus et chaque navigateur reçoit `4404`, affiche « Cette session n'existe plus. » avec « Créer une session » et efface son jeton.
@@ -69,9 +70,31 @@ context:
 
 ## Implementation Notes
 
+- Implémenté directement depuis la spec. Fichiers : `Session.java` (`openConnections`, `isExpired`), `SessionBroadcaster` / `WebSocketBroadcaster` (`closeSessionNotFound`, fermeture `SessionSocketHandler.SESSION_NOT_FOUND`), `SweepUseCase` (expiration vérifiée en premier), `SessionConfig`, `application.properties` ; tests `domain/SessionExpiryTest`, `SweepUseCaseTest` (+4), `WebSocketBroadcasterTest` (+1), `adapter/in/ws/SessionExpiryTest` (bout en bout).
+- Le constructeur de `SweepUseCase` prend un paramètre de plus : `SweepSchedulerTest` et `SessionConnectionUseCaseTest` adaptés.
+- Environnement : `./mvnw` demande `JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64` ; le front demande Node ≥ 22.22.3 (`npx -y node@24 node_modules/@angular/cli/bin/ng.js test --watch=false`).
+- Test de bout en bout : `session-lifetime=5s` (au lieu de 1 s prévu) pour laisser le temps à deux POST et deux poignées de main sur une CI lente (constat de relecture n° 5).
+- Résultats : backend 370 tests verts (ArchUnit compris), front 235 + scripts verts, contrat 30 verts.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Source | Constat | Verdict | Route / preuve |
+|---|--------|---------|---------|----------------|
+| 1 | blind, edge-case | `expire` supprime la session avant la boucle : une exception de `detach`/`closeSessionNotFound` laisserait des sockets ouverts | low | Seul cas : `RejectedExecutionException` à l'arrêt de l'application, où tout se ferme de toute façon ; même forme que `closeSilentConnections`. Rejeté (garde supplémentaire). |
+| 2 | blind | Une exception sur une session interrompt tout le passage | low | Structure de `sweep()` antérieure à la story ; aucune exception connue sur ce chemin. Rejeté. |
+| 3 | blind, edge-case | Durée de vie nulle/négative non refusée ; très grande valeur → `createdAt.plus` déborde | low | Nulle/négative : erreur de configuration de l'exploitant, rejeté. Débordement : correction directe → patch (`Duration.between(createdAt, now).compareTo(lifetime) >= 0`). |
+| 4 | blind | Expiration fermée depuis la liste du domaine, pas du registre de l'adaptateur | false | `SessionConnectionUseCase.connect` fait `attach` puis `session.connect` sous le même verrou ; `afterConnectionClosed` détache puis `disconnect` : les deux listes coïncident sous le verrou. |
+| 5 | blind, edge-case, verification-gap | Test de bout en bout fragile (2 s pour deux POST et deux poignées de main) et ne prouve pas la survie avant l'échéance | medium | Patch : durée de vie 5 s, `GET` 204 et socket encore ouvert juste après les connexions, attente de fermeture 10 s. |
+| 6 | edge-case | La spec dit `session-lifetime=1s`, le test 2 s (puis 5 s) | low | Écart documenté dans Implementation Notes ; corriger la spec est exclu. Rejeté. |
+| 7 | edge-case | Session expirée encore lisible/joignable jusqu'au prochain passage | false | Accepté par le bloc figé (Never : « utilisable au plus un intervalle du balayeur »). |
+| 8 | blind | Aucun test ne capture le journal d'expiration | low | La ligne ne formate qu'un entier (`open.size()`) ; ajouter un `ListAppender` est de la complexité. Rejeté. |
+| 9 | blind | `hello` après expiration non testé de bout en bout | low | `connect` → `SessionNotFound` testé (`SweepUseCaseTest`) ; `SessionNotFound` → `4404` déjà couvert par `SessionSocketHandlerTest`. Rejeté. |
+| 10 | blind | Jetons des participants retirés non testés après expiration | low | Ils vivent dans `Session.departed`, supprimée avec la session ; aucun autre stockage. Rejeté. |
+| 11 | blind | Javadoc de `detach` ne cite pas `closeSessionNotFound` ; test « inconnue » sans vérification | low | Javadoc : patch. Test : il prouve l'absence d'exception, comme pour `close`. Rejeté. |
+| 12 | blind | Ordre détacher → fermer non vérifié | low | Exige un journal d'événements partagé dans `RecordingBroadcaster` ; l'ordre est lisible en 3 lignes. Rejeté. |
+| 13 | verification-gap | Valeur de production 24 h non vérifiée par un test | low | Défaut pré-existant de tous les délais `planning-poker.*` (vivacité, absence) ; reporté dans `deferred-work.md`. |
 
 ## Design Notes
 

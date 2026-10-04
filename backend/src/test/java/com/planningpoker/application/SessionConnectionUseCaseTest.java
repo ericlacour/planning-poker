@@ -31,7 +31,7 @@ class SessionConnectionUseCaseTest {
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
     private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, Duration.ofSeconds(15),
-            Duration.ofMinutes(5));
+            Duration.ofMinutes(5), Duration.ofHours(24));
 
     private Session session() {
         return store.find(created.sessionId()).orElseThrow();

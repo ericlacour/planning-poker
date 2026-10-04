@@ -26,6 +26,7 @@ class SweepUseCaseTest {
     private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
     private static final Duration ABSENCE = Duration.ofMinutes(5);
+    private static final Duration LIFETIME = Duration.ofHours(24);
 
     private final InMemorySessionStore store = new InMemorySessionStore();
     private final SessionLocks locks = new SessionLocks();
@@ -34,7 +35,7 @@ class SweepUseCaseTest {
     private final MutableClock clock = new MutableClock(NOW);
     private final SessionConnectionUseCase connections = new SessionConnectionUseCase(store, locks, broadcaster,
             clock);
-    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT, ABSENCE);
+    private final SweepUseCase sweep = new SweepUseCase(store, locks, broadcaster, clock, TIMEOUT, ABSENCE, LIFETIME);
     private final CreateSessionResult created = new CreateSessionUseCase(store, locks, ids,
             Clock.fixed(NOW, ZoneOffset.UTC)).create("Alice", Role.VOTER);
 
@@ -161,7 +162,7 @@ class SweepUseCaseTest {
                 return List.of(session());
             }
         };
-        new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT, ABSENCE).sweep();
+        new SweepUseCase(vanishing, locks, broadcaster, clock, TIMEOUT, ABSENCE, LIFETIME).sweep();
         assertThat(broadcaster.closeRequested).isEmpty();
     }
 
@@ -305,5 +306,80 @@ class SweepUseCaseTest {
         assertThat(broadcaster.published).extracting(p -> p.session().lastChange())
                 .containsExactlyInAnyOrder(LastChange.of(ChangeAction.LEAVE, created.participantId()),
                         LastChange.of(ChangeAction.LEAVE, bob.participantId()));
+    }
+
+    /** Alice (deux onglets) et Bob (un onglet) connectés, gardés vivants jusqu'à {@code NOW + elapsed}. */
+    private JoinSessionResult tableKeptAliveUntil(Duration elapsed) {
+        JoinSessionResult bob = bobJoins();
+        clock.advance(elapsed);
+        connect("c1");
+        connect("c2");
+        connections.connect(created.sessionId(), bob.participantToken(), "c3");
+        broadcaster.published.clear();
+        return bob;
+    }
+
+    @Test
+    void aSessionIsStillThereOneMinuteBeforeItsLifetime() {
+        tableKeptAliveUntil(LIFETIME.minusMinutes(1));
+
+        sweep.sweep();
+
+        assertThat(store.find(created.sessionId())).isPresent();
+        assertThat(broadcaster.attached).containsOnlyKeys("c1", "c2", "c3");
+        assertThat(broadcaster.notFoundRequested).isEmpty();
+        assertThat(broadcaster.closeRequested).isEmpty();
+    }
+
+    @Test
+    void anExpiredSessionIsDeletedAndEachConnectionDetachedThenClosedAsNotFoundWithoutPublishing() {
+        JoinSessionResult bob = tableKeptAliveUntil(LIFETIME.minusMinutes(1));
+        clock.advance(Duration.ofMinutes(1));
+
+        sweep.sweep();
+
+        assertThat(store.find(created.sessionId())).isEmpty();
+        assertThat(broadcaster.attached).isEmpty();
+        assertThat(broadcaster.notFoundRequested).containsExactlyInAnyOrder("c1", "c2", "c3");
+        assertThat(broadcaster.closeRequested).isEmpty();
+        assertThat(broadcaster.published).isEmpty();
+
+        // Après l'expiration, la session est inconnue : jetons comme fermetures tardives.
+        assertThat(connections.connect(created.sessionId(), created.participantToken(), "c4"))
+                .isEqualTo(new ConnectResult.SessionNotFound());
+        assertThat(connections.connect(created.sessionId(), bob.participantToken(), "c5"))
+                .isEqualTo(new ConnectResult.SessionNotFound());
+        connections.disconnect(created.sessionId(), created.participantId(), "c1");
+        assertThat(store.find(created.sessionId())).isEmpty();
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void anExpiredSessionWithoutConnectionIsDeleted() {
+        clock.advance(Duration.ofHours(25));
+
+        sweep.sweep();
+
+        assertThat(store.find(created.sessionId())).isEmpty();
+        assertThat(broadcaster.notFoundRequested).isEmpty();
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
+    void onlyTheExpiredSessionIsDeletedTheOtherIsSweptAsUsual() {
+        CreateSessionResult younger = new CreateSessionUseCase(store, locks, ids,
+                Clock.fixed(NOW.plus(Duration.ofHours(1)), ZoneOffset.UTC)).create("Bob", Role.VOTER);
+        clock.advance(LIFETIME.minus(TIMEOUT));
+        connect("c1");
+        connections.connect(younger.sessionId(), younger.participantToken(), "c2");
+        clock.advance(TIMEOUT);
+
+        sweep.sweep();
+
+        assertThat(store.find(created.sessionId())).isEmpty();
+        assertThat(broadcaster.notFoundRequested).containsExactly("c1");
+        // La plus jeune vit encore ; sa connexion muette est fermée par la règle habituelle.
+        assertThat(store.find(younger.sessionId())).isPresent();
+        assertThat(broadcaster.closeRequested).containsExactly("c2");
     }
 }

@@ -21,7 +21,7 @@ class SweepSchedulerTest {
 
         FailingSweep() {
             super(new InMemorySessionStore(), new SessionLocks(), null, Clock.systemUTC(), Duration.ofSeconds(15),
-                    Duration.ofMinutes(5));
+                    Duration.ofMinutes(5), Duration.ofHours(24));
         }
 
         @Override

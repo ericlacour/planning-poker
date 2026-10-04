@@ -29,4 +29,10 @@ public interface SessionBroadcaster {
 
     /** Demande la fermeture de la connexion, sans attendre ; sans effet si elle est déjà fermée ou inconnue. */
     void close(String connectionId);
+
+    /**
+     * Demande la fermeture définitive de la connexion : sa session n'existe plus ({@code 4404}, le client ne se
+     * reconnecte pas). Sans attendre ; sans effet si elle est déjà fermée ou inconnue.
+     */
+    void closeSessionNotFound(String connectionId);
 }

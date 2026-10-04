@@ -20,6 +20,8 @@ final class RecordingBroadcaster implements SessionBroadcaster {
     final List<String> closed = new ArrayList<>();
     /** Connexions dont la fermeture a été demandée, dans l'ordre. */
     final List<String> closeRequested = new ArrayList<>();
+    /** Connexions dont la fermeture en {@code 4404} (session expirée) a été demandée, dans l'ordre. */
+    final List<String> notFoundRequested = new ArrayList<>();
 
     @Override
     public boolean attach(String connectionId, String sessionId, UUID participantId) {
@@ -48,5 +50,10 @@ final class RecordingBroadcaster implements SessionBroadcaster {
     @Override
     public void close(String connectionId) {
         closeRequested.add(connectionId);
+    }
+
+    @Override
+    public void closeSessionNotFound(String connectionId) {
+        notFoundRequested.add(connectionId);
     }
 }

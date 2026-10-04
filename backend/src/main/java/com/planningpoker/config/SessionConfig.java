@@ -71,8 +71,9 @@ public class SessionConfig {
     @Bean
     public SweepUseCase sweepUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster,
             Clock clock, @Value("${planning-poker.liveness-timeout:15s}") Duration livenessTimeout,
-            @Value("${planning-poker.absence-timeout:5m}") Duration absenceTimeout) {
-        return new SweepUseCase(store, locks, broadcaster, clock, livenessTimeout, absenceTimeout);
+            @Value("${planning-poker.absence-timeout:5m}") Duration absenceTimeout,
+            @Value("${planning-poker.session-lifetime:24h}") Duration sessionLifetime) {
+        return new SweepUseCase(store, locks, broadcaster, clock, livenessTimeout, absenceTimeout, sessionLifetime);
     }
 
     @Bean

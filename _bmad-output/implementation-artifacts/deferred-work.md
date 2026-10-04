@@ -48,3 +48,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-reprendre-sa-place-depuis-un-autre-appareil.md`
   summary: Vérifier que « Ta place a été reprise depuis un autre appareil. » (`role="status"`, créé déjà rempli avec l'écran Rejoindre) est bien annoncé par les lecteurs d'écran.
   evidence: Non vérifié (medium si vrai) — certains lecteurs n'annoncent pas une région live insérée avec son contenu ; à tester avec NVDA et VoiceOver, sinon remplir le texte après le rendu.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-une-session-qui-s-efface-d-elle-meme.md`
+  summary: Vérifier par un test que le contexte sans surcharge donne aux cas d'usage les délais de production (`session-lifetime` 24 h, `absence-timeout` 5 min, `liveness-timeout` 15 s).
+  evidence: Tous les tests injectent leur propre `Duration` ou surchargent la propriété ; une faute dans `application.properties` (ex. `24m`) passerait la suite (relecture verification-gap de la story 2.5).

@@ -14,12 +14,15 @@ import org.slf4j.LoggerFactory;
 import com.planningpoker.domain.Session;
 
 /**
- * Balayeur (AD-8) : pour chaque session, sous son verrou, ferme d'abord les connexions muettes depuis
- * {@code livenessTimeout} ou plus, puis retire les participants sans aucune connexion depuis {@code absenceTimeout}
- * ou plus (AD-7). Chaque connexion muette : détacher → {@code disconnect} → {@code save} → {@code publish} si la
- * {@code version} change (un changement {@code PRESENCE} diffusé par participant) ; chaque absent : {@code remove}
- * → {@code save} → {@code publish} ({@code LEAVE}) ; puis fermeture des sockets demandée (AD-3). La connexion étant
- * détachée avant d'être fermée, sa fermeture ne produit aucun second {@code disconnect}.
+ * Balayeur (AD-8) : pour chaque session, sous son verrou, supprime d'abord la session créée depuis
+ * {@code sessionLifetime} ou plus (FR-4) : {@code delete}, puis chaque connexion ouverte détachée et fermée en
+ * {@code 4404}, sans rien publier ; ses pseudos, votes et jetons disparaissent avec elle. Sinon, ferme les
+ * connexions muettes depuis {@code livenessTimeout} ou plus, puis retire les participants sans aucune connexion
+ * depuis {@code absenceTimeout} ou plus (AD-7). Chaque connexion muette : détacher → {@code disconnect} →
+ * {@code save} → {@code publish} si la {@code version} change (un changement {@code PRESENCE} diffusé par
+ * participant) ; chaque absent : {@code remove} → {@code save} → {@code publish} ({@code LEAVE}) ; puis fermeture
+ * des sockets demandée (AD-3). La connexion étant détachée avant d'être fermée, sa fermeture ne produit aucun second
+ * {@code disconnect}.
  */
 public class SweepUseCase {
 
@@ -31,15 +34,17 @@ public class SweepUseCase {
     private final Clock clock;
     private final Duration livenessTimeout;
     private final Duration absenceTimeout;
+    private final Duration sessionLifetime;
 
     public SweepUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster, Clock clock,
-            Duration livenessTimeout, Duration absenceTimeout) {
+            Duration livenessTimeout, Duration absenceTimeout, Duration sessionLifetime) {
         this.store = store;
         this.locks = locks;
         this.broadcaster = broadcaster;
         this.clock = clock;
         this.livenessTimeout = Objects.requireNonNull(livenessTimeout, "livenessTimeout");
         this.absenceTimeout = Objects.requireNonNull(absenceTimeout, "absenceTimeout");
+        this.sessionLifetime = Objects.requireNonNull(sessionLifetime, "sessionLifetime");
     }
 
     /** Un passage sur toutes les sessions. Une session qui disparaît pendant le balayage est ignorée. */
@@ -59,8 +64,23 @@ public class SweepUseCase {
             return;
         }
         Instant now = clock.instant();
+        if (session.isExpired(now, sessionLifetime)) {
+            expire(session);
+            return;
+        }
         Session current = closeSilentConnections(session, now);
         removeAbsentParticipants(current, now);
+    }
+
+    private void expire(Session session) {
+        store.delete(session.id());
+        List<Session.OpenConnection> open = session.openConnections();
+        for (Session.OpenConnection connection : open) {
+            broadcaster.detach(connection.connectionId());
+            broadcaster.closeSessionNotFound(connection.connectionId());
+        }
+        // Ni identifiant de session (le lien), ni pseudo, ni jeton, ni vote dans les journaux (NFR-6).
+        LOG.info("Session expired, closing {} connections", open.size());
     }
 
     private Session closeSilentConnections(Session session, Instant now) {

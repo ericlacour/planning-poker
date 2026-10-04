@@ -64,6 +64,19 @@ class WebSocketBroadcasterTest {
     @Test
     void closingAnUnknownConnectionDoesNothing() {
         broadcaster.close("unknown");
+        broadcaster.closeSessionNotFound("unknown");
         assertThat(broadcaster.detach("unknown")).isFalse();
+    }
+
+    @Test
+    void aConnectionOfAnExpiredSessionIsClosedAs4404() throws Exception {
+        openAndAttach();
+        assertThat(broadcaster.detach("c1")).isTrue();
+
+        broadcaster.closeSessionNotFound("c1");
+        verify(session, timeout(2_000)).close(new CloseStatus(4404, "Session not found"));
+        verify(session, never()).close(CloseStatus.SESSION_NOT_RELIABLE);
+
+        assertThat(broadcaster.closed("c1")).isNull();
     }
 }

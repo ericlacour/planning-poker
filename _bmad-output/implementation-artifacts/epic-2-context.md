@@ -4,7 +4,7 @@
 
 ## Goal
 
-Une coupure n'a plus de conséquence pour un participant : chacun voit en direct qui est vraiment là, la page se reconnecte d'elle-même, l'inactivité ou un onglet en arrière-plan ne déconnectent jamais, un absent est retiré au bout de 5 min puis remis à sa place de façon transparente à son retour, un pseudo se reprend depuis un autre appareil, plusieurs onglets comptent comme un seul participant, la session s'efface au bout de 24 h, et des plafonds protègent le service public gratuit contre l'épuisement de ses ressources. L'epic 2 est un préalable à la v1.0 et au premier atelier réel.
+Rendre l'outil robuste aux aléas d'un vrai atelier : une coupure de réseau, un téléphone verrouillé, un onglet en arrière-plan, un changement d'appareil ou un redémarrage du serveur ne doivent jamais faire perdre sa place, son rôle ni son vote à un participant, ni laisser la page figée. L'epic ajoute la présence en direct, la reconnexion automatique, le retrait des absents puis leur retour transparent, la reprise du pseudo depuis un autre appareil, l'expiration des sessions au bout de 24 h, et des plafonds qui protègent le service public et gratuit contre l'épuisement de ses ressources. Toute coupure doit être visible, et aucun clic ne doit partir dans le vide (constats F1 et F2 de la rétrospective de l'epic 1).
 
 ## Stories
 
@@ -17,42 +17,41 @@ Une coupure n'a plus de conséquence pour un participant : chacun voit en direct
 
 ## Requirements & Constraints
 
-- La liste des participants montre pour chacun son pseudo, son rôle et son état de présence (connecté ou non).
-- Seul l'état **réseau** compte : l'inactivité de l'utilisateur, un onglet caché ou des minuteries ralenties ne déconnectent jamais.
-- Tout changement d'état est diffusé à tous en moins d'une seconde. Une déconnexion explicite (onglet fermé) est diffusée en moins d'une seconde **après que le serveur a constaté la fermeture** ; derrière Render ce constat prend environ 5 s, donc un départ apparaît chez les autres en **6 s au plus** de bout en bout (décision d'équipe du 2026-10-03, mesurée par le test de charge). Une déconnexion brutale est détectée en 15 s au plus, puis diffusée en moins d'une seconde.
-- Reconnexion automatique dans le même navigateur : pseudo, rôle et vote du tour en cours conservés ; pendant la coupure, les autres voient le participant déconnecté.
-- Retrait au bout de 5 min sans connexion : place et vote du tour supprimés, pseudo libéré, jeton toujours valable ; retour transparent si le pseudo est encore libre, sinon écran Rejoindre.
-- Reprise d'un pseudo **déconnecté** depuis un autre appareil, avec son rôle et son vote ; refusée (409 `PSEUDO_TAKEN`) si le participant est connecté. Reprendre le pseudo d'un autre est un risque accepté (confiance d'équipe).
-- Expiration 24 h après la création : session, pseudos, votes et jetons supprimés.
-- Plafonds réglables (valeurs par défaut) : corps REST 2 Ko (`413`), message WS 4 Ko (fermeture `1009`), 50 sessions (`503 SESSION_LIMIT_REACHED`), 10 créations par minute et par IP (`429 TOO_MANY_REQUESTS` + `Retry-After`), 30 participants par session (`409 SESSION_FULL`). Le test de charge 5 × 13 doit toujours passer sans refus.
-- Confidentialité : aucun jeton, pseudo, valeur de vote ou adresse IP dans un journal, une URL ou un instantané.
+- **Présence réseau uniquement :** l'inactivité de l'utilisateur et un onglet en arrière-plan (minuteries ralenties) ne déconnectent jamais. Plusieurs onglets du même navigateur forment un seul participant, `connected` tant qu'au moins une connexion est ouverte et vivante.
+- **Délais de diffusion :** une déconnexion explicite est diffusée en moins de 1 s après le constat serveur (6 s au plus de bout en bout derrière Render) ; une déconnexion brutale est détectée en 15 s au plus, puis diffusée en moins de 1 s.
+- **Reconnexion (même navigateur) :** pseudo, rôle et vote intacts ; les autres voient le participant déconnecté pendant la coupure.
+- **Retrait :** au bout de 5 min sans connexion, le participant est retiré, son vote du tour en cours est supprimé et son pseudo redevient libre. À son retour, il est remis à sa place automatiquement si son pseudo est encore libre ; sinon, il voit l'écran Rejoindre avec le pseudo prérempli.
+- **Reprise depuis un autre appareil :** possible seulement pour un participant déconnecté (même identité, rôle et vote). Un pseudo connecté est refusé en 409 `PSEUDO_TAKEN`. L'usurpation est un risque accepté.
+- **Expiration :** la session est supprimée 24 h après sa création, avec pseudos, votes et jetons. Ensuite, le lien affiche « Session introuvable ».
+- **Redémarrage serveur :** perdre les sessions en mémoire est un risque accepté, mais l'utilisateur doit passer par « actions désactivées », puis « Reconnexion… », puis « Session introuvable ».
+- **Veille Render :** l'application ne doit jamais s'endormir tant qu'une session a des participants connectés.
+- **Plafonds (réglables par configuration, avec ces valeurs par défaut) :** corps REST de 2 Ko au plus (`413`, refusé sans lecture complète) ; message WebSocket de 4 Ko au plus (fermeture `1009`) ; 50 sessions au plus (`503` `SESSION_LIMIT_REACHED`) ; 10 créations par minute et par IP cliente au plus (`429` `TOO_MANY_REQUESTS` avec `Retry-After`, IP lue depuis `X-Forwarded-For` de Render) ; 30 participants par session au plus (`409` `SESSION_FULL`). Les expirations et les retraits libèrent des places. Le test de charge (5 × 13 participants) doit toujours passer sans refus.
+- **Confidentialité :** aucun jeton, pseudo, vote caché ni adresse IP dans les journaux ; aucun jeton dans une URL ni dans un instantané. Les compteurs par IP vivent en mémoire et sont purgés au bout d'une minute.
 
 ## Technical Decisions
 
-- **Mutation unique par session sous verrou** : charger → règle du domaine → `version++` seulement si l'état observable (l'instantané) change → `save` → `publish` non bloquant (file bornée par connexion, 2 s / 64 Ko ; une connexion qui déborde est fermée). L'ouverture et la fermeture de chaque connexion, et chaque action du balayeur, passent par cette séquence. La date de dernière activité d'une connexion n'est pas observable : la mettre à jour n'incrémente pas `version` et ne diffuse rien.
-- **Présence** : un participant porte une ou plusieurs connexions ; il est `connected=true` tant qu'au moins une est ouverte et vivante ; la fermeture de la dernière le passe aussitôt à `connected=false` (`lastChange.action: PRESENCE`).
-- **Vivacité mesurée par le serveur** : ping de protocole WebSocket toutes les 5 s ; une connexion sans pong ni message depuis 15 s est morte et fermée. Aucune minuterie JavaScript du client n'entre dans ce calcul.
-- **Tic et signal de vie** : le serveur envoie `tick` toutes les 5 s ; le client considère la connexion perdue sans aucun message depuis 12 s. Le client envoie `heartbeat` toutes les 5 s, uniquement pour garder Render éveillé.
-- **Balayeur** toutes les secondes, sous le verrou de chaque session : ferme les connexions mortes, retire les participants sans connexion depuis 5 min (`LEAVE`), supprime les sessions de plus de 24 h en fermant leurs connexions en `4404`.
-- **Heure** : uniquement via `java.time.Clock` en UTC, délais en `Duration` ; tests du domaine avec une horloge fixe.
-- **Identité** : `participantToken` secret 128 bits, rangé dans `localStorage` sous `pp.token.{sessionId}` (partagé par les onglets), supprimé à la réception de `4401` ou `4404`. Poignée de main : `hello` dans les 5 s ; session vérifiée d'abord (`4404`), puis jeton : actif → reconnexion ; participant retiré dont le pseudo est libre → remis à sa place (même `participantId`, pseudo, rôle, nouveau `joinOrder`, `JOIN`) ; inconnu, révoqué ou pseudo pris → `4401`. Reprise depuis un autre appareil : nouveau jeton, ancien révoqué, ses connexions fermées en `4401`.
-- **Reconnexion client** (`SessionService` seul) : immédiate, puis à 1, 2, 4, 8 s, puis toutes les 10 s ; immédiate aussi sur `online` et `visibilitychange` ; rejoue `hello`. Toute fermeture autre que `4401`/`4404` déclenche la reconnexion sans attendre. Le premier `sessionState` après reconnexion est accepté quelle que soit sa `version`.
-- **Contrat d'abord** : toute nouvelle réponse ou fermeture (`413`, `429`, `503`, `1009`, codes d'erreur) est décrite dans `openapi.yaml` / `asyncapi.yaml` avec un exemple, par ajout uniquement, dans le même changement que le code des deux côtés.
-- Une seule instance en V1, stockage en mémoire derrière `SessionStore`.
+- **Point unique de mutation :** l'ouverture et la fermeture de connexion, le retrait, l'expiration et la reprise passent tous sous le verrou de la session (charger → règle → `version++` si l'état observable change → `save` → `publish`). La date de dernière activité d'une connexion n'est **pas** observable : elle n'incrémente pas `version` et ne diffuse rien. `publish` n'est jamais bloquant (file bornée par connexion, 2 s / 64 Ko ; un débordement ferme en `4500`).
+- **Vivacité serveur :** ping de protocole toutes les 5 s ; une connexion sans pong ni message depuis 15 s est morte. Un `tick` applicatif part aussi toutes les 5 s.
+- **Balayeur :** il passe toutes les secondes, sous verrou. Il ferme les connexions mortes, retire les absents (5 min) et supprime les sessions (24 h, fermeture `4404`). Toute heure est lue via `java.time.Clock` en UTC, et les délais sont des `Duration`. Les seuils sont testés dans le domaine avec une horloge fixe.
+- **`lastChange.action` :** `PRESENCE` (changement de connexion), `LEAVE` (retrait), `JOIN` (retour après retrait).
+- **Identité :** `participantToken` (secret de 128 bits, `SecureRandom`) dans `localStorage` sous `pp.token.{sessionId}`, partagé par les onglets. Après `hello` (dans les 5 s), le serveur vérifie la session (`4404`), puis le jeton (`4401` si inconnu, révoqué, ou si le pseudo a été repris). Un jeton reste valable jusqu'à l'expiration, même après un retrait. Le retour après retrait conserve le `participantId`, le pseudo et le rôle, avec un nouveau `joinOrder`. Une reprise émet un nouveau jeton, révoque l'ancien et ferme en `4401` les connexions qui l'utilisaient encore. Le client supprime le jeton sur `4401` et sur `4404`.
+- **Client (`SessionService`, seul propriétaire du WebSocket) :** connexion perdue après 12 s sans aucun message, ou **immédiatement** sur toute fermeture autre que `4401`/`4404`. Il retente tout de suite, puis après 1, 2, 4 et 8 s, puis toutes les 10 s, ainsi que sur `online` et `visibilitychange`. Chaque tentative rejoue `hello`. Il envoie un `heartbeat` toutes les 5 s, uniquement pour garder Render éveillé. Il accepte le premier `sessionState` après reconnexion quelle que soit sa `version`, sans mise à jour optimiste. Aucun calcul métier côté front.
+- **Contrat :** il n'évolue que par ajout. `openapi.yaml` gagne les réponses `413`/`429`/`503` et les codes `SESSION_FULL`, `SESSION_LIMIT_REACHED` et `TOO_MANY_REQUESTS` (en `problem+json`, avec un exemple chacun) ; `asyncapi.yaml` gagne la fermeture `1009`.
+- **Stockage :** il passe par le port `SessionStore` (`find`, `save`, `delete`, `all` pour le balayeur), en mémoire, sur une seule instance.
 
 ## UX & Interaction Patterns
 
-- Participant déconnecté : pseudo en `muted-foreground`, pastille de présence grise (`presence-offline`) et libellé « déconnecté » ; opacité inchangée ; sa carte garde son aspect (dos, vide ou face) ; il reste compté dans le M de « N votes sur M » tant qu'il n'est pas retiré. L'information ne passe jamais par la couleur seule.
-- Reconnexion (moi) : main et boutons désactivés aussitôt la perte constatée ; après 2 s de coupure, bandeau ambre « Reconnexion… » sous la barre du haut (seul usage de l'ambre) ; la table reste visible ; aucune mise à jour optimiste.
-- Retour après longue absence : remis à sa place sans écran intermédiaire, seulement via « Reconnexion… ».
-- Ancien appareil après reprise : écran Rejoindre, pseudo prérempli, « Ta place a été reprise depuis un autre appareil. ».
-- Session expirée : « Cette session n'existe plus. Elle a peut-être expiré, ou le serveur a redémarré. » + « Créer une session ».
-- Libellés des plafonds (validés) : « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. », « Trop de sessions créées depuis ton réseau. Patiente une minute. », « Cette session est complète. ».
+- **Participant déconnecté :** pseudo en `muted-foreground`, pastille grise et libellé « déconnecté », sans changement d'opacité ; sa carte garde son aspect, et il reste compté dans le M de « N votes sur M » jusqu'à son retrait. L'information ne passe jamais par la couleur seule.
+- **Ma coupure :** la main et les boutons de la barre d'action sont désactivés dès que la perte est constatée. Après 2 s, le bandeau ambre « Reconnexion… » s'affiche sous la barre du haut ; il ne bloque pas la table et disparaît au retour. Aucune page ne doit rester figée sans retour.
+- **Retour après une longue absence :** remise en place transparente, sans autre écran que « Reconnexion… ».
+- **Pseudo repris :** écran Rejoindre avec le pseudo prérempli et « Ta place a été reprise depuis un autre appareil. »
+- **Session disparue :** « Cette session n'existe plus. Elle a peut-être expiré, ou le serveur a redémarré. » avec « Créer une session ».
+- **Refus des plafonds** (saisie conservée, bouton réactivé) : « Trop de sessions sont ouvertes en ce moment. Réessaie plus tard. » et « Trop de sessions créées depuis ton réseau. Patiente une minute. » sous le bouton de l'accueil ; « Cette session est complète. » sous le champ de Rejoindre. Ces libellés sont à reprendre mot pour mot, au tutoiement.
 
 ## Cross-Story Dependencies
 
-- 2.1 pose la présence multi-connexions, le ping de protocole et le balayeur ; 2.3 et 2.5 ajoutent des règles à ce même balayeur.
-- 2.2 (reconnexion client) s'appuie sur la détection serveur de 2.1 et sur les codes de fermeture ; 2.6 réutilise sa reconnexion après `1009`.
-- 2.3 libère des places comptées par le plafond de participants de 2.6 ; 2.5 libère des places comptées par le plafond de sessions.
-- 2.4 dépend de l'état « déconnecté » de 2.1 ; avec le délai accepté, le pseudo reste « déjà pris » environ 5 s après la fermeture de l'onglet sur l'ancien appareil.
-- Rétrospective de l'epic 1 : au début de l'epic, extraire le squelette commun des cas d'usage et noter le délai du `hello` avant de le programmer ; faire passer la CI sur les branches de story.
+- L'epic s'appuie sur l'epic 1 : contrat, poignée de main `hello`/jeton, `sessionState`, `SessionService`, retour après rafraîchissement, et test de charge de la story 1.5.
+- La story 2.1 (connexions multiples par participant, ping/pong, balayeur) sert de base aux stories 2.2, 2.3 et 2.5.
+- Les stories 2.3 et 2.4 partagent les règles de jeton (validité après retrait, révocation, `4401`). Le client de la story 2.2 doit traiter `4401` et `4404` sans relancer de reconnexion.
+- La story 2.6 réutilise la reconnexion de la 2.2 (fermeture `1009`), ainsi que les libérations de places des stories 2.3 (retrait) et 2.5 (expiration).
+- Le test Playwright de l'onglet en arrière-plan pendant 20 min est introduit dans la story 2.2, et le parcours complet est repris dans l'epic 3.

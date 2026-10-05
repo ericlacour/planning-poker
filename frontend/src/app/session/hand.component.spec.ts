@@ -23,7 +23,7 @@ const withMyVote = (vote: Card | null): SessionState => {
 
 describe('HandComponent', () => {
   function render(state: SessionState | null) {
-    const session = { vote: vi.fn(), connection: signal<ConnectionStatus>('open') };
+    const session = { vote: vi.fn(), changeRole: vi.fn(), connection: signal<ConnectionStatus>('open') };
     TestBed.configureTestingModule({ providers: [{ provide: SessionService, useValue: session }] });
     const fixture = TestBed.createComponent(HandComponent);
     fixture.componentRef.setInput('state', state);
@@ -127,11 +127,24 @@ describe('HandComponent', () => {
     expect(cards().filter((c) => c.tabIndex === 0)).toEqual([cards()[8]]);
   });
 
-  it('an observer has no hand but « Tu observes »', () => {
+  it('an observer has no hand but « Tu observes » and « Je veux voter »', () => {
     const { element } = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
     expect(element.querySelector('[role="toolbar"]')).toBeNull();
     expect(element.querySelectorAll('.poker-card')).toHaveLength(0);
-    expect(element.textContent?.trim()).toBe('Tu observes');
+    expect(element.querySelector('.hand-hint')?.textContent).toBe('Tu observes');
+    expect(element.querySelector('button.link-button')?.textContent?.trim()).toBe('Je veux voter');
+  });
+
+  it('« Je veux voter » sends changeRole VOTER, and nothing while the connection is lost (FR5)', () => {
+    const { element, session, setConnection } = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
+    const link = () => element.querySelector<HTMLButtonElement>('button.link-button')!;
+    link().click();
+    expect(session.changeRole).toHaveBeenCalledExactlyOnceWith('VOTER');
+
+    setConnection('lost');
+    expect(link().getAttribute('aria-disabled')).toBe('true');
+    link().click();
+    expect(session.changeRole).toHaveBeenCalledTimes(1);
   });
 
   it('revealed round: the hand is greyed (aria-disabled), keeps my card pressed, and clicks do nothing', () => {

@@ -356,8 +356,7 @@ class SessionSocketHandlerTest {
         Connected a = connect(createSession("Alice", "VOTER"));
         a.client().send(ContractExamples.read("heartbeat", "heartbeat"));
         for (String[] example : new String[][] { { "vote", "choose-card" }, { "vote", "withdraw" },
-                { "vote", "coffee" }, { "reveal", "reveal" }, { "hide", "hide" }, { "clear", "clear" },
-                { "change-role", "to-observer" } }) {
+                { "vote", "coffee" }, { "reveal", "reveal" }, { "hide", "hide" }, { "clear", "clear" } }) {
             a.client().send(ContractExamples.read(example[0], example[1]));
         }
         assertThat(next(a.client(), QUIET_MS)).isNull();
@@ -754,5 +753,61 @@ class SessionSocketHandlerTest {
         assertThat(seat(next, farid.participantId()).get("canVoteThisRound").asBoolean()).isTrue();
         f.client().send(vote(next, "5"));
         assertThat(seat(nextState(f.client()), farid.participantId()).get("vote").asString()).isEqualTo("5");
+    }
+
+    // --- Changement de rôle (story 3.1) ---
+
+    private static String changeRole(String role) {
+        return "{\"type\":\"changeRole\",\"role\":\"" + role + "\"}";
+    }
+
+    @Test
+    void aRoleChangeIsBroadcastToEveryoneWithinOneSecond() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        Created bob = join(alice.sessionId(), "Bob", "VOTER");
+        nextState(a.client());
+        Connected b = connect(bob);
+        nextState(a.client());
+        a.client().send(vote(b.state(), "5"));
+        nextState(a.client());
+        nextState(b.client());
+
+        long start = System.nanoTime();
+        a.client().send(changeRole("OBSERVER"));
+        JsonNode seenByBob = nextState(b.client());
+        JsonNode seenByAlice = nextState(a.client());
+        assertThat(System.nanoTime() - start).isLessThan(1_000_000_000L);
+
+        for (JsonNode state : new JsonNode[] { seenByBob, seenByAlice }) {
+            assertThat(state.get("lastChange").get("action").asString()).isEqualTo("ROLE");
+            assertThat(state.get("lastChange").get("byParticipantId").asString()).isEqualTo(alice.participantId());
+            assertThat(seat(state, alice.participantId()).get("role").asString()).isEqualTo("OBSERVER");
+            assertThat(seat(state, alice.participantId()).get("hasVoted").asBoolean()).isFalse();
+            assertThat(state.get("progress").get("expected").asInt()).isEqualTo(1);
+            assertThat(state.get("participants").get(1).get("participantId").asString())
+                    .isEqualTo(alice.participantId());
+        }
+    }
+
+    @Test
+    void theSameRoleGetsNoAnswerAndBroadcastsNothing() throws Exception {
+        Connected a = connect(createSession("Alice", "VOTER"));
+        a.client().send(changeRole("VOTER"));
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void anObserverBecomingVoterDuringARevealedRoundVotesFromTheNextRound() throws Exception {
+        Connected e = connect(createSession("Emma", "OBSERVER"));
+        e.client().send(intent("reveal", e.state()));
+        JsonNode revealed = nextState(e.client());
+
+        e.client().send(changeRole("VOTER"));
+        JsonNode voter = nextState(e.client());
+        assertThat(voter.get("participants").get(0).get("role").asString()).isEqualTo("VOTER");
+        assertThat(voter.get("participants").get(0).get("canVoteThisRound").asBoolean()).isFalse();
+        e.client().send(vote(revealed, "5"));
+        assertError(next(e.client(), WAIT_MS), "ROUND_REVEALED");
     }
 }

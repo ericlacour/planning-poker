@@ -6,6 +6,7 @@ import hiddenRound from '../../../../contract/examples/session-state/hidden-roun
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { ParticipantState, SessionState } from '../api/contract';
+import { cardName } from './cards';
 import { ParticipantTableComponent, PENDING_SEATS, seatsOf } from './participant-table.component';
 
 const ALICE = '3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90';
@@ -205,5 +206,22 @@ describe('ParticipantTableComponent', () => {
     expect(farid?.querySelector('.seat-card-empty')).not.toBeNull();
     expect(element.textContent).not.toContain("n'a pas voté");
     expect(element.querySelectorAll('.seat-card-face')).toHaveLength(4);
+  });
+
+  it('revealed round: an observer who kept their vote shows its face with « observe » underneath (FR5)', () => {
+    const revealed = revealedObserver as SessionState;
+    const state: SessionState = {
+      ...revealed,
+      participants: revealed.participants.map((p) =>
+        p.participantId === EMMA ? { ...p, role: 'OBSERVER', hasVoted: true, vote: '5', canVoteThisRound: false } : p,
+      ),
+    };
+    const element = render(state);
+    const emma = [...element.querySelectorAll<HTMLElement>('.seat')].find(
+      (s) => s.querySelector('.seat-pseudo')?.textContent === 'Emma',
+    );
+    expect(emma?.querySelector('.seat-card-face')?.getAttribute('aria-label')).toBe(cardName('5'));
+    expect(emma?.querySelector('.seat-card-observer')).toBeNull();
+    expect(emma?.querySelector('.seat-note')?.textContent).toBe('observe');
   });
 });

@@ -24,6 +24,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.planningpoker.adapter.in.ws.ClientMessages.ChangeRoleMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.ClearMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.ClientMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HeartbeatMessage;
@@ -31,6 +32,7 @@ import com.planningpoker.adapter.in.ws.ClientMessages.HelloMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.Intent;
 import com.planningpoker.adapter.in.ws.ClientMessages.RevealMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.VoteMessage;
+import com.planningpoker.application.ChangeRoleUseCase;
 import com.planningpoker.application.ConnectResult;
 import com.planningpoker.application.RoundUseCase;
 import com.planningpoker.application.SessionConnectionUseCase;
@@ -48,8 +50,8 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * Ensuite, tout message et tout pong d'une connexion rattachée comptent comme activité (AD-8) ;
  * {@code heartbeat} sans autre effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
- * ({@code error {code}}) ; {@code reveal} et {@code clear} confiés au cas d'usage du tour, sans réponse ;
- * {@code hide} et {@code changeRole} conformes ignorés (stories 3.x) ; tout le reste (second {@code hello}, JSON
+ * ({@code error {code}}) ; {@code reveal} et {@code clear} confiés au cas d'usage du tour, et {@code changeRole} au
+ * sien, sans réponse ; {@code hide} conforme ignoré (story 3.2) ; tout le reste (second {@code hello}, JSON
  * invalide, {@code type} inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
  */
 @Component
@@ -66,19 +68,21 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
     private final SessionConnectionUseCase connections;
     private final VoteUseCase votes;
     private final RoundUseCase rounds;
+    private final ChangeRoleUseCase roles;
     private final WebSocketBroadcaster broadcaster;
     private final Duration helloTimeout;
     private final ScheduledExecutorService timer = Executors.newSingleThreadScheduledExecutor(
             Thread.ofPlatform().daemon().name("ws-hello-timeout").factory());
-    private final Map<String, ScheduledFuture<?>> pendingHellos = new ConcurrentHashMap<>();
+    private final Map<String, PendingHello> pendingHellos = new ConcurrentHashMap<>();
 
     public SessionSocketHandler(JsonMapper jsonMapper, SessionConnectionUseCase connections, VoteUseCase votes,
-            RoundUseCase rounds, WebSocketBroadcaster broadcaster,
+            RoundUseCase rounds, ChangeRoleUseCase roles, WebSocketBroadcaster broadcaster,
             @Value("${planning-poker.hello-timeout:5s}") Duration helloTimeout) {
         this.jsonMapper = jsonMapper;
         this.connections = connections;
         this.votes = votes;
         this.rounds = rounds;
+        this.roles = roles;
         this.broadcaster = broadcaster;
         this.helloTimeout = helloTimeout;
     }
@@ -86,12 +90,26 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         broadcaster.open(session);
-        ScheduledFuture<?> timeout = timer.schedule(() -> {
-            if (pendingHellos.remove(session.getId()) != null) {
+        // Inscrite avant d'être programmée : un délai qui expire avant la fin de cette méthode la trouve toujours.
+        PendingHello pending = new PendingHello();
+        pendingHellos.put(session.getId(), pending);
+        pending.timeout = timer.schedule(() -> {
+            if (pendingHellos.remove(session.getId(), pending)) {
                 close(session, INVALID_HELLO);
             }
         }, helloTimeout.toMillis(), TimeUnit.MILLISECONDS);
-        pendingHellos.put(session.getId(), timeout);
+    }
+
+    /** Attente du {@code hello} d'une connexion ; {@code timeout} est nul tant que son délai n'est pas programmé. */
+    private static final class PendingHello {
+        volatile ScheduledFuture<?> timeout;
+
+        void cancel() {
+            ScheduledFuture<?> scheduled = timeout;
+            if (scheduled != null) {
+                scheduled.cancel(false);
+            }
+        }
     }
 
     @Override
@@ -111,8 +129,10 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
                     a -> rounds.reveal(a.sessionId(), a.participantId(), reveal.roundId()));
             case ClearMessage clear -> withAttachment(session,
                     a -> rounds.clear(a.sessionId(), a.participantId(), clear.roundId()));
+            case ChangeRoleMessage change -> withAttachment(session,
+                    a -> roles.changeRole(a.sessionId(), a.participantId(), change.role()));
             case Intent intent -> {
-                // Intentions conformes : livrées par les stories 3.x.
+                // hide conforme : livré par la story 3.2.
             }
             default -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.INVALID_MESSAGE);
         }
@@ -207,11 +227,11 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
 
     /** Vrai si l'appelant a retiré la connexion de l'attente du {@code hello}, et lui seul peut donc la traiter. */
     private boolean cancelTimeout(WebSocketSession session) {
-        ScheduledFuture<?> timeout = pendingHellos.remove(session.getId());
-        if (timeout == null) {
+        PendingHello pending = pendingHellos.remove(session.getId());
+        if (pending == null) {
             return false;
         }
-        timeout.cancel(false);
+        pending.cancel();
         return true;
     }
 

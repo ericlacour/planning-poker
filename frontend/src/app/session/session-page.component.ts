@@ -90,9 +90,11 @@ export class SessionPageComponent {
 
     const topBar = inject(TopBarState);
     topBar.shareUrl.set(this.link);
+    topBar.session.set(this.session);
     this.session.connect(this.sessionId);
     inject(DestroyRef).onDestroy(() => {
       topBar.shareUrl.set(null);
+      topBar.session.set(null);
       this.session.disconnect();
     });
   }

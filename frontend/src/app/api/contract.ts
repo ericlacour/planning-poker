@@ -229,6 +229,16 @@ export function clearMessage(roundId: string): ClearMessage {
   return { type: 'clear', roundId };
 }
 
+/** `change-role.json` : passer votant ou observateur (sans effet pour le rôle déjà porté). */
+export interface ChangeRoleMessage {
+  readonly type: 'changeRole';
+  readonly role: Role;
+}
+
+export function changeRoleMessage(role: Role): ChangeRoleMessage {
+  return { type: 'changeRole', role };
+}
+
 export function helloMessage(participantToken: string): HelloMessage {
   return { type: 'hello', participantToken };
 }

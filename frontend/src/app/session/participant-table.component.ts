@@ -15,7 +15,7 @@ export interface Seat {
   /**
    * Mention sous la place : « déconnecté » (prioritaire, quel que soit le rôle), « visible par toi seul » (ma face
    * pendant un tour caché), « votera au prochain tour » (votant arrivé pendant un tour révélé), « n'a pas voté »
-   * (tour révélé, sans vote), ou rien. Une seule ligne par place : l'état du vote reste lisible par la carte.
+   * (tour révélé, sans vote), « observe » (observateur qui garde son vote d'un tour révélé), ou rien. Une seule ligne par place : l'état du vote reste lisible par la carte.
    */
   readonly note: string | null;
 }
@@ -23,7 +23,7 @@ export interface Seat {
 /** Mention d'une place, d'après l'instantané seul (`connected`, `canVoteThisRound`, `vote`, statut du tour). */
 function noteOf(participant: ParticipantState, isSelf: boolean, hidden: boolean, card: Seat['card']): string | null {
   if (!participant.connected) return 'déconnecté';
-  if (participant.role !== 'VOTER') return null;
+  if (participant.role !== 'VOTER') return card === 'empty' ? null : 'observe';
   if (!participant.canVoteThisRound) return 'votera au prochain tour';
   if (card === 'empty') return hidden ? null : "n'a pas voté";
   if (card !== 'back' && hidden && isSelf) return 'visible par toi seul';
@@ -64,7 +64,7 @@ export const PENDING_SEATS = 3;
  * un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
  * par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
  * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
- * « observe ». Avant le premier instantané, des places vides en attente, sans pseudo.
+ * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe » dessous. Avant le premier instantané, des places vides en attente, sans pseudo.
  */
 @Component({
   selector: 'app-participant-table',
@@ -75,7 +75,7 @@ export const PENDING_SEATS = 3;
       <ul class="seats" aria-label="Participants">
         @for (seat of seats; track seat.participant.participantId) {
           <li class="seat" [class.seat-self]="seat.isSelf" [class.offline]="!seat.participant.connected">
-            @if (seat.participant.role === 'VOTER') {
+            @if (showsCard(seat)) {
               @switch (seat.card) {
                 @case ('empty') {
                   <span class="seat-card seat-card-empty" aria-hidden="true"></span>
@@ -134,6 +134,14 @@ export class ParticipantTableComponent {
     return state ? seatsOf(state) : null;
   });
   protected readonly pending = Array.from({ length: PENDING_SEATS }, (_, i) => i);
+
+  /**
+   * Un votant a toujours une carte ; un observateur n'en a une que s'il garde le vote d'un tour révélé, posé avant de
+   * passer observateur (FR5). Sinon, la mention « observe » occupe l'emplacement de la carte.
+   */
+  protected showsCard(seat: Seat): boolean {
+    return seat.participant.role === 'VOTER' || seat.card !== 'empty';
+  }
 
   protected faceOf(seat: Seat): Card {
     return typeof seat.card === 'object' ? seat.card.face : '0';

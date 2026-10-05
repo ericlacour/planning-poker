@@ -182,6 +182,22 @@ describe('SessionService', () => {
     expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }]);
   });
 
+  it('sends changeRole without changing its state, and nothing before the first snapshot nor once closed', () => {
+    const { service, socket } = connected();
+    service.changeRole('OBSERVER');
+    socket.serverSends(hiddenRound);
+    service.changeRole('OBSERVER');
+    service.changeRole('VOTER');
+    expect(socket.sent.slice(1)).toEqual([
+      { type: 'changeRole', role: 'OBSERVER' },
+      { type: 'changeRole', role: 'VOTER' },
+    ]);
+    expect(service.state()).toEqual(hiddenRound);
+    socket.serverCloses(1006);
+    service.changeRole('OBSERVER');
+    expect(socket.sent).toHaveLength(3);
+  });
+
   it('ignores a lower version on the same connection', () => {
     const { service, socket } = connected();
     socket.serverSends({ ...hiddenRound, version: 5 });

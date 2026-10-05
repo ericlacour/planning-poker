@@ -2,6 +2,8 @@ package com.planningpoker.adapter.in.ws;
 
 import java.util.Set;
 
+import com.planningpoker.domain.Role;
+
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -48,7 +50,11 @@ final class ClientMessages {
     record ClearMessage(String type, String roundId) implements ClientMessage {
     }
 
-    /** {@code hide} ou {@code changeRole} conforme à son schéma, encore ignoré (stories 3.x). */
+    /** {@code change-role.json} */
+    record ChangeRoleMessage(String type, Role role) implements ClientMessage {
+    }
+
+    /** {@code hide} conforme à son schéma, encore ignoré (story 3.2). */
     record Intent(String type) implements ClientMessage {
     }
 
@@ -87,6 +93,7 @@ final class ClientMessages {
                     node.get("card").isNull() ? null : node.get("card").asString());
             case "reveal" -> new RevealMessage(type, node.get("roundId").asString());
             case "clear" -> new ClearMessage(type, node.get("roundId").asString());
+            case "changeRole" -> new ChangeRoleMessage(type, Role.valueOf(node.get("role").asString()));
             default -> new Intent(type);
         };
     }

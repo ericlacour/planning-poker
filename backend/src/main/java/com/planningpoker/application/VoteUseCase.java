@@ -3,7 +3,6 @@ package com.planningpoker.application;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.planningpoker.domain.Session;
 import com.planningpoker.domain.VoteRejectedException;
 
 /**
@@ -13,14 +12,10 @@ import com.planningpoker.domain.VoteRejectedException;
  */
 public class VoteUseCase {
 
-    private final SessionStore store;
-    private final SessionLocks locks;
-    private final SessionBroadcaster broadcaster;
+    private final SessionWriter writer;
 
     public VoteUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster) {
-        this.store = store;
-        this.locks = locks;
-        this.broadcaster = broadcaster;
+        this.writer = new SessionWriter(store, locks, broadcaster);
     }
 
     /**
@@ -29,22 +24,11 @@ public class VoteUseCase {
      */
     public Optional<VoteRejectedException.Reason> vote(String sessionId, UUID participantId, String roundId,
             String card) {
-        return locks.withLock(sessionId, () -> {
-            Session session = store.find(sessionId).orElse(null);
-            if (session == null || session.participant(participantId).isEmpty()) {
-                return Optional.<VoteRejectedException.Reason>empty();
-            }
-            Session voted;
-            try {
-                voted = session.vote(participantId, roundId, card);
-            } catch (VoteRejectedException e) {
-                return Optional.of(e.reason());
-            }
-            if (voted.version() != session.version()) {
-                store.save(voted);
-                broadcaster.publish(voted);
-            }
-            return Optional.<VoteRejectedException.Reason>empty();
-        });
+        try {
+            writer.apply(sessionId, participantId, session -> session.vote(participantId, roundId, card));
+        } catch (VoteRejectedException e) {
+            return Optional.of(e.reason());
+        }
+        return Optional.empty();
     }
 }

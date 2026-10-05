@@ -13,6 +13,7 @@ import revealedConsensus from '../../../../contract/examples/session-state/revea
 import revealedNoNumeric from '../../../../contract/examples/session-state/revealed-no-numeric-vote.json';
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
+import changeRole from '../../../../contract/examples/change-role/to-observer.json';
 import clear from '../../../../contract/examples/clear/clear.json';
 import reveal from '../../../../contract/examples/reveal/reveal.json';
 import tick from '../../../../contract/examples/tick/tick.json';
@@ -21,6 +22,7 @@ import coffee from '../../../../contract/examples/vote/coffee.json';
 import withdraw from '../../../../contract/examples/vote/withdraw.json';
 import {
   Card,
+  changeRoleMessage,
   clearMessage,
   heartbeatMessage,
   helloMessage,
@@ -59,6 +61,10 @@ describe('WebSocket contract round trip', () => {
 
   it('clear', () => {
     expect(roundTrip(clearMessage(clear.roundId))).toEqual(clear);
+  });
+
+  it('changeRole', () => {
+    expect(roundTrip(changeRoleMessage('OBSERVER'))).toEqual(changeRole);
   });
 
   it('hello', () => {

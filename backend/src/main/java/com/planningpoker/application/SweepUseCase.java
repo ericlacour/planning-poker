@@ -29,7 +29,7 @@ public class SweepUseCase {
     private static final Logger LOG = LoggerFactory.getLogger(SweepUseCase.class);
 
     private final SessionStore store;
-    private final SessionLocks locks;
+    private final SessionWriter writer;
     private final SessionBroadcaster broadcaster;
     private final Clock clock;
     private final Duration livenessTimeout;
@@ -39,7 +39,7 @@ public class SweepUseCase {
     public SweepUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster, Clock clock,
             Duration livenessTimeout, Duration absenceTimeout, Duration sessionLifetime) {
         this.store = store;
-        this.locks = locks;
+        this.writer = new SessionWriter(store, locks, broadcaster);
         this.broadcaster = broadcaster;
         this.clock = clock;
         this.livenessTimeout = Objects.requireNonNull(livenessTimeout, "livenessTimeout");
@@ -51,7 +51,7 @@ public class SweepUseCase {
     public void sweep() {
         List<String> sessionIds = store.all().stream().map(Session::id).toList();
         for (String sessionId : sessionIds) {
-            locks.withLock(sessionId, () -> {
+            writer.withLock(sessionId, () -> {
                 sweep(sessionId);
                 return null;
             });
@@ -90,10 +90,7 @@ public class SweepUseCase {
         for (Session.OpenConnection connection : silent) {
             broadcaster.detach(connection.connectionId());
             Session swept = current.disconnect(connection.participantId(), connection.connectionId(), now);
-            store.save(swept);
-            if (swept.version() != current.version()) {
-                broadcaster.publish(swept);
-            }
+            writer.commit(current, swept);
             current = swept;
             toClose.add(connection);
         }
@@ -109,8 +106,7 @@ public class SweepUseCase {
         Session current = session;
         for (UUID participantId : session.absentParticipants(now, absenceTimeout)) {
             Session removed = current.remove(participantId);
-            store.save(removed);
-            broadcaster.publish(removed);
+            writer.commit(current, removed);
             current = removed;
             LOG.info("Removing participant {} after a long absence", participantId);
         }

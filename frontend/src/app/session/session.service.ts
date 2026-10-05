@@ -3,11 +3,13 @@ import { DestroyRef, Injectable, InjectionToken, Signal, inject, signal } from '
 
 import {
   Card,
+  changeRoleMessage,
   clearMessage,
   heartbeatMessage,
   helloMessage,
   parseServerMessage,
   revealMessage,
+  Role,
   SessionState,
   voteMessage,
 } from '../api/contract';
@@ -147,6 +149,14 @@ export class SessionService {
   /** Intention `clear` pour le tour de l'instantané courant (« Nouveau tour », « Effacer les votes »). */
   clear(): void {
     this.sendForRound(clearMessage);
+  }
+
+  /**
+   * Intention `changeRole` : passer votant ou observateur (« Je vote », « J'observe », « Je veux voter »). Aucune
+   * mise à jour optimiste ; hors connexion rétablie (ou avant le premier instantané), rien n'est envoyé.
+   */
+  changeRole(role: Role): void {
+    this.sendForRound(() => changeRoleMessage(role));
   }
 
   /** Ferme la connexion et arrête toute reconnexion, sans rien changer à l'état affiché. */

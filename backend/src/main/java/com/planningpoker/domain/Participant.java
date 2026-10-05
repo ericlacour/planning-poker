@@ -66,6 +66,11 @@ public record Participant(UUID id, Pseudo pseudo, Role role, int joinOrder, Part
         return new Participant(id, pseudo, role, joinOrder, newToken, connections, offlineSince);
     }
 
+    /** Le même participant avec le rôle {@code newRole} : tout le reste est gardé. */
+    Participant withRole(Role newRole) {
+        return new Participant(id, pseudo, newRole, joinOrder, token, connections, offlineSince);
+    }
+
     /** Le même participant, de retour avec un nouvel ordre d'arrivée, hors ligne depuis {@code now}. */
     Participant returning(int newJoinOrder, Instant now) {
         return new Participant(id, pseudo, role, newJoinOrder, token, now);

@@ -2,7 +2,8 @@
 title: 'Story 3.1 : changer de rôle en pleine séance'
 type: 'feature'
 created: '2026-10-05'
-status: 'draft'
+status: 'in-review'
+baseline_commit: '9ed0afc13d388d3aa55cfa5480361eaed06c64a9'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -75,17 +76,17 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/…/application/` -- extraire le squelette commun (un composant appelé par tous les cas d'usage : `withLock` + `find` + règle + « `save` si l'instance change, `publish` si la `version` change ») et y faire passer toutes les copies D1 ; garder `publishTo` de la connexion quand rien n'est diffusé -- D1, action 13 de l'epic 1.
-- [ ] `backend/…/adapter/in/ws/SessionSocketHandler.java` -- enregistrer l'attente du `hello` avant de programmer son délai ; test avec un délai quasi nul qui ferme en `1008` -- F2.
-- [ ] `backend/…/domain/Round.java` (nouveau), `Session.java` -- sortir l'état du tour dans `Round` (sans changer d'attente dans les tests), avant d'ajouter la règle -- T1.
-- [ ] `backend/…/domain/Session.java`, `Round.java` -- `changeRole` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR5.
-- [ ] `backend/…/application/` -- cas d'usage `changeRole` sur le squelette, ligne de journal -- AD-3.
-- [ ] `backend/…/adapter/in/ws/` -- `ChangeRoleMessage`, routage dans le handler, test d'intégration WebSocket (diffusion `ROLE` à tous) -- AD-4.
-- [ ] `frontend/src/app/api/contract.ts`, `session/session.service.ts` -- message et méthode `changeRole`, tests Vitest -- AD-10.
-- [ ] `frontend/src/app/` (nouveau `participant-menu` + `app.ts`) -- menu du participant accessible (bouton à `aria-expanded`, liste de deux choix cochables, Échap ferme et rend le focus) -- UX-DR11.
-- [ ] `frontend/src/app/session/hand.component.ts`, `participant-table.component.ts` -- « Je veux voter » ; face + « observe » pour un observateur qui garde un vote ; tests Vitest -- FR5, UX-DR5, UX-DR7.
-- [ ] `frontend/e2e/` -- parcours Playwright : passer observateur pendant un tour caché, puis revenir votant -- FR16.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- retirer l'entrée de la spec 1.6 ; réduire celle de la spec 1.7 à ce qui relève de `hide` (3.2) -- action 15.
+- [x] `backend/…/application/` -- extraire le squelette commun (un composant appelé par tous les cas d'usage : `withLock` + `find` + règle + « `save` si l'instance change, `publish` si la `version` change ») et y faire passer toutes les copies D1 ; garder `publishTo` de la connexion quand rien n'est diffusé -- D1, action 13 de l'epic 1.
+- [x] `backend/…/adapter/in/ws/SessionSocketHandler.java` -- enregistrer l'attente du `hello` avant de programmer son délai ; test avec un délai quasi nul qui ferme en `1008` -- F2.
+- [x] `backend/…/domain/Round.java` (nouveau), `Session.java` -- sortir l'état du tour dans `Round` (sans changer d'attente dans les tests), avant d'ajouter la règle -- T1.
+- [x] `backend/…/domain/Session.java`, `Round.java` -- `changeRole` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR5.
+- [x] `backend/…/application/` -- cas d'usage `changeRole` sur le squelette, ligne de journal -- AD-3.
+- [x] `backend/…/adapter/in/ws/` -- `ChangeRoleMessage`, routage dans le handler, test d'intégration WebSocket (diffusion `ROLE` à tous) -- AD-4.
+- [x] `frontend/src/app/api/contract.ts`, `session/session.service.ts` -- message et méthode `changeRole`, tests Vitest -- AD-10.
+- [x] `frontend/src/app/` (nouveau `participant-menu` + `app.ts`) -- menu du participant accessible (bouton à `aria-expanded`, liste de deux choix cochables, Échap ferme et rend le focus) -- UX-DR11.
+- [x] `frontend/src/app/session/hand.component.ts`, `participant-table.component.ts` -- « Je veux voter » ; face + « observe » pour un observateur qui garde un vote ; tests Vitest -- FR5, UX-DR5, UX-DR7.
+- [x] `frontend/e2e/` -- parcours Playwright : passer observateur pendant un tour caché, puis revenir votant -- FR16.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- retirer l'entrée de la spec 1.6 ; réduire celle de la spec 1.7 à ce qui relève de `hide` (3.2) -- action 15.
 
 **Acceptance Criteria:**
 - Given le menu du participant, when je l'ouvre, then il affiche mon pseudo et « Je vote » / « J'observe », mon rôle actuel coché, and mon choix envoie `changeRole {role}`.
@@ -94,6 +95,15 @@ context:
 - Given toute la suite existante, when elle tourne après l'extraction du squelette, then elle passe sans changement d'attente.
 
 ## Implementation Notes
+
+- **Squelette commun (D1)** : `application/SessionWriter` (paquet, non public) porte `withLock`, `commit(before, after)` (enregistre si l'instance change, diffuse si la `version` change, renvoie vrai s'il a diffusé) et `apply(sessionId, participantId, rule)`. Toutes les copies relevées passent par lui : `VoteUseCase`, `RoundUseCase`, `JoinSessionUseCase`, `SessionConnectionUseCase` (`connect`, `rejoin`, `disconnect`, `touch`), `SweepUseCase`. Les constructeurs des cas d'usage ne changent pas (le writer est construit à l'intérieur), donc ni `SessionConfig` ni les tests ne bougent pour ce point. Pas de `requireNonNull` dans `SessionWriter` : `SweepSchedulerTest` construit un balayeur sans diffuseur ; `RoundUseCase` garde ses propres contrôles.
+- **`hello` (F2)** : `PendingHello` est inscrit dans `pendingHellos` avant que son délai soit programmé ; le délai ne retire que sa propre attente (`remove(key, value)`). `HelloTimeoutTest` (délai `0ms`, 20 connexions) échouait avant la correction (une connexion jamais fermée) et passe après.
+- **Découpage (T1, option B)** : nouveau record `domain/Round` (`id`, `status`, `votes`, `lateArrivals`) avec les règles du tour (`vote`, `reveal`, `withArrival`, `without`, `withRole`, `summary`). `Session` passe de 11 à 8 composants ; ses accesseurs `roundId()`, `roundStatus()`, `votes()`, `lateArrivals()` délèguent. `Session.java` fait 411 lignes avec `changeRole` (393 avant) : les règles du tour en sortent, mais les accesseurs délégués et la Javadoc de `changeRole` compensent ; `Round.java` fait 135 lignes.
+- **Écart avec la Code Map** : `SessionService` n'est pas fourni à la racine mais par `SessionEntryComponent`. Le menu du participant, rendu par `App`, le reçoit donc par `TopBarState.session`, que l'écran Session pose et retire comme `shareUrl`.
+- **Attentes de tests modifiées par la fonctionnalité (et non par le refactor)** : `SessionSocketHandlerTest.heartbeatStaleVotesAndConformingIntentsGetNoAnswer` ne range plus `changeRole` parmi les intentions sans réponse ; `WsContractRoundTripTest` attend `ChangeRoleMessage` au lieu d'`Intent` ; `hand.component.spec` attend « Tu observes » et « Je veux voter ». Aucune autre attente n'a changé.
+- **Front** : `ParticipantMenuComponent` (`top-bar/`) suit le motif menu ARIA (`aria-haspopup="menu"`, `menuitemradio` cochés, flèches, Échap, clic extérieur) ; choisir son rôle actuel n'envoie rien. « Je veux voter » est un bouton à l'aspect de lien (`.link-button`, 44 px), grisé hors connexion. Prettier n'est appliqué ni en CI ni sur les fichiers existants : le style suit le code voisin.
+- **Environnement** : tests du webservice lancés avec `JAVA_HOME` sur Java 25 ; front sous Node 24.21 (nvm).
+- **Vérification** : webservice 437 tests verts (ArchUnit compris) ; front 19 fichiers Vitest verts, `node --test` des scripts vert ; Playwright 48/48 sur Chromium (WebKit seulement en CI) ; contrat inchangé, `validate` et 33 tests verts.
 
 ## Spec Change Log
 

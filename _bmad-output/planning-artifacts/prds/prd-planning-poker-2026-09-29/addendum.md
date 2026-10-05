@@ -2,7 +2,9 @@
 
 Ce document complète le PRD à l'intention de l'architecture et de la conception UX. Il n'ajoute aucune exigence : il ne contient que des pistes et des contraintes.
 
-## Pistes techniques (recommandations, à confirmer dans l'architecture)
+## Pistes techniques
+
+Ces pistes ont été reprises et tranchées dans l'architecture (`_bmad-output/planning-artifacts/architecture/architecture-planning-poker-2026-09-29/ARCHITECTURE-SPINE.md`), qui fait foi en cas d'écart. Elles sont conservées ici pour leur justification.
 
 ### Temps réel et cohérence partagée
 
@@ -25,7 +27,7 @@ Ce document complète le PRD à l'intention de l'architecture et de la conceptio
 
 - **Choix de l'hébergeur gratuit :** l'architecture a retenu Render Free (§9 du PRD). Les critères étaient la mise en veille après inactivité (NFR-1b, NFR-2), les limites sur les WebSockets (NFR-4) et les redémarrages (NFR-1).
 - **Délai d'un départ derrière Render (FR-16) :** Render met environ 5 s à transmettre au webservice la fermeture d'une connexion WebSocket, alors que les autres diffusions restent sous la seconde. Après le test de charge du 03/10/2026 (`deploy/README.md`), l'équipe a accepté qu'un départ s'affiche en 6 s au plus.
-- **Veille pendant une séance (NFR-1b) :** il faut vérifier que l'hébergeur ne met pas l'application en veille alors que des WebSockets sont ouverts, car sur certaines offres gratuites, seules les requêtes HTTP comptent comme activité. NFR-1b en fait un critère éliminatoire. Une parade possible consiste à envoyer régulièrement un signal de vie depuis les navigateurs connectés.
+- **Veille pendant une séance (NFR-1b) :** sur certaines offres gratuites, dont Render, seules les requêtes entrantes comptent comme activité : une séance dont les navigateurs ne font qu'écouter pourrait laisser l'application s'endormir. L'architecture a retenu la parade : chaque navigateur connecté envoie un signal de vie applicatif toutes les 5 s (AD-8).
 - **Démarrage à froid (NFR-2) :** le serveur endormi ne peut pas afficher lui-même « Réveil du serveur… ». Il est donc recommandé de l'afficher depuis une page statique servie à part, par exemple sur un CDN ou un hébergement statique. Cette page interroge le serveur jusqu'à ce qu'il réponde et gère aussi le délai de 3 min : message d'indisponibilité et bouton pour réessayer.
 - **Redéploiement (NFR-1) :** ne pas redéployer pendant un atelier, puisqu'un redéploiement efface les sessions.
 

@@ -140,7 +140,7 @@ Un participant déconnecté depuis plus de 5 minutes est retiré de la liste des
 **Description :** chaque votant choisit une carte en secret et peut la changer tant que le tour n'est pas révélé. Réalise UJ-1 et UJ-2.
 
 #### FR-10 : Choisir une carte
-Un votant peut choisir une carte parmi `0, 1, 2, 3, 5, 8, 13, 21, ?, ☕` pendant un tour caché.
+Un votant peut choisir une carte parmi `0, 1, 2, 3, 5, 8, 13, 21, ?, ☕` pendant un tour caché. Exception : un observateur devenu votant pendant un tour révélé attend le prochain effacement (FR-5).
 - Il peut changer de carte ou retirer son vote autant de fois qu'il veut, tant que le tour est caché.
 - Sa carte reste visible pour lui seul jusqu'à la révélation.
 - Un observateur n'a pas de cartes.
@@ -158,7 +158,7 @@ Tout participant, votant ou observateur, peut révéler le tour en cours, à tou
 - Un votant qui n'a pas voté apparaît comme « n'a pas voté ».
 
 #### FR-13 : Masquer
-Tout participant peut masquer un tour révélé. Le tour redevient caché pour tous : les votes ne sont plus visibles, et les votants peuvent de nouveau modifier leur carte. Le vote d'un participant devenu observateur pendant la révélation (FR-5) est retiré au masquage.
+Tout participant peut masquer un tour révélé. Le tour redevient caché pour tous : les votes ne sont plus visibles, et les votants peuvent de nouveau modifier leur carte, sauf un participant devenu votant pendant la révélation, qui vote après le prochain effacement (FR-5). Le vote d'un participant devenu observateur pendant la révélation (FR-5) est retiré au masquage.
 
 #### FR-14 : Synthèse du tour révélé
 Quand un tour est révélé, tous les participants voient :
@@ -261,4 +261,4 @@ Modifications apportées après la finalisation du 29/09/2026 :
 - **29/09/2026, pendant l'UX :** FR-14 étendu (valeur la plus votée, valeur minimale, valeur maximale) ; jusqu'à 13 participants par session (§1, NFR-4).
 - **29/09/2026, pendant l'architecture :** NFR-2 assoupli (réveil jusqu'à 2 min, indisponibilité au-delà de 3 min) ; retour transparent après un retrait pour absence, et l'inactivité ne déconnecte jamais (FR-7, FR-9) ; vote d'un observateur retiré au masquage (FR-13).
 - **03/10/2026, après le test de charge :** un départ s'affiche chez les autres en 6 s au plus (FR-16).
-- **05/10/2026, après la validation du PRD :** FR-16 donne un délai par cas ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; FR-5 est aligné sur FR-13 (le vote d'un votant devenu observateur est retiré au masquage) ; la question de l'hébergeur est close (§9) ; l'addendum est aligné.
+- **05/10/2026, après la validation du PRD :** FR-16 donne un délai par cas ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; FR-5 est aligné sur FR-13 (le vote d'un votant devenu observateur est retiré au masquage) et précise qu'un observateur devenu votant pendant un tour révélé vote après le prochain effacement, même si le tour est masqué entre-temps ; FR-10 et FR-13 renvoient à cette exception ; la question de l'hébergeur est close (§9) ; l'addendum est aligné.

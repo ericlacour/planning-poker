@@ -52,3 +52,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-un-service-qui-tient-face-aux-abus.md`
   summary: Ajouter à `CreationRateLimiterTest` un test concurrent (verrou de départ, N > max `acquire` simultanés depuis la même IP) qui vérifie qu'exactement `max` réussissent.
   evidence: Le plafond par IP sous rafale simultanée ne dépend que de `synchronized`. Tous les tests actuels appellent `acquire` depuis un seul fil, donc une régression passerait inaperçue.
+
+## Deferred from: code review of spec-3-1-changer-de-role-en-pleine-seance.md (2026-10-05)
+
+- **`HelloTimeoutTest` dépend de l'ordonnancement** : avec un délai de 0 ms et 20 connexions, rien ne garantit que le délai expire avant la fin de `afterConnectionEstablished`, donc le test pourrait passer contre l'ancien ordre. Non vérifié (medium si vrai). Pour trancher : rejouer le test contre l'ancien code plusieurs fois, ou injecter un planificateur qui exécute la tâche tout de suite.

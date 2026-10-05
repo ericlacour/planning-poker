@@ -94,6 +94,29 @@ context:
 - Given que je suis observateur, when je regarde ma main, then je vois « Tu observes » et « Je veux voter », and « Je veux voter » me fait passer votant.
 - Given toute la suite existante, when elle tourne après l'extraction du squelette, then elle passe sans changement d'attente.
 
+### Review Findings
+
+Relecture du 2026-10-05 (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor), diff `9ed0afc...ba77c17`.
+
+- [ ] [Review][Decision] Observateur déconnecté qui garde un vote : la mention « observe » disparaît — `noteOf` renvoie « déconnecté » avant le test du rôle, alors que `showsCard` affiche la face : la place montre une face et « déconnecté », sans rien qui dise « observateur ». Deux règles de la spec se contredisent ici (« déconnecté » prioritaire et une seule ligne par place, contre « observe » sous la face d'un observateur qui garde son vote). À trancher : mention combinée (« déconnecté · observe »), « déconnecté » seul (statu quo assumé), ou autre marque visuelle.
+- [ ] [Review][Patch] Menu du participant actif hors connexion : le choix est perdu sans signe, alors que « Je veux voter » est grisé [frontend/src/app/top-bar/participant-menu.component.ts:63]
+- [ ] [Review][Patch] `changeRole` passe par `sendForRound`, contre la Code Map (pas de `roundId`) : extraire un envoi « connexion prête » commun [frontend/src/app/session/session.service.ts:158]
+- [ ] [Review][Patch] `aria-controls` vise `participant-menu-list` même menu fermé, quand l'élément n'existe pas [frontend/src/app/top-bar/participant-menu.component.ts:44]
+- [ ] [Review][Patch] Javadoc modifiée hors largeur du fichier (182 et 200 caractères) [frontend/src/app/session/participant-table.component.ts:18]
+- [ ] [Review][Patch] Liste des rôles en double dans la validation (`ROLES` à côté de l'enum `Role`) : la dériver de `Role.values()` [backend/src/main/java/com/planningpoker/adapter/in/ws/ClientMessages.java:20]
+- [ ] [Review][Patch] `sprint-status.yaml` laisse la story en `in-progress` alors que la spec est `in-review` [_bmad-output/implementation-artifacts/sprint-status.yaml:59]
+- [x] [Review][Defer] `HelloTimeoutTest` dépend de l'ordonnancement des threads [backend/src/test/java/com/planningpoker/adapter/in/ws/HelloTimeoutTest.java:42] — deferred: maybe-false (medium si vrai). Pour trancher, rejouer le test plusieurs fois contre l'ancien ordre « programmer puis enregistrer », ou rendre le test déterministe avec un planificateur injecté.
+
+Rejetés :
+- `false` — rejoin et retrait par le balayage ne diffuseraient plus : les deux font `version + 1`, donc `commit` publie toujours.
+- `false` — menu resté ouvert après la sortie de l'écran Session : `app-participant-menu` est sous `@if (topBar.shareUrl())` et il est détruit avec lui.
+- `false` — pas de test de `SessionWriter` ni de `ChangeRoleUseCase` : le relecteur Verification Gap retrouve chaque branche couverte (tests des cas d'usage, `SessionSocketHandlerTest`).
+- `false` — parcours e2e limité au tour caché : les cas du tour révélé sont couverts par les tests unitaires et le test WebSocket.
+- rejeté (correctif = éditer la spec) — note « Aucune autre attente n'a changé » incomplète (`session-page.component.spec.ts`).
+- rejeté (comportement voulu par la spec) — pas d'avertissement avant que « J'observe » retire le vote en tour caché.
+- rejeté (comportement voulu par la spec) — journal sans le nouveau rôle : la spec limite la ligne à `participantId`.
+- `low`, sans tort nommé — `TopBarState` expose tout le `SessionService`.
+
 ## Implementation Notes
 
 - **Squelette commun (D1)** : `application/SessionWriter` (paquet, non public) porte `withLock`, `commit(before, after)` (enregistre si l'instance change, diffuse si la `version` change, renvoie vrai s'il a diffusé) et `apply(sessionId, participantId, rule)`. Toutes les copies relevées passent par lui : `VoteUseCase`, `RoundUseCase`, `JoinSessionUseCase`, `SessionConnectionUseCase` (`connect`, `rejoin`, `disconnect`, `touch`), `SweepUseCase`. Les constructeurs des cas d'usage ne changent pas (le writer est construit à l'intérieur), donc ni `SessionConfig` ni les tests ne bougent pour ce point. Pas de `requireNonNull` dans `SessionWriter` : `SweepSchedulerTest` construit un balayeur sans diffuseur ; `RoundUseCase` garde ses propres contrôles.

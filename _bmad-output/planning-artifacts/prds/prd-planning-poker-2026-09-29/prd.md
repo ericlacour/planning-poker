@@ -102,7 +102,7 @@ Une session expire 24 h après sa création. Ensuite, elle n'est plus accessible
 Un participant peut passer de votant à observateur, et inversement, pendant la session.
 - Un votant qui devient observateur pendant un tour caché perd son vote de ce tour.
 - Pendant un tour révélé, le vote reste affiché, puisqu'il est verrouillé (FR-11). Il est retiré au prochain masquage (FR-13) ou effacement.
-- Un observateur qui devient votant pendant un tour révélé vote dès que le tour redevient caché, après un masquage ou un effacement.
+- Un observateur qui devient votant pendant un tour révélé vote à partir du tour suivant, après un effacement, même si le tour est masqué entre-temps.
 
 ### 4.2 Présence et reconnexion
 
@@ -261,4 +261,4 @@ Modifications apportées après la finalisation du 29/09/2026 :
 - **29/09/2026, pendant l'UX :** FR-14 étendu (valeur la plus votée, valeur minimale, valeur maximale) ; jusqu'à 13 participants par session (§1, NFR-4).
 - **29/09/2026, pendant l'architecture :** NFR-2 assoupli (réveil jusqu'à 2 min, indisponibilité au-delà de 3 min) ; retour transparent après un retrait pour absence, et l'inactivité ne déconnecte jamais (FR-7, FR-9) ; vote d'un observateur retiré au masquage (FR-13).
 - **03/10/2026, après le test de charge :** un départ s'affiche chez les autres en 6 s au plus (FR-16).
-- **05/10/2026, après la validation du PRD :** FR-16 donne un délai par cas ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; FR-5 est aligné sur FR-13 ; la question de l'hébergeur est close (§9) ; l'addendum est aligné.
+- **05/10/2026, après la validation du PRD :** FR-16 donne un délai par cas ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; FR-5 est aligné sur FR-13 (le vote d'un votant devenu observateur est retiré au masquage) ; la question de l'hébergeur est close (§9) ; l'addendum est aligné.

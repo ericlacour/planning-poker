@@ -2,7 +2,7 @@
 title: "PRD : Planning Poker pour ateliers d'affinage"
 status: final
 created: 2026-09-29
-updated: 2026-09-29
+updated: 2026-10-05
 ---
 
 # PRD : Planning Poker pour ateliers d'affinage
@@ -101,8 +101,8 @@ Une session expire 24 h après sa création. Ensuite, elle n'est plus accessible
 #### FR-5 : Changer de rôle
 Un participant peut passer de votant à observateur, et inversement, pendant la session.
 - Un votant qui devient observateur pendant un tour caché perd son vote de ce tour.
-- Pendant un tour révélé, le vote reste affiché jusqu'au prochain effacement, puisqu'il est verrouillé (FR-11).
-- Un observateur qui devient votant pendant un tour révélé vote à partir du tour suivant.
+- Pendant un tour révélé, le vote reste affiché, puisqu'il est verrouillé (FR-11). Il est retiré au prochain masquage (FR-13) ou effacement.
+- Un observateur qui devient votant pendant un tour révélé vote dès que le tour redevient caché, après un masquage ou un effacement.
 
 ### 4.2 Présence et reconnexion
 
@@ -123,7 +123,7 @@ Dans le même navigateur, un participant qui perd sa connexion ou rafraîchit la
 - Plusieurs onglets du même navigateur ouverts sur la même session représentent un seul et même participant.
 - Si la session n'existe plus (serveur redémarré ou session expirée), la page n'insiste pas : elle affiche le message de FR-3, qui propose de créer une nouvelle session.
 - Un participant retiré pour absence (FR-9) qui revient, par exemple en rallumant son téléphone après 20 minutes, est **remis automatiquement à sa place**, sous le même pseudo, sans repasser par l'écran pour rejoindre. Seul son vote éventuel du tour en cours a été perdu.
-- Rester inactif, sans rien toucher, ou laisser l'onglet en arrière-plan pendant l'explication d'une story ne déconnecte jamais un participant, quelle qu'en soit la durée.
+- Rester inactif, sans rien toucher, ou laisser l'onglet en arrière-plan pendant l'explication d'une story ne déconnecte jamais un participant, quelle qu'en soit la durée. En revanche, si le système suspend la page, par exemple quand un téléphone est verrouillé, le participant peut apparaître comme déconnecté (FR-16). Son retour est alors transparent, y compris après un retrait (FR-9).
 - Si son pseudo a entre-temps été repris depuis un autre appareil (FR-8), ou pris par quelqu'un d'autre après son retrait, la page ne tente pas de reconnexion. Elle affiche l'écran pour rejoindre la session, avec le pseudo prérempli.
 
 #### FR-8 : Reprendre son pseudo depuis un autre appareil
@@ -184,9 +184,10 @@ Tout participant peut effacer le tour en cours, qu'il soit caché ou révélé. 
 **Description :** tous les participants voient à chaque instant le même état de la session, même quand plusieurs personnes agissent en même temps.
 
 #### FR-16 : Diffusion en temps réel
-Toute modification de l'état de la session apparaît chez tous les participants connectés en moins d'une seconde, sans recharger la page. Cela concerne l'arrivée ou le départ d'un participant, un changement de rôle, le dépôt ou le retrait d'un vote, et les actions révéler, masquer et effacer.
-- Une déconnexion **explicite** (onglet fermé, départ volontaire) est diffusée dans ce même délai. Le délai court à partir du moment où le serveur constate la fermeture. Derrière l'hébergeur, ce constat peut prendre environ 5 s : un départ apparaît donc chez les autres en 6 s au plus (décision d'équipe du 2026-10-03, après le test de charge sur Render, voir `deploy/README.md`).
-- Une déconnexion **brutale** (réseau coupé, téléphone en veille) est détectée en 15 s au plus, puis diffusée en moins d'une seconde.
+Toute modification de l'état de la session apparaît chez tous les participants connectés, sans recharger la page. Cela concerne l'arrivée ou le départ d'un participant, un changement de rôle, le dépôt ou le retrait d'un vote, et les actions révéler, masquer et effacer. Les délais se mesurent de bout en bout, de l'événement jusqu'à l'affichage chez les autres participants :
+- **cas général** : moins d'une seconde ;
+- **déconnexion explicite** (onglet fermé, départ volontaire) : 6 s au plus. Ce délai plus long vient de l'hébergeur retenu, qui met environ 5 s à signaler la fermeture d'une connexion (décision d'équipe du 03/10/2026, voir l'addendum) ;
+- **déconnexion brutale** (réseau coupé, téléphone en veille) : détectée en 15 s au plus, puis diffusée en moins d'une seconde.
 
 #### FR-17 : Actions simultanées
 Quand plusieurs participants agissent presque en même temps (par exemple, l'un révèle pendant qu'un autre efface), c'est la dernière action reçue qui s'applique. Tous les participants se retrouvent avec **le même état final**. Aucun participant ne voit durablement un état différent des autres.
@@ -247,8 +248,17 @@ Ces éléments ne sont pas abandonnés : si l'équipe les réclame, ils pourront
 ## 9. Questions ouvertes
 
 1. Quel nom donner au produit ?
-2. Quel hébergeur gratuit choisir pour respecter NFR-1b (pas de mise en veille en séance), NFR-2 et NFR-4 (65 connexions temps réel) ? À traiter dans l'architecture.
+2. ~~Quel hébergeur gratuit choisir pour respecter NFR-1b, NFR-2 et NFR-4 ?~~ **Tranchée** dans l'architecture : Render Free (`_bmad-output/planning-artifacts/architecture/architecture-planning-poker-2026-09-29/ARCHITECTURE-SPINE.md`).
 
 ## 10. Index des hypothèses
 
 Aucune hypothèse ouverte. Les sept hypothèses du premier jet ont été tranchées le 29/09/2026. Six ont été confirmées : pseudo limité à 20 caractères, changement de rôle, masquer qui rouvre le vote, consensus à partir de deux votes numériques, 5 sessions simultanées, adoption mesurée sur trois ateliers. La septième a conduit à redéfinir NFR-1 : la perte d'une session lors d'un plantage ou d'un redémarrage du serveur est acceptée. En revanche, une mise en veille en pleine séance ne l'est pas (NFR-1b).
+
+## 11. Révisions
+
+Modifications apportées après la finalisation du 29/09/2026 :
+
+- **29/09/2026, pendant l'UX :** FR-14 étendu (valeur la plus votée, valeur minimale, valeur maximale) ; jusqu'à 13 participants par session (§1, NFR-4).
+- **29/09/2026, pendant l'architecture :** NFR-2 assoupli (réveil jusqu'à 2 min, indisponibilité au-delà de 3 min) ; retour transparent après un retrait pour absence, et l'inactivité ne déconnecte jamais (FR-7, FR-9) ; vote d'un observateur retiré au masquage (FR-13).
+- **03/10/2026, après le test de charge :** un départ s'affiche chez les autres en 6 s au plus (FR-16).
+- **05/10/2026, après la validation du PRD :** FR-16 donne un délai par cas ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; FR-5 est aligné sur FR-13 ; la question de l'hébergeur est close (§9) ; l'addendum est aligné.

@@ -13,7 +13,8 @@ Ce document complète le PRD à l'intention de l'architecture et de la conceptio
 
 - **Lien de session (NFR-6) :** un identifiant aléatoire d'au moins 128 bits répond à l'exigence.
 - **Jeton de participant (FR-7, FR-8) :** pour FR-7, le navigateur peut conserver un jeton de participant propre à la session, par exemple dans le stockage local, et le présenter à la reconnexion. Ce jeton est partagé entre les onglets d'un même navigateur. Pour FR-8, le pseudo d'un participant déconnecté peut être repris depuis un autre appareil sans ce jeton.
-- **Jeton refusé (FR-7) :** si le serveur ne connaît plus le jeton, parce que le participant a été repris depuis un autre appareil (FR-8) ou retiré (FR-9), il le refuse. La page revient alors à l'écran pour rejoindre la session.
+- **Jeton d'un participant retiré (FR-7, FR-9) :** le jeton d'un participant retiré pour absence reste valable. S'il revient alors que son pseudo est encore libre, le serveur le remet à sa place.
+- **Jeton refusé (FR-7, FR-8) :** le serveur refuse le jeton si le participant a été repris depuis un autre appareil (FR-8), ou si son pseudo a été pris par quelqu'un d'autre après son retrait. La page revient alors à l'écran pour rejoindre la session, avec le pseudo prérempli.
 
 ### État des sessions
 
@@ -22,7 +23,8 @@ Ce document complète le PRD à l'intention de l'architecture et de la conceptio
 
 ### Hébergement et exploitation
 
-- **Choix de l'hébergeur gratuit :** pour chaque candidat, il faut vérifier la mise en veille après inactivité (NFR-1b, NFR-2), les limites sur les WebSockets (NFR-4) et les redémarrages (NFR-1). Ce point figurait déjà dans l'addendum du brief et reste une question ouverte du PRD (§9).
+- **Choix de l'hébergeur gratuit :** l'architecture a retenu Render Free (§9 du PRD). Les critères étaient la mise en veille après inactivité (NFR-1b, NFR-2), les limites sur les WebSockets (NFR-4) et les redémarrages (NFR-1).
+- **Délai d'un départ derrière Render (FR-16) :** Render met environ 5 s à transmettre au webservice la fermeture d'une connexion WebSocket, alors que les autres diffusions restent sous la seconde. Après le test de charge du 03/10/2026 (`deploy/README.md`), l'équipe a accepté qu'un départ s'affiche en 6 s au plus.
 - **Veille pendant une séance (NFR-1b) :** il faut vérifier que l'hébergeur ne met pas l'application en veille alors que des WebSockets sont ouverts, car sur certaines offres gratuites, seules les requêtes HTTP comptent comme activité. NFR-1b en fait un critère éliminatoire. Une parade possible consiste à envoyer régulièrement un signal de vie depuis les navigateurs connectés.
 - **Démarrage à froid (NFR-2) :** le serveur endormi ne peut pas afficher lui-même « Réveil du serveur… ». Il est donc recommandé de l'afficher depuis une page statique servie à part, par exemple sur un CDN ou un hébergement statique. Cette page interroge le serveur jusqu'à ce qu'il réponde et gère aussi le délai de 3 min : message d'indisponibilité et bouton pour réessayer.
 - **Redéploiement (NFR-1) :** ne pas redéployer pendant un atelier, puisqu'un redéploiement efface les sessions.

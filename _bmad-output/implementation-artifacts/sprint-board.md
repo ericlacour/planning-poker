@@ -1,6 +1,6 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-05-2026 09:00). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-05-2026 06:56). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
@@ -10,11 +10,11 @@
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
 | Epic 3 — Des séances souples et soignées ⚪ | `░░░░░░░░░░░░░░░░░░░░` 0/6 (0 %) |
-| **Actions de rétro** | `█████████░░░░░░░░░░░` 6/13 (46 %) |
+| **Actions de rétro** | `█████████████░░░░░░░` 10/15 (67 %) |
 
 **En cours :** aucune story  
 **Prochaine story :** 3.1 Changer de rôle en pleine séance  
-**Actions ouvertes :** 7
+**Actions ouvertes :** 5
 
 ## Stories
 
@@ -35,7 +35,7 @@
 
 ### Epic 2 — Personne ne perd sa place
 
-✅ done · 6/6 stories · rétrospective : ➖ optional
+✅ done · 6/6 stories · rétrospective : ✅ done
 
 | Story | Titre | Statut | Spec |
 | --- | --- | --- | --- |
@@ -61,19 +61,17 @@
 
 ## Actions de rétrospective
 
-### 🔴 À faire (7)
+### 🔴 À faire (5)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 8 | Story 3.6 contre le vrai webservice en CI, ou test de fumée qui fait tourner le front et le webservice ensemble plus tôt (V1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 9 | Faire passer la CI sur les branches de story : déclencheur claude/** ou PR en brouillon dès la première story (V2) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 10 | Avant chaque PR, comparer le suivi de sprint aux en-têtes des specs (L1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 11 | Garder l'historique par story : conserver les branches de travail, ou fusionner par commit de fusion (L2) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 12 | Avant de fusionner une série de stories, relecture humaine explicite des décisions de l'agent et des constats rejetés, avec bmad-walkthrough (L5) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 13 | Au début de l'epic 2, extraire le squelette commun des cas d'usage et enregistrer le délai du hello avant de le programmer (D1, F3) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 14 | Inscrire comme tâches de la spec 3.1 : extraire le squelette commun des cas d usage, corriger le délai du hello, décider du découpage de Session.java avant hide et changeRole (D1, F2, T1, L1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
+| 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
 
-### ✅ Faites (6)
+### ✅ Faites (10)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
@@ -83,6 +81,10 @@
 | 5 | Spec 2.2 : couvrir toute coupure autre que 4401 et 4404 (y compris 4500 et 1008), avec un retour visible et sans clic perdu (F1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 6 | Ajouter les limites de ressources (taille des corps, nombre de sessions et de participants, débit) à l'epic 2, avec la story 2.5, avant v1.0 (F2) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 7 | N'autoriser le déploiement d'une étiquette v* que si la CI est verte sur ce commit, avant v1.0 (V3)<br>↳ _Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte de main avant de poser l'étiquette (deploy/README.md)._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 9 | Faire passer la CI sur les branches de story : déclencheur claude/** ou PR en brouillon dès la première story (V2) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 10 | Avant chaque PR, comparer le suivi de sprint aux en-têtes des specs (L1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 11 | Garder l'historique par story : conserver les branches de travail, ou fusionner par commit de fusion (L2) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 12 | Avant de fusionner une série de stories, relecture humaine explicite des décisions de l'agent et des constats rejetés, avec bmad-walkthrough (L5) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 
 ---
 

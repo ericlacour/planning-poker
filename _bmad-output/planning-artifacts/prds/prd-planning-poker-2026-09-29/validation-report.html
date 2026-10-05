@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation du PRD : Planning Poker</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+<style>code{font-family:ui-monospace,Menlo,monospace;font-size:.92em}@media (max-width:600px){header.report-header{flex-direction:column}}</style>
+</head>
+<body>
+<div class="container">
+<header class="report-header"><div class="title"><h1>PRD : Planning Poker pour ateliers d'affinage — Rapport de validation</h1><div class="subtitle">_bmad-output/planning-artifacts/prds/prd-planning-poker-2026-09-29/prd.md · commit a7b4222</div></div><div class="grade grade-excellent">Excellent</div></header>
+<div class="synthesis"><p>Le PRD reste un bon document : court, avec une thèse nette (« fait une seule chose, et doit la faire de façon fiable »), des renoncements assumés et des FR presque toutes testables. Le risque vient des retouches faites après la finalisation, hors du workflow de mise à jour : FR-16 se contredit désormais sur le délai d'un départ (1 s dans la phrase de tête, 6 s dans la puce), FR-7 promet qu'un onglet en arrière-plan ne déconnecte « jamais », ce qui heurte la détection des déconnexions brutales, et l'addendum, le §9 et le frontmatter n'ont pas suivi. Aucun de ces points ne bloque le travail en cours, mais le PRD n'est plus tout à fait la source de vérité que l'architecture et les epics (déjà réalignés) supposent.</p><p>Les 14 constats de la revue du 29/09 (1 high, 4 medium, 9 low) sont tous résolus dans le texte actuel. Les nouveaux constats (4 medium, 7 low) viennent tous des modifications faites après la finalisation.</p></div>
+<div class="dimension-summary"><div class="dim-card"><div class="dim-name">Décidabilité</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div><div class="dim-card"><div class="dim-name">Substance plutôt que théâtre</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div><div class="dim-card"><div class="dim-name">Cohérence stratégique</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div><div class="dim-card"><div class="dim-name">Clarté du « terminé »</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div><div class="dim-card"><div class="dim-name">Honnêteté du périmètre</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div><div class="dim-card"><div class="dim-name">Utilisabilité en aval</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div><div class="dim-card"><div class="dim-name">Adéquation de la forme</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div></div>
+<section class="dimension"><details><summary><h2>Décidabilité</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>Les décisions sont écrites comme des décisions, avec ce qu'elles coûtent. NFR-1 accepte la perte de session sur plantage et donne le repli (« l'équipe crée une nouvelle session et revote le ticket en cours ») ; NFR-1b fait de la mise en veille en séance un « critère éliminatoire » et explique pourquoi elle n'est pas traitée comme un plantage (« elle se reproduirait à chaque atelier »). FR-8 et NFR-6 assument la reprise de pseudo et l'absence d'expulsion « au nom de la confiance d'équipe ». Le §7.2 justifie chaque exclusion en une ligne.</p><p>Les assouplissements postérieurs sont, eux aussi, présentés honnêtement comme des arbitrages : NFR-2 explique les 2 min (« réveil de l'hébergeur gratuit puis démarrage du webservice »), et FR-16 date et motive les 6 s (« décision d'équipe du 2026-10-03, après le test de charge sur Render »). Le problème n'est pas la décision elle-même, mais la façon dont elle a été insérée dans FR-16 (voir <em>Done-ness clarity</em>). Pas de constat propre à cette dimension.</p></div></div></details></section><section class="dimension"><details><summary><h2>Substance plutôt que théâtre</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>Rien ne relève du décor. Pas de personas : Eric, Sofia et Karim portent chacun des exigences précises (observateur, reconnexion, absence de rôle). Les JTBD du §2.1 se retrouvent tous dans une exigence. La Vision est propre au produit (« qui appartienne à l'équipe », « aucun rôle privilégié »). Les NFR sont chiffrées : 13 participants, 5 sessions, 65 connexions, 2 min et 3 min, 360 px, 44 × 44 px.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">NFR-3 n'est plus qu'un renvoi ambigu</h3><span class="finding-location">§5 NFR-3</span></header><div class="finding-note">« tout changement d'état est propagé dans le délai de diffusion fixé par FR-16 ». FR-16 fixe désormais trois délais (moins d'1 s, 6 s pour un départ, 15 s puis 1 s pour une déconnexion brutale) ; NFR-3 n'ajoute rien et laisse croire à un délai unique.</div><div class="finding-fix"><strong>Correction :</strong> supprimer NFR-3, ou le réécrire « les délais de FR-16 s'appliquent en fonctionnement normal, pour 13 participants et 5 sessions (NFR-4) », ce qui lui donne enfin un contenu propre.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Un conseil d'usage dans une exigence</h3><span class="finding-location">§5 NFR-2</span></header><div class="finding-note">« Conseil d'usage : ouvrir l'outil quelques minutes avant l'atelier » n'est pas vérifiable. C'est utile, mais c'est une consigne pour l'équipe, pas une exigence.</div><div class="finding-fix"><strong>Correction :</strong> le déplacer dans l'addendum ou dans UJ-1 (qui le montre déjà : Eric ouvre l'outil « dix minutes avant l'atelier »).</div></article></div></details></section><section class="dimension"><details><summary><h2>Cohérence stratégique</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>La thèse de fiabilité structure le document : FR-7, FR-8, FR-9, FR-16, FR-17, NFR-1 et NFR-1b la portent, SM-2 la valide directement, et SM-C1 (« chaque ajout accroît le risque de panne en séance ») est une vraie contre-mesure. Le MVP est de type résolution de problème, et son périmètre en découle. L'extension de FR-14 (valeur la plus votée, min, max) est une décision d'Eric consignée dans le memlog ; elle reste petite et sert directement la discussion qui suit la révélation, donc elle ne contredit pas SM-C1. Les relèvements de seuil (2 min, 6 s) ne changent pas la définition de SM-2 : un départ affiché 6 s plus tard n'est pas un « état différent durable » au sens de FR-17. Pas de constat.</p></div></div></details></section><section class="dimension"><details><summary><h2>Clarté du « terminé »</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>La grande majorité des FR ont des conséquences testables : 20 caractères et comparaison insensible à la casse (FR-2), 5 minutes (FR-9), une décimale au format français et deux votes minimum pour le consensus (FR-14), « dernière action reçue » (FR-17). Les retouches récentes ont pourtant réintroduit des contradictions précisément sur la présence, là où SM-2 se joue.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">FR-16 se contredit sur le délai d'un départ</h3><span class="finding-location">§4.6 FR-16</span></header><div class="finding-note">La phrase de tête exige que « l'arrivée ou le départ d'un participant » apparaisse « en moins d'une seconde ». La puce ajoutée le 03/10 dit qu'une déconnexion explicite est « diffusée dans ce même délai », puis qu'« un départ apparaît donc chez les autres en 6 s au plus ». En outre, faire partir le délai « du moment où le serveur constate la fermeture » rend la seconde invérifiable de bout en bout : seuls les 6 s se mesurent côté participant. Un développeur qui lit la phrase de tête vise 1 s ; celui qui lit la puce vise 6 s. Les epics (stories avec « 6 s au plus de bout en bout ») et <code>deploy/load-test.mjs</code> ont déjà choisi 6 s.</div><div class="finding-fix"><strong>Correction :</strong> reformuler FR-16 avec un délai par cas, mesuré de bout en bout : changements d'état, moins d'1 s ; départ explicite, 6 s au plus ; déconnexion brutale, 15 s au plus pour la détection puis moins d'1 s pour la diffusion. Retirer « le départ » de la liste de la phrase de tête ou y renvoyer à la puce.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">« Ne déconnecte jamais » contredit la détection des déconnexions brutales</h3><span class="finding-location">§4.2 FR-7, §4.6 FR-16</span></header><div class="finding-note">FR-7 affirme : « Rester inactif […] ou laisser l'onglet en arrière-plan […] ne déconnecte jamais un participant, quelle qu'en soit la durée. » FR-16 classe le « téléphone en veille » parmi les déconnexions brutales, détectées en 15 s. Or, sur téléphone, un onglet en arrière-plan ou un écran verrouillé est suspendu par le système : le participant sera vu comme déconnecté, puis retiré après 5 min (FR-9). Tel quel, le « jamais » n'est ni vérifiable ni tenable sur mobile, et il recoupe UJ-2 (Sofia vote sur son téléphone).</div><div class="finding-fix"><strong>Correction :</strong> préciser le périmètre : l'inactivité et l'onglet en arrière-plan sur PC ne déconnectent jamais ; sur téléphone, une mise en veille peut afficher le participant comme déconnecté, mais son retour est transparent (FR-7, y compris après FR-9). C'est probablement l'intention, déjà traduite dans l'architecture.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">FR-5 et FR-13 se contredisent sur le vote d'un votant devenu observateur</h3><span class="finding-location">§4.1 FR-5, §4.4 FR-13</span></header><div class="finding-note">FR-5 : « Pendant un tour révélé, le vote reste affiché jusqu'au prochain effacement ». FR-13, modifié pendant l'architecture : ce vote « est retiré au masquage ». FR-5 n'a pas été mis à jour. Le même cas laisse un flou en sens inverse : un observateur devenu votant pendant un tour révélé « vote à partir du tour suivant », mais si le tour est masqué, il redevient caché ; peut-il voter sur ce tour ?</div><div class="finding-fix"><strong>Correction :</strong> dans FR-5, écrire « jusqu'au prochain masquage ou effacement » et préciser qu'après un masquage, le nouveau votant peut voter (comme une arrivée en cours de tour, FR-2).</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Le retour transparent après FR-9 ne dit pas ce que devient le rôle</h3><span class="finding-location">§4.2 FR-7, FR-9</span></header><div class="finding-note">FR-7 garantit le retour « sous le même pseudo » et dit que seul le vote est perdu, sans mentionner le rôle. L'architecture conserve le rôle.</div><div class="finding-fix"><strong>Correction :</strong> « sous le même pseudo et avec le même rôle ».</div></article></div></details></section><section class="dimension"><details><summary><h2>Honnêteté du périmètre</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>Les Hors objectifs (§6) et le §7.2 font un vrai travail et justifient chaque exclusion ; les risques acceptés sont nommés là où ils s'appliquent (FR-8, FR-15, NFR-1, NFR-6). Aucune hypothèse ouverte, deux questions ouvertes : une densité qui convient à un PRD déjà en cours de réalisation.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Les révisions postérieures à la finalisation ne sont pas tracées dans le PRD</h3><span class="finding-location">frontmatter, §10, <code>.memlog.md</code></span></header><div class="finding-note">Quatre assouplissements ou extensions ont été apportés après la finalisation : 13 participants, FR-14 étendu, NFR-2 porté de 30 s à 2 min, départ à 6 s. Les trois premiers figurent dans le memlog ; la décision du 03/10 n'y figure pas, et le PRD lui-même n'en garde aucune trace hors du texte de FR-16. Un lecteur ne peut pas savoir quelles exigences ont été relâchées depuis la version validée.</div><div class="finding-fix"><strong>Correction :</strong> passer ces changements par le workflow de mise à jour : ajouter l'entrée du 03/10 au memlog et, si l'équipe le souhaite, une courte section « Révisions » à la fin du PRD.</div></article></div></details></section><section class="dimension"><details><summary><h2>Utilisabilité en aval</h2><span class="verdict-pill verdict-adequate">adequate</span></summary><div class="dim-body"><div class="dim-judgment"><p>Le glossaire est complet et bien appliqué, les identifiants sont contigus, chaque UJ a un protagoniste nommé et l'addendum sépare proprement les pistes techniques. Mais le PRD et son addendum ont divergé depuis les modifications de l'architecture et du 03/10 ; comme les documents en aval ont déjà été réalignés sur les nouvelles règles, le risque porte surtout sur les prochaines stories et sur toute relecture qui partirait du PRD.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">L'addendum contredit le nouveau FR-7</h3><span class="finding-location">addendum, « Jeton refusé (FR-7) »</span></header><div class="finding-note">L'addendum dit que si le participant a été « retiré (FR-9) », le serveur « refuse » le jeton et « la page revient alors à l'écran pour rejoindre la session ». FR-7 et FR-9 disent désormais l'inverse : le participant retiré est « remis automatiquement à sa place […] sans repasser par l'écran pour rejoindre ». L'addendum n'a pas été modifié depuis le commit d'architecture.</div><div class="finding-fix"><strong>Correction :</strong> réécrire la puce : le jeton d'un participant retiré reste valable et le ramène à sa place si son pseudo est libre ; il n'est refusé qu'après une reprise depuis un autre appareil (FR-8) ou si le pseudo a été pris entre-temps.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">La question de l'hébergeur est toujours « ouverte », alors que le PRD cite déjà Render</h3><span class="finding-location">§9 question 2, §4.6 FR-16, §5 NFR-2, addendum « Choix de l'hébergeur »</span></header><div class="finding-note">Le §9 renvoie le choix de l'hébergeur à l'architecture, et l'addendum dit qu'il « reste une question ouverte du PRD ». Or l'architecture a tranché (Render Free), NFR-2 parle du « démarrage du webservice » et FR-16 cite « le test de charge sur Render ». Le PRD est à la fois ouvert et fermé sur le même sujet, et il fait entrer un nom de fournisseur dans une FR alors que le §0 renvoie les choix techniques à l'addendum.</div><div class="finding-fix"><strong>Correction :</strong> clore la question 2 avec un renvoi à la spine d'architecture ; dans FR-16, parler de « l'hébergeur retenu » et déplacer la mention de Render et du test de charge dans l'addendum.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">FR-16 s'appuie sur un document de déploiement</h3><span class="finding-location">§4.6 FR-16</span></header><div class="finding-note">« voir <code>deploy/README.md</code> » fait d'un document d'exploitation la justification d'une exigence. Si ce fichier change ou disparaît, le renvoi casse.</div><div class="finding-fix"><strong>Correction :</strong> consigner la justification dans le memlog ou l'addendum et garder dans FR-16 le seul seuil.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">La liste des états UX de l'addendum ignore l'extension de FR-14</h3><span class="finding-location">addendum, « États à rendre visibles »</span></header><div class="finding-note">Elle cite « moyenne et consensus (FR-14) », sans la valeur la plus votée (avec égalités), ni le min et le max.</div><div class="finding-fix"><strong>Correction :</strong> compléter la puce, ou renvoyer simplement à « la synthèse de FR-14 ».</div></article></div></details></section><section class="dimension"><details><summary><h2>Adéquation de la forme</h2><span class="verdict-pill verdict-strong">strong</span></summary><div class="dim-body"><div class="dim-judgment"><p>La forme convient au produit : outil interne, mais multi-participants, en temps réel et utilisé sur téléphone, donc trois UJ avec protagonistes sont utiles sans alourdir. Les SM sont opérationnels (adoption, incidents), SM-3 assume l'objectif d'apprentissage, et le document reste dans la cible de 3 à 5 pages malgré les ajouts. La forme « tête de chaîne » est respectée (glossaire, IDs, renvois), sous réserve des écarts signalés en <em>Downstream usability</em>. Pas de constat.</p></div></div></details></section>
+<div class="mechanical"><h3>Notes mécaniques</h3><ul><li><strong>Frontmatter :</strong> <code>updated: 2026-09-29</code> alors que la dernière modification date du 03/10/2026 (commit <code>a7b4222</code>), et <code>status: final</code> alors que le texte a été modifié trois fois après la finalisation (UX et architecture le 29/09, départs le 03/10) sans passer par le workflow de mise à jour. Mettre <code>updated: 2026-10-03</code>. Le memlog garde <code>updated: 2026-09-29T14:10</code> et n'a pas d'entrée pour la décision du 03/10.</li><li><strong>Cohérence des seuils :</strong> 13 participants × 5 sessions = 65 connexions, cohérent dans §1, NFR-4 et §9. Les 2 min et 3 min sont cohérents entre UJ-1, NFR-2 et l'addendum. Le battement de 5 s et l'expiration de 15 s de l'addendum sont cohérents avec FR-16. Le seuil de 6 s n'apparaît que dans FR-16 (et en aval dans les epics et <code>deploy/</code>), avec la contradiction interne signalée plus haut.</li><li><strong>Doublons de NFR :</strong> NFR-3 ne fait que renvoyer à FR-16 (voir plus haut). NFR-8 (« sobriété ») et NFR-10 (« coût et sobriété technique ») partagent le même mot pour deux notions distinctes ; renommer NFR-10 « coût et simplicité technique ».</li><li><strong>Traçabilité des SM :</strong> SM-1 et SM-2 citent des identifiants existants ; aucune modification récente ne casse leurs renvois. SM-2 valide FR-16 ; il gagnerait à préciser que le délai de 6 s d'un départ n'est pas un incident.</li><li><strong>Glossaire :</strong> la définition de <strong>Consensus</strong> n'inclut pas la condition « au moins deux votes numériques » posée par FR-14. Les termes de la synthèse étendue (« valeur la plus votée », « valeur minimale », « valeur maximale ») et le mot « synthèse » ne sont pas définis, et « valeur » côtoie « carte » pour la même chose. « Story » (§2.1, FR-7) et « ticket » (glossaire, UJ) coexistent ; le glossaire les relie (« Ticket : story discutée »), ce qui suffit. « Webservice » (NFR-2) est un terme technique hors glossaire.</li><li><strong>Identifiants :</strong> FR-1 à FR-17, UJ-1 à UJ-3, SM-1 à SM-3 et SM-C1 sont contigus et sans doublon ; NFR-1b s'insère hors séquence, ce qui est acceptable mais fragile pour les outils qui extraient « NFR-n ». Tous les renvois internes (§1, §7.2, FR-3, FR-11, FR-15, NFR-6) se résolvent.</li><li><strong>Index des hypothèses :</strong> aucun tag <code>[ASSUMPTION]</code> dans le texte ; le §10 est cohérent avec le memlog (six confirmées, plus la redéfinition de NFR-1).</li><li><strong>Protagonistes des UJ :</strong> Eric, Sofia et Karim sont nommés, avec leur contexte. Le cas limite d'UJ-2 (« Elle ferme l'onglet du téléphone, et le pseudo redevient disponible ») reste juste, mais le pseudo ne se libère qu'au bout de 6 s au plus depuis le 03/10.</li><li><strong>Sections requises :</strong> toutes présentes pour le niveau d'exigence convenu.</li></ul></div>
+<footer class="report-footer"><div class="meta"><span>Grille : .claude/skills/bmad-prd/assets/prd-validation-checklist.md</span><span>Revue détaillée : review-rubric.md</span><span>Généré : 2026-10-05T15:47:32Z</span></div></footer>
+</div>
+</body>
+</html>

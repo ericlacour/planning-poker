@@ -2,7 +2,7 @@
 title: 'Story 3.2 : masquer pour revoter'
 type: 'feature'
 created: '2026-10-05'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '338dface456d5acbca5d2e7cc6be962eb659e4b8'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -74,13 +74,13 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/…/domain/Round.java`, `Session.java` -- `Round.hide` et `Session.hide` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR13, AD-4.
-- [ ] `backend/…/application/RoundUseCase.java` -- `hide` sur le `SessionWriter`, ligne de journal ; tests du cas d'usage (diffusion seulement si la `version` change) -- AD-3.
-- [ ] `backend/…/adapter/in/ws/ClientMessages.java`, `SessionSocketHandler.java` -- `HideMessage` et son routage, suppression d'`Intent` ; tests du handler, du contrat et de la diffusion `HIDE` à tous -- AD-4.
-- [ ] `frontend/src/app/api/contract.ts`, `session/session.service.ts` -- `hideMessage` et `SessionService.hide()` ; tests Vitest -- AD-10.
-- [ ] `frontend/src/app/session/action-bar.component.ts` -- « Masquer » actif, avec la même garde que « Nouveau tour » ; tests Vitest (envoi, garde de 1 s après un `HIDE` d'un autre, hors connexion) -- FR13, UX-DR8.
-- [ ] `frontend/e2e/reveal.spec.ts` -- parcours Playwright : révéler, masquer (`hide` envoyé avec le `roundId`), puis l'instantané caché remet les dos et rend la main active -- FR16.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- solder l'entrée de la spec 1.7 : le masquage vide `lateArrivals`, donc aucune arrivée tardive n'existe pendant un tour caché.
+- [x] `backend/…/domain/Round.java`, `Session.java` -- `Round.hide` et `Session.hide` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR13, AD-4.
+- [x] `backend/…/application/RoundUseCase.java` -- `hide` sur le `SessionWriter`, ligne de journal ; tests du cas d'usage (diffusion seulement si la `version` change) -- AD-3.
+- [x] `backend/…/adapter/in/ws/ClientMessages.java`, `SessionSocketHandler.java` -- `HideMessage` et son routage, suppression d'`Intent` ; tests du handler, du contrat et de la diffusion `HIDE` à tous -- AD-4.
+- [x] `frontend/src/app/api/contract.ts`, `session/session.service.ts` -- `hideMessage` et `SessionService.hide()` ; tests Vitest -- AD-10.
+- [x] `frontend/src/app/session/action-bar.component.ts` -- « Masquer » actif, avec la même garde que « Nouveau tour » ; tests Vitest (envoi, garde de 1 s après un `HIDE` d'un autre, hors connexion) -- FR13, UX-DR8.
+- [x] `frontend/e2e/reveal.spec.ts` -- parcours Playwright : révéler, masquer (`hide` envoyé avec le `roundId`), puis l'instantané caché remet les dos et rend la main active -- FR16.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- solder l'entrée de la spec 1.7 : le masquage vide `lateArrivals`, donc aucune arrivée tardive n'existe pendant un tour caché.
 
 **Acceptance Criteria:**
 - Given un tour révélé, when je clique sur « Masquer », then le client envoie `hide {roundId}` et tous reçoivent en moins d'une seconde un instantané caché, avec le même `roundId` et `lastChange.action: HIDE`.
@@ -90,9 +90,39 @@ context:
 
 ## Implementation Notes
 
+- **Domaine** : `Round.hide(Set<UUID> observers)` remet le tour en `HIDDEN` sous le même `id`, retire les votes des observateurs et vide `lateArrivals` (option A) ; `Session.hide` suit `reveal` et passe à `Round` l'ensemble des observateurs du moment. Javadocs de `lateArrivals()` et de `changeRole` complétées par le masquage.
+- **Écart avec la Code Map** : `Intent` est supprimé, mais pas la branche `default` du `switch` de `ClientMessages.parse` : Java l'exige sur un `String`. Elle renvoie `new Invalid()`, et elle est inatteignable puisque le `type` est validé juste avant.
+- **Journal** : `RoundUseCase.hide` écrit « Participant {} hid the round » seulement si le masquage a diffusé, comme `ChangeRoleUseCase`.
+- **Attentes modifiées par la fonctionnalité** : `WsContractRoundTripTest` attend `HideMessage` ; `action-bar.component.spec.ts` et `e2e/reveal.spec.ts` attendent « Masquer » actif. `heartbeatStaleVotesAndConformingIntentsGetNoAnswer` passe sans changement (un `hide` sur un tour caché reste sans réponse).
+- **`deferred-work.md`** : entrée de la spec 1.7 retirée, l'option A ne laissant aucune arrivée tardive pendant un tour caché.
+- **Environnement** : webservice sous Java 25 (`JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64`), front sous Node 24.21. Playwright lancé avec `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome` (le Chromium attendu ne se télécharge pas ici) ; WebKit seulement en CI.
+- **Vérification** (après les correctifs de relecture) : webservice 456 tests verts (ArchUnit compris) ; Vitest 267 tests verts ; Playwright 49/49 sur Chromium ; contrat inchangé, `validate` et 33 tests verts.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Relecture du 2026-10-05 (Blind Hunter, Edge Case Hunter, Verification Gap), diff `338dface…` → arbre de travail.
+
+| # | Constat | Verdict | Preuve | Suite |
+|---|---------|---------|--------|-------|
+| VG1 | `announcementFor` jamais testé pour révélé → caché sur le même tour | low | `result.spec.ts:61-72` couvre cinq transitions, aucune n'est un masquage ; la règle « pas d'annonce » n'est donc tenue par rien | patch |
+| BH2 | Aucun test du cycle révéler → masquer → revoter → révéler | low | ni `SessionRoundTest` ni le test WebSocket ne révèlent une seconde fois ; la synthèse du second tour n'est pas vérifiée | patch |
+| ECH1 | `hide` ou `reveal` périmé d'un cycle précédent (même `roundId`) | low | réel en théorie, mais il faut une latence > 1 s alors que les autres sont bloqués 1 s après chaque REVEAL/HIDE ; la correction ajoute un jeton par cycle au contrat, que l'intention exclut (`roundId` inchangé) | rejeté |
+| ECH2 | Second clic sur « Masquer » avant le retour de son propre HIDE | false | pour que ce clic remasque, un autre devrait révéler entre-temps ; or ses boutons sont bloqués 1 s après mon HIDE (`blocksActions`) | rejeté |
+| BH1 | `sprint-status.yaml` reste `in-progress` quand la spec passe `in-review` | false | l'étape de présentation passe la story en `review` | rejeté |
+| BH3 | Masquer un tour révélé sans vote non testé | false | `Round.hide` n'a aucune branche sur le nombre de votes | rejeté |
+| BH4 | Ligne de journal du masquage sans test | low | comme `ChangeRoleUseCase` (3.1) ; il faudrait capturer les journaux, plus qu'une correction directe | rejeté |
+| BH5 | `default -> new Invalid()` masquerait un `case` oublié | false | `WsContractRoundTripTest.clientExamplesAreAccepted` attend la classe de chaque exemple client : un `case` manquant fait échouer ce test | rejeté |
+| BH6 | « `lateArrivals` vide en tour caché » non imposé par le constructeur | low | aucun chemin ne la remplit en tour caché (`withArrival`, `withRole` seulement en révélé) ; un contrôle ajouterait une garde sur un état jamais atteint | rejeté |
+| BH7 | L'e2e ne détecte pas une garde de 1 s à tort après mon propre HIDE | low | `blocksActions` ne dépend que de l'auteur ; « no block for my own REVEAL » (`action-bar.component.spec.ts:144`) couvre la même branche | rejeté |
+| BH8 | L'e2e ne vérifie pas la carte revotée à l'écran | low | le faux serveur ne renvoie pas d'instantané ; l'affichage du vote est couvert par `vote.spec.ts`, pas de défaut produit | rejeté |
+| BH9 | `FR13` à côté de `FR-11`… | low | le mélange existe déjà (`FR5` en 3.1, epics en `FR13`) | rejeté |
+| BH10 | `Session.hide` construit l'ensemble des observateurs avant de savoir si le tour est caché | low | au plus 30 participants, coût négligeable | rejeté |
+| BH11 | Test de garde de 1 s pour « Masquer » redondant | low | redondance de test, sans tort | rejeté |
+| BH12 | Aucun test qu'un HIDE de moi ne bloque pas | low | même branche que le REVEAL de moi, déjà testé | rejeté |
+| BH13 | Entrée 1.7 retirée de `deferred-work.md` sans trace | false | la tâche le demande, comme la spec 3.1 l'a fait ; la décision est consignée ici | rejeté |
+| BH14 | Second `hide` déjà satisfait : un seul client vérifié silencieux | low | `twoHidesFromTheSameRoundMakeOneChange` et `aStaleHideIsIgnoredWithoutAnswer` vérifient les deux clients | rejeté |
 
 ## Verification
 

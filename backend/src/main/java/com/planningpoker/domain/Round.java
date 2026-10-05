@@ -16,7 +16,8 @@ import java.util.UUID;
  * @param status       tour caché ou révélé
  * @param votes        vote de chaque participant qui a voté pendant ce tour
  * @param lateArrivals participants qui ne votent qu'à partir du prochain tour : arrivés pendant la révélation, ou
- *                     devenus votants pendant la révélation sans vote dans ce tour
+ *                     devenus votants pendant la révélation sans vote dans ce tour ; toujours vide pendant un tour
+ *                     caché, le masquage la vidant
  */
 public record Round(String id, RoundStatus status, Map<UUID, Card> votes, Set<UUID> lateArrivals) {
 
@@ -96,10 +97,24 @@ public record Round(String id, RoundStatus status, Map<UUID, Card> votes, Set<UU
     }
 
     /**
+     * Remet le tour révélé en caché, sous le même {@code id} (FR13) : les votes de {@code observers} sont retirés,
+     * ceux des votants restent et redeviennent modifiables, et plus personne n'est en retard (chaque votant peut
+     * voter dans ce tour). Même instance si le tour est déjà caché.
+     */
+    Round hide(Set<UUID> observers) {
+        if (!isRevealed()) {
+            return this;
+        }
+        Map<UUID, Card> kept = new HashMap<>(votes);
+        kept.keySet().removeAll(observers);
+        return new Round(id, RoundStatus.HIDDEN, kept, Set.of());
+    }
+
+    /**
      * Effet d'un changement de rôle sur ce tour (FR5) :
      * <ul>
-     * <li>devenu observateur : son vote est retiré pendant un tour caché, et reste jusqu'au {@code clear} pendant un
-     * tour révélé ; il n'est plus marqué en retard ;</li>
+     * <li>devenu observateur : son vote est retiré pendant un tour caché, et reste jusqu'au {@code clear} ou au
+     * masquage pendant un tour révélé ; il n'est plus marqué en retard ;</li>
      * <li>devenu votant pendant un tour révélé sans vote dans ce tour : il ne vote qu'à partir du prochain tour.</li>
      * </ul>
      */

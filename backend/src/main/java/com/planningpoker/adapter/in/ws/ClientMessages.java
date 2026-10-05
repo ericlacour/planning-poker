@@ -58,8 +58,8 @@ final class ClientMessages {
     record ChangeRoleMessage(String type, Role role) implements ClientMessage {
     }
 
-    /** {@code hide} conforme à son schéma, encore ignoré (story 3.2). */
-    record Intent(String type) implements ClientMessage {
+    /** {@code hide.json} */
+    record HideMessage(String type, String roundId) implements ClientMessage {
     }
 
     /** JSON invalide, {@code type} inconnu ou message hors schéma. */
@@ -96,9 +96,10 @@ final class ClientMessages {
             case "vote" -> new VoteMessage(type, node.get("roundId").asString(),
                     node.get("card").isNull() ? null : node.get("card").asString());
             case "reveal" -> new RevealMessage(type, node.get("roundId").asString());
+            case "hide" -> new HideMessage(type, node.get("roundId").asString());
             case "clear" -> new ClearMessage(type, node.get("roundId").asString());
             case "changeRole" -> new ChangeRoleMessage(type, Role.valueOf(node.get("role").asString()));
-            default -> new Intent(type);
+            default -> new Invalid();
         };
     }
 

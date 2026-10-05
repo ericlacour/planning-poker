@@ -7,6 +7,7 @@ import {
   clearMessage,
   heartbeatMessage,
   helloMessage,
+  hideMessage,
   parseServerMessage,
   revealMessage,
   Role,
@@ -144,6 +145,11 @@ export class SessionService {
   /** Intention `reveal` pour le tour de l'instantané courant (« Révéler les votes »). */
   reveal(): void {
     this.sendForRound(revealMessage);
+  }
+
+  /** Intention `hide` pour le tour de l'instantané courant (« Masquer ») : le remettre en caché pour revoter. */
+  hide(): void {
+    this.sendForRound(hideMessage);
   }
 
   /** Intention `clear` pour le tour de l'instantané courant (« Nouveau tour », « Effacer les votes »). */

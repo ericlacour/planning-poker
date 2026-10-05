@@ -23,7 +23,7 @@ describe('ActionBarComponent', () => {
   afterEach(() => vi.useRealTimers());
 
   function render(state: SessionState) {
-    const session = { reveal: vi.fn(), clear: vi.fn(), connection: signal<ConnectionStatus>('open') };
+    const session = { reveal: vi.fn(), hide: vi.fn(), clear: vi.fn(), connection: signal<ConnectionStatus>('open') };
     TestBed.configureTestingModule({
       providers: [
         { provide: SessionService, useValue: session },
@@ -70,7 +70,7 @@ describe('ActionBarComponent', () => {
     expect(session.clear).toHaveBeenCalledTimes(1);
   });
 
-  it('revealed round: the result instead of the counter, « Masquer » always inactive and « Nouveau tour »', () => {
+  it('revealed round: the result instead of the counter, « Masquer » (secondary) and « Nouveau tour » (primary)', () => {
     const { element, session, buttons, labels } = render(withChange(revealedTie, 'REVEAL', ALICE));
     expect(element.querySelector('.vote-counter')).toBeNull();
     expect(element.querySelector('.result-average .result-value')?.textContent).toBe('6,5');
@@ -79,12 +79,45 @@ describe('ActionBarComponent', () => {
     expect(element.querySelector('app-result-line')?.nextElementSibling?.classList).toContain('action-bar');
     expect(labels()).toEqual(['Masquer', 'Nouveau tour']);
     expect(buttons()[0].classList).toContain('btn-secondary');
-    expect(buttons()[0].disabled).toBe(true);
+    expect(buttons()[0].disabled).toBe(false);
     expect(buttons()[1].classList).toContain('btn-primary');
     expect(buttons()[1].disabled).toBe(false);
     buttons()[1].click();
     expect(session.clear).toHaveBeenCalledTimes(1);
     expect(session.reveal).not.toHaveBeenCalled();
+    expect(session.hide).not.toHaveBeenCalled();
+  });
+
+  it('« Masquer » sends hide, without confirmation', () => {
+    const { session, buttons } = render(withChange(revealedTie, 'REVEAL', ALICE));
+    buttons()[0].click();
+    expect(session.hide).toHaveBeenCalledTimes(1);
+    expect(session.clear).not.toHaveBeenCalled();
+  });
+
+  it('« Masquer » stays inactive for 1 s after a REVEAL by someone else', () => {
+    const { session, buttons, show, tick } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
+    show(withChange(revealedTie, 'REVEAL', BOB, 8));
+    const hide = () => buttons().find((b) => b.textContent?.trim() === 'Masquer')!;
+    expect(hide().disabled).toBe(true);
+    hide().click();
+    expect(session.hide).not.toHaveBeenCalled();
+    tick(CROSS_CLICK_GUARD_MS);
+    expect(hide().disabled).toBe(false);
+    hide().click();
+    expect(session.hide).toHaveBeenCalledTimes(1);
+  });
+
+  it('a HIDE by someone else brings back the hidden round, with every button inactive for 1 s', () => {
+    const { element, buttons, labels, show, tick } = render(withChange(revealedTie, 'REVEAL', ALICE, 8));
+    show(withChange(hiddenRound, 'HIDE', BOB, 9));
+    expect(labels()).toEqual(['Effacer les votes', 'Révéler les votes']);
+    expect(element.querySelector('.vote-counter')?.textContent).toBe('3 votes sur 4');
+    expect(element.querySelector('.result-panel')).toBeNull();
+    expect(element.querySelector('app-result-line')).toBeNull();
+    expect(buttons().every((b) => b.disabled)).toBe(true);
+    tick(CROSS_CLICK_GUARD_MS);
+    expect(buttons().every((b) => !b.disabled)).toBe(true);
   });
 
   it.each<ChangeAction>(['REVEAL', 'CLEAR', 'HIDE'])('a %s made by someone else disables the buttons for 1 s', (action) => {
@@ -95,11 +128,11 @@ describe('ActionBarComponent', () => {
     buttons().forEach((b) => b.click());
     expect(session.clear).not.toHaveBeenCalled();
     expect(session.reveal).not.toHaveBeenCalled();
+    expect(session.hide).not.toHaveBeenCalled();
     tick(CROSS_CLICK_GUARD_MS - 1);
     expect(buttons().some((b) => !b.disabled)).toBe(false);
     tick(1);
-    const active = buttons().filter((b) => b.textContent?.trim() !== 'Masquer');
-    expect(active.every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !b.disabled)).toBe(true);
   });
 
   it('a CLEAR by the server (sweeper) blocks too', () => {
@@ -153,5 +186,15 @@ describe('ActionBarComponent', () => {
     expect(session.reveal).not.toHaveBeenCalled();
     setConnection('open');
     expect(buttons().every((b) => !b.disabled)).toBe(true);
+  });
+
+  it('a lost connection disables « Masquer » too', () => {
+    const { session, buttons, setConnection } = render(withChange(revealedTie, 'REVEAL', ALICE));
+    setConnection('lost');
+    expect(buttons().every((b) => b.disabled)).toBe(true);
+    buttons()[0].click();
+    expect(session.hide).not.toHaveBeenCalled();
+    setConnection('open');
+    expect(buttons()[0].disabled).toBe(false);
   });
 });

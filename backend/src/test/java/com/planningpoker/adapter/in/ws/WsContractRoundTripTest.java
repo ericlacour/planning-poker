@@ -142,7 +142,7 @@ class WsContractRoundTripTest {
     @ParameterizedTest
     @CsvSource({ "hello,hello,HelloMessage", "heartbeat,heartbeat,HeartbeatMessage", "vote,choose-card,VoteMessage",
             "vote,withdraw,VoteMessage", "vote,coffee,VoteMessage", "reveal,reveal,RevealMessage",
-            "hide,hide,Intent", "clear,clear,ClearMessage", "change-role,to-observer,ChangeRoleMessage" })
+            "hide,hide,HideMessage", "clear,clear,ClearMessage", "change-role,to-observer,ChangeRoleMessage" })
     void clientExamplesAreAccepted(String schema, String example, String kind) throws Exception {
         ClientMessages.ClientMessage parsed = ClientMessages.parse(jsonMapper, ContractExamples.read(schema, example));
         assertThat(parsed.getClass().getSimpleName()).isEqualTo(kind);

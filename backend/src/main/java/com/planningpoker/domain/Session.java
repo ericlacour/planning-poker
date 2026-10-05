@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Session de Planning Poker, immuable : chaque règle renvoie une nouvelle session, que le cas d'usage enregistre
@@ -61,7 +62,7 @@ public record Session(String id, List<Participant> participants, long version, R
         return round.votes();
     }
 
-    /** Participants qui ne votent qu'à partir du prochain tour ({@code clear}). */
+    /** Participants qui ne votent qu'à partir du prochain tour ({@code clear}) ou du masquage ({@code hide}). */
     public Set<UUID> lateArrivals() {
         return round.lateArrivals();
     }
@@ -343,6 +344,27 @@ public record Session(String id, List<Participant> participants, long version, R
     }
 
     /**
+     * Remet le tour révélé en caché pour revoter (FR13), quel que soit l'auteur (votant ou observateur), sous le même
+     * {@code roundId}. Le vote de chaque participant observateur à cet instant est retiré ; ceux des votants restent
+     * et redeviennent modifiables. Plus aucune arrivée tardive : tout votant peut voter dans le tour redevenu caché.
+     * Un {@code roundId} périmé ou un tour déjà caché renvoie la même instance ; sinon {@code version + 1} et
+     * {@code lastChange HIDE}.
+     *
+     * @throws IllegalArgumentException si l'auteur n'est pas dans la session
+     */
+    public Session hide(UUID participantId, String intentRoundId) {
+        requireParticipant(participantId);
+        if (!round.id().equals(intentRoundId)) {
+            return this;
+        }
+        Set<UUID> observers = participants.stream()
+                .filter(p -> p.role() == Role.OBSERVER)
+                .map(Participant::id)
+                .collect(Collectors.toUnmodifiableSet());
+        return withRound(round.hide(observers), ChangeAction.HIDE, participantId);
+    }
+
+    /**
      * Efface les votes et ouvre un nouveau tour caché sous {@code newRoundId} (FR-15), que le tour soit caché ou
      * révélé, même sans aucun vote, quel que soit l'auteur. Un {@code roundId} périmé renvoie la même instance
      * (FR-17) : de deux effacements partis du même tour, seul le premier s'applique.
@@ -367,7 +389,8 @@ public record Session(String id, List<Participant> participants, long version, R
      * d'arrivée : sa place rejoint son nouveau groupe par le tri de l'instantané. Effet sur le tour en cours :
      * <ul>
      * <li>devenu observateur pendant un tour caché, il perd son vote ;</li>
-     * <li>devenu observateur pendant un tour révélé, son vote reste affiché et compté jusqu'au {@code clear} ;</li>
+     * <li>devenu observateur pendant un tour révélé, son vote reste affiché et compté jusqu'au {@code clear} ou au
+     * masquage ;</li>
      * <li>devenu votant pendant un tour révélé, il ne vote qu'à partir du prochain tour, sauf s'il a un vote dans ce
      * tour (posé quand il était votant).</li>
      * </ul>

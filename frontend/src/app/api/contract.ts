@@ -219,6 +219,16 @@ export function revealMessage(roundId: string): RevealMessage {
   return { type: 'reveal', roundId };
 }
 
+/** `hide.json` : remettre en caché le tour révélé `roundId` pour revoter (sans effet s'il est déjà caché ou périmé). */
+export interface HideMessage {
+  readonly type: 'hide';
+  readonly roundId: string;
+}
+
+export function hideMessage(roundId: string): HideMessage {
+  return { type: 'hide', roundId };
+}
+
 /** `clear.json` : effacer les votes du tour `roundId` et ouvrir un nouveau tour (sans effet s'il est périmé). */
 export interface ClearMessage {
   readonly type: 'clear';

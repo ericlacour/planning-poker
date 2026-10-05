@@ -3,15 +3,21 @@ package com.planningpoker.application;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.planningpoker.domain.IdGenerator;
 import com.planningpoker.domain.Session;
 
 /**
- * Intentions {@code reveal} (FR-11, FR-12) et {@code clear} (FR-15) : sous le verrou de la session, charger →
- * règle → {@code save} → {@code publish} seulement si la {@code version} a changé (AD-3). Une intention périmée ou
- * déjà satisfaite ne fait rien (FR-17), sans réponse.
+ * Intentions {@code reveal} (FR-11, FR-12), {@code hide} (FR13) et {@code clear} (FR-15) : sous le verrou de la
+ * session, charger → règle → {@code save} → {@code publish} seulement si la {@code version} a changé (AD-3). Une
+ * intention périmée ou déjà satisfaite ne fait rien (FR-17), sans réponse ; un masquage effectif laisse une ligne de
+ * journal.
  */
 public class RoundUseCase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RoundUseCase.class);
 
     private final SessionWriter writer;
     private final IdGenerator ids;
@@ -24,6 +30,13 @@ public class RoundUseCase {
 
     public void reveal(String sessionId, UUID participantId, String roundId) {
         writer.apply(sessionId, participantId, session -> session.reveal(participantId, roundId));
+    }
+
+    public void hide(String sessionId, UUID participantId, String roundId) {
+        if (writer.apply(sessionId, participantId, session -> session.hide(participantId, roundId))) {
+            // Ni pseudo, ni identifiant de session (le lien) dans les journaux.
+            LOG.info("Participant {} hid the round", participantId);
+        }
     }
 
     public void clear(String sessionId, UUID participantId, String roundId) {

@@ -29,7 +29,7 @@ import com.planningpoker.adapter.in.ws.ClientMessages.ClearMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.ClientMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HeartbeatMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.HelloMessage;
-import com.planningpoker.adapter.in.ws.ClientMessages.Intent;
+import com.planningpoker.adapter.in.ws.ClientMessages.HideMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.RevealMessage;
 import com.planningpoker.adapter.in.ws.ClientMessages.VoteMessage;
 import com.planningpoker.application.ChangeRoleUseCase;
@@ -50,9 +50,9 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>
  * Ensuite, tout message et tout pong d'une connexion rattachée comptent comme activité (AD-8) ;
  * {@code heartbeat} sans autre effet ; {@code vote} confié au cas d'usage, son refus renvoyé à son seul auteur
- * ({@code error {code}}) ; {@code reveal} et {@code clear} confiés au cas d'usage du tour, et {@code changeRole} au
- * sien, sans réponse ; {@code hide} conforme ignoré (story 3.2) ; tout le reste (second {@code hello}, JSON
- * invalide, {@code type} inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
+ * ({@code error {code}}) ; {@code reveal}, {@code hide} et {@code clear} confiés au cas d'usage du tour, et
+ * {@code changeRole} au sien, sans réponse ; tout le reste (second {@code hello}, JSON invalide, {@code type}
+ * inconnu, message hors schéma) reçoit {@code error INVALID_MESSAGE}, sans effet.
  */
 @Component
 public class SessionSocketHandler extends TextWebSocketHandler implements DisposableBean {
@@ -127,13 +127,12 @@ public class SessionSocketHandler extends TextWebSocketHandler implements Dispos
             case VoteMessage vote -> vote(session, vote);
             case RevealMessage reveal -> withAttachment(session,
                     a -> rounds.reveal(a.sessionId(), a.participantId(), reveal.roundId()));
+            case HideMessage hide -> withAttachment(session,
+                    a -> rounds.hide(a.sessionId(), a.participantId(), hide.roundId()));
             case ClearMessage clear -> withAttachment(session,
                     a -> rounds.clear(a.sessionId(), a.participantId(), clear.roundId()));
             case ChangeRoleMessage change -> withAttachment(session,
                     a -> roles.changeRole(a.sessionId(), a.participantId(), change.role()));
-            case Intent intent -> {
-                // hide conforme : livré par la story 3.2.
-            }
             default -> broadcaster.send(session.getId(), ServerMessages.ErrorMessage.INVALID_MESSAGE);
         }
     }

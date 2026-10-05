@@ -15,6 +15,7 @@ import revealedObserver from '../../../../contract/examples/session-state/reveal
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import changeRole from '../../../../contract/examples/change-role/to-observer.json';
 import clear from '../../../../contract/examples/clear/clear.json';
+import hide from '../../../../contract/examples/hide/hide.json';
 import reveal from '../../../../contract/examples/reveal/reveal.json';
 import tick from '../../../../contract/examples/tick/tick.json';
 import chooseCard from '../../../../contract/examples/vote/choose-card.json';
@@ -26,6 +27,7 @@ import {
   clearMessage,
   heartbeatMessage,
   helloMessage,
+  hideMessage,
   parseServerMessage,
   revealMessage,
   voteMessage,
@@ -57,6 +59,10 @@ describe('WebSocket contract round trip', () => {
 
   it('reveal', () => {
     expect(roundTrip(revealMessage(reveal.roundId))).toEqual(reveal);
+  });
+
+  it('hide', () => {
+    expect(roundTrip(hideMessage(hide.roundId))).toEqual(hide);
   });
 
   it('clear', () => {

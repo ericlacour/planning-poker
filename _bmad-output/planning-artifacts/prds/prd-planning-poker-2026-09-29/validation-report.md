@@ -1,22 +1,22 @@
 # Rapport de validation : PRD Planning Poker pour ateliers d'affinage
 
-- **PRD :** `_bmad-output/planning-artifacts/prds/prd-planning-poker-2026-09-29/prd.md` (et `addendum.md`), version du commit `a7b4222` (03/10/2026)
+- **PRD :** `_bmad-output/planning-artifacts/prds/prd-planning-poker-2026-09-29/prd.md` (et `addendum.md`), version issue de l'Update du 05/10/2026 (commits `56a9494` et `a3d8f20`)
 - **Grille :** `.claude/skills/bmad-prd/assets/prd-validation-checklist.md`
-- **Date :** 2026-10-05
-- **Note :** Excellent (toutes les dimensions sont *strong* ou *adequate*, aucun constat *high* ou *critical*)
+- **Date :** 2026-10-05 (deuxième passage)
+- **Note :** Excellent (les sept dimensions sont *strong*, aucun constat *medium* ou plus)
 
 ## Verdict global
-Le PRD reste un bon document : court, avec une thèse nette (« fait une seule chose, et doit la faire de façon fiable »), des renoncements assumés et des FR presque toutes testables. Le risque vient des retouches faites après la finalisation, hors du workflow de mise à jour : FR-16 se contredit désormais sur le délai d'un départ (1 s dans la phrase de tête, 6 s dans la puce), FR-7 promet qu'un onglet en arrière-plan ne déconnecte « jamais », ce qui heurte la détection des déconnexions brutales, et l'addendum, le §9 et le frontmatter n'ont pas suivi. Aucun de ces points ne bloque le travail en cours, mais le PRD n'est plus tout à fait la source de vérité que l'architecture et les epics (déjà réalignés) supposent.
+Le PRD est de nouveau une source de vérité fiable. FR-16 donne un délai par cas, mesuré de bout en bout ; FR-7 distingue l'onglet en arrière-plan de la page suspendue ; l'addendum, le §9 et le frontmatter ont suivi, et le §11 trace les révisions faites après la finalisation. Il ne reste aucun constat medium ou plus. Les points restants sont mineurs : la règle de FR-5 n'est pas signalée comme exception dans FR-10 et FR-13, quelques passages de l'addendum datent d'avant le choix de l'hébergeur, et le §11 ne mentionne pas la dernière précision de FR-5.
 
-Les 14 constats de la revue du 29/09 (1 high, 4 medium, 9 low) sont tous résolus dans le texte actuel. Les nouveaux constats viennent tous des modifications faites après la finalisation.
+Par rapport à la revue du matin (commit `a7b4222`) : les 4 constats medium et 3 constats low sont résolus. Les 4 autres constats low ont été laissés tels quels par décision d'Eric. Trois nouveaux constats low sont apparus.
 
 ## Verdicts par dimension
 - Décidabilité : strong
 - Substance plutôt que théâtre : strong
 - Cohérence stratégique : strong
-- Clarté du « terminé » : adequate
+- Clarté du « terminé » : strong
 - Honnêteté du périmètre : strong
-- Utilisabilité en aval : adequate
+- Utilisabilité en aval : strong
 - Adéquation de la forme : strong
 
 ## Constats par gravité
@@ -27,60 +27,38 @@ Aucun.
 ### High (0)
 Aucun.
 
-### Medium (4)
-
-**[Clarté du « terminé »]** FR-16 se contredit sur le délai d'un départ (§4.6 FR-16)
-La phrase de tête exige que « l'arrivée ou le départ d'un participant » apparaisse « en moins d'une seconde ». La puce ajoutée le 03/10 dit qu'« un départ apparaît donc chez les autres en 6 s au plus ». Faire partir le délai « du moment où le serveur constate la fermeture » rend en outre la seconde invérifiable de bout en bout. Les epics et `deploy/load-test.mjs` ont déjà choisi 6 s.
-Correction : un délai par cas, mesuré de bout en bout. Changements d'état : moins d'1 s. Départ explicite : 6 s au plus. Déconnexion brutale : 15 s au plus pour la détection, puis moins d'1 s pour la diffusion.
-
-**[Clarté du « terminé »]** « Ne déconnecte jamais » contredit la détection des déconnexions brutales (§4.2 FR-7, §4.6 FR-16)
-FR-7 affirme qu'un onglet en arrière-plan « ne déconnecte jamais un participant, quelle qu'en soit la durée ». FR-16 classe le « téléphone en veille » parmi les déconnexions brutales détectées en 15 s. Sur téléphone, le participant sera vu comme déconnecté, puis retiré après 5 min (FR-9).
-Correction : sur PC, l'inactivité et l'onglet en arrière-plan ne déconnectent jamais. Sur téléphone, une mise en veille peut faire apparaître le participant comme déconnecté, mais son retour est transparent (FR-7, y compris après FR-9).
-
-**[Utilisabilité en aval]** L'addendum contredit le nouveau FR-7 (addendum, « Jeton refusé (FR-7) »)
-L'addendum dit qu'un participant « retiré (FR-9) » voit son jeton refusé et revient à l'écran pour rejoindre la session. FR-7 et FR-9 disent désormais qu'il est « remis automatiquement à sa place ».
-Correction : le jeton d'un participant retiré reste valable si son pseudo est libre. Il n'est refusé qu'après une reprise depuis un autre appareil (FR-8) ou si le pseudo a été pris entre-temps.
-
-**[Utilisabilité en aval]** La question de l'hébergeur est encore « ouverte » alors que le PRD cite déjà Render (§9 Q2, FR-16, NFR-2, addendum)
-L'architecture a tranché (Render Free). NFR-2 parle du « démarrage du webservice » et FR-16 cite « le test de charge sur Render », ce qui fait entrer un fournisseur dans une FR, contrairement au §0.
-Correction : clore la question 2 en renvoyant à la spine d'architecture. Dans FR-16, parler de « l'hébergeur retenu » et déplacer la mention de Render dans l'addendum.
+### Medium (0)
+Aucun.
 
 ### Low (7)
 
-**[Substance]** NFR-3 n'est plus qu'un renvoi ambigu (§5 NFR-3)
-FR-16 fixe désormais trois délais, et NFR-3 laisse croire à un délai unique.
-Correction : supprimer NFR-3, ou écrire « les délais de FR-16 s'appliquent en fonctionnement normal, pour 13 participants et 5 sessions (NFR-4) ».
+**Nouveaux constats**
 
-**[Substance]** Un conseil d'usage dans une exigence (§5 NFR-2)
-« Ouvrir l'outil quelques minutes avant l'atelier » n'est pas vérifiable.
-Correction : le déplacer dans l'addendum ou dans UJ-1.
+**[Clarté du « terminé »]** L'exception de FR-5 n'est pas signalée là où s'appliquent les règles générales (FR-5, FR-10, FR-13, glossaire « Votant »)
+Un observateur devenu votant pendant un tour révélé vote après le prochain effacement, même si le tour est masqué entre-temps. FR-13 dit pourtant qu'après un masquage « les votants peuvent de nouveau modifier leur carte ». La règle est une décision assumée et déjà codée ; c'est sa visibilité qui manque.
+Correction : dans FR-13, ajouter « sauf un participant devenu votant pendant la révélation, qui vote après le prochain effacement (FR-5) », et renvoyer à FR-5 depuis FR-10.
 
-**[Clarté du « terminé »]** FR-5 et FR-13 se contredisent sur le vote d'un votant devenu observateur (§4.1 FR-5, §4.4 FR-13)
-FR-5 : le vote reste affiché « jusqu'au prochain effacement ». FR-13 : il « est retiré au masquage ».
-Correction : dans FR-5, écrire « jusqu'au prochain masquage ou effacement », et préciser qu'après un masquage, le nouveau votant peut voter.
+**[Honnêteté du périmètre]** Le §11 ne trace pas la dernière précision de FR-5 (§11, puce du 05/10)
+Correction : compléter la puce : « un observateur devenu votant pendant un tour révélé vote après le prochain effacement, même si le tour est masqué entre-temps ».
 
-**[Clarté du « terminé »]** Le retour transparent après FR-9 ne dit pas ce que devient le rôle (§4.2 FR-7, FR-9)
-Correction : « sous le même pseudo et avec le même rôle ».
+**[Utilisabilité en aval]** Une partie de l'addendum date d'avant le choix de l'hébergeur (addendum, « Pistes techniques (… à confirmer dans l'architecture) », « Veille pendant une séance »)
+La section se présente comme des pistes « à confirmer », alors qu'elle contient des faits tranchés (Render retenu, délai mesuré de 5 s). « Veille pendant une séance » dit encore qu'« il faut vérifier » et propose « une parade possible », alors que l'architecture a adopté un signal de vie applicatif toutes les 5 s.
+Correction : séparer « Décisions prises (voir l'architecture) » et « Pistes » ; renvoyer au signal de vie retenu par l'architecture (AD-8).
 
-**[Honnêteté du périmètre]** Les révisions faites après la finalisation ne sont pas tracées (frontmatter, §10, `.memlog.md`)
-13 participants, FR-14 étendu, NFR-2 à 2 min, départ à 6 s : la décision du 03/10 manque au memlog.
-Correction : passer ces changements par le workflow de mise à jour et, si besoin, ajouter une courte section « Révisions ».
+**Laissés tels quels par décision d'Eric**
 
-**[Utilisabilité en aval]** FR-16 s'appuie sur un document de déploiement (§4.6 FR-16)
-« Voir `deploy/README.md` » : si ce fichier change, le renvoi casse.
-Correction : consigner la justification dans le memlog ou l'addendum.
-
-**[Utilisabilité en aval]** La liste des états UX de l'addendum ignore l'extension de FR-14
-Correction : ajouter la valeur la plus votée, le min et le max, ou renvoyer à « la synthèse de FR-14 ».
+- **[Substance]** NFR-3 n'est qu'un renvoi à FR-16, qui fixe trois délais.
+- **[Substance]** Conseil d'usage (« ouvrir l'outil quelques minutes avant l'atelier ») dans NFR-2.
+- **[Clarté du « terminé »]** Le retour après FR-9 ne mentionne pas le rôle.
+- **[Utilisabilité en aval]** Les états UX de l'addendum ignorent l'extension de FR-14.
 
 ## Notes mécaniques
-- Le frontmatter indique `updated: 2026-09-29` alors que la dernière modification date du 03/10 (`a7b4222`). Le memlog n'a pas d'entrée pour la décision du 03/10.
-- Les seuils sont cohérents : 13 × 5 = 65 connexions, 2 min et 3 min, battement de 5 s et expiration de 15 s.
-- NFR-8 et NFR-10 partagent le mot « sobriété » : renommer NFR-10 « coût et simplicité technique ».
-- SM-2 gagnerait à préciser qu'un départ affiché en 6 s n'est pas un incident.
-- Glossaire : la définition de Consensus n'inclut pas la règle « au moins deux votes numériques », et les termes de la synthèse étendue (valeur la plus votée, min, max) ne sont pas définis.
-- Les identifiants sont contigus. NFR-1b sort de la séquence, ce qui est acceptable mais fragile.
-- UJ-2 : le pseudo ne se libère qu'au bout de 6 s au plus depuis le 03/10.
+- Frontmatter cohérent : `status: final`, `updated: 2026-10-05`.
+- Seuils cohérents : 13 × 5 = 65 connexions ; 2 min et 3 min ; 6 s, 15 s et moins d'1 s entre FR-16, l'addendum et le §11 ; ping de 5 s et expiration de 15 s conformes à AD-8.
+- Vocabulaire de présence (« départ », « déconnexion explicite », « déconnexion brutale », « retrait », « page suspendue ») absent du glossaire ; deux lignes suffiraient (départ = déconnexion explicite ; retrait = FR-9).
+- Orthographe : « prérempli » et « pré-rempli » coexistent.
+- Laissés tels quels par décision d'Eric : glossaire (Consensus, Synthèse), nom de NFR-10, précision de SM-2, cas limite d'UJ-2.
+- Identifiants contigus, renvois internes valides, aucun tag `[ASSUMPTION]`, toutes les sections requises présentes.
 
 ## Fichiers de revue
 - `review-rubric.md`

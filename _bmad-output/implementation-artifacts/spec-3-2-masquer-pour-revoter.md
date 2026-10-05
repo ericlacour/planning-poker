@@ -2,7 +2,8 @@
 title: 'Story 3.2 : masquer pour revoter'
 type: 'feature'
 created: '2026-10-05'
-status: 'draft'
+status: 'in-progress'
+baseline_commit: '338dface456d5acbca5d2e7cc6be962eb659e4b8'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

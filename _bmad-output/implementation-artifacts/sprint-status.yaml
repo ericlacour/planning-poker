@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-04-2026 19:30
+last_updated: 10-05-2026 09:00
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,8 @@ action_items:
     action: "Poser v1.0 et tenir le premier atelier réel (SM-1), après l'epic 2 et
       les actions 1, 2, 6 et 7 (R2)"
     owner: "Eric"
-    status: open
+    status: done
+    resolution: "Premier atelier réel tenu sur v0.3 (noté le 2026-10-05). v0.3 contient tout l'epic 2 ; pas d'étiquette v1.0, qui aurait redéployé la même application."
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-4-retirer-de-deferred-work-md-l-entrée-sur"
     epic: 1

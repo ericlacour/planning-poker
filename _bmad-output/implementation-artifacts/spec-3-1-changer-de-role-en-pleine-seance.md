@@ -98,7 +98,7 @@ context:
 
 Relecture du 2026-10-05 (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor), diff `9ed0afc...ba77c17`.
 
-- [ ] [Review][Decision] Observateur déconnecté qui garde un vote : la mention « observe » disparaît — `noteOf` renvoie « déconnecté » avant le test du rôle, alors que `showsCard` affiche la face : la place montre une face et « déconnecté », sans rien qui dise « observateur ». Deux règles de la spec se contredisent ici (« déconnecté » prioritaire et une seule ligne par place, contre « observe » sous la face d'un observateur qui garde son vote). À trancher : mention combinée (« déconnecté · observe »), « déconnecté » seul (statu quo assumé), ou autre marque visuelle.
+- [ ] [Review][Patch] Observateur déconnecté qui garde un vote : mention combinée « déconnecté · observe » (décision d'Eric, 2026-10-05) [frontend/src/app/session/participant-table.component.ts:25]
 - [ ] [Review][Patch] Menu du participant actif hors connexion : le choix est perdu sans signe, alors que « Je veux voter » est grisé [frontend/src/app/top-bar/participant-menu.component.ts:63]
 - [ ] [Review][Patch] `changeRole` passe par `sendForRound`, contre la Code Map (pas de `roundId`) : extraire un envoi « connexion prête » commun [frontend/src/app/session/session.service.ts:158]
 - [ ] [Review][Patch] `aria-controls` vise `participant-menu-list` même menu fermé, quand l'élément n'existe pas [frontend/src/app/top-bar/participant-menu.component.ts:44]

@@ -33,6 +33,8 @@ context:
 - Front : le menu du participant affiche mon pseudo et une flèche ; il s'ouvre en liste déroulante sous la barre du haut, avec « Je vote » et « J'observe », mon rôle actuel coché. Il n'existe que sur l'écran Session, une fois le premier instantané reçu. L'observateur voit « Tu observes » et le lien « Je veux voter » (envoie `changeRole VOTER`). Aucune mise à jour optimiste : l'instantané fait foi ; rien n'est envoyé hors connexion rétablie.
 - Table : un observateur qui garde un vote en tour révélé montre la face de sa carte, avec la mention « observe ».
 - Journaux : une ligne par changement de rôle, avec le seul `participantId`.
+- Découpage de `Session.java` (décision d'Eric, 2026-10-05, option B de la rétrospective T1) : l'état du tour (`roundId`, statut, `votes`, `lateArrivals`) sort dans un record immuable du domaine `Round`, que `Session` porte en un seul champ. Les règles qui ne touchent que le tour (`vote`, `reveal`, `clear`, et la part « tour » de `changeRole`) y vivent ; `Session` garde ses méthodes publiques et ses accesseurs `roundId()`, `roundStatus()`, `votes()`, `lateArrivals()`, `voteOf()`, `summary()`, `canVoteThisRound()` (délégués), pour que les tests et les appelants existants ne changent pas d'attente. La présence et les départs restent dans `Session`.
+- Taille de la spec : gardée entière (décision d'Eric, 2026-10-05), malgré une estimation d'environ 3 000 tokens au-delà de la cible de 1 600.
 
 **Never:**
 - Pas de `hide` (story 3.2), pas de choix du thème dans le menu (story 3.3) : le menu est construit pour les accueillir, sans les livrer.
@@ -55,13 +57,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-- **Découpage de `Session.java` (rétrospective T1), à décider avant `changeRole` et `hide`** — options :
-  - **A. Sortir la présence et les départs** dans un objet immuable à part (connexions, activité, absence, `departed`, `rejoin`, reprise) : `Session.java` repasse sous ~250 lignes, mais le chantier touche une dizaine de tests du domaine et alourdit nettement cette story.
-  - **B. Sortir l'état du tour** (`roundId`, statut, `votes`, `lateArrivals`) dans un objet `Round` : c'est la partie que `changeRole` et `hide` modifient, donc ces deux stories deviennent plus simples ; gain de lignes plus modeste.
-  - **C. Ne pas découper maintenant** : `changeRole` ajoute ~35 lignes (≈ 430) ; on consigne un seuil (par exemple 450 lignes) qui déclenche le découpage au plus tard dans la spec 3.2.
-
 ## Code Map
 
 - `backend/…/domain/Session.java` -- record immuable (393 lignes) ; `vote`, `reveal`, `clear` sont le modèle de `changeRole` ; `lateArrivals` + `canVoteThisRound` portent déjà « votera au prochain tour » ; `summary()` compte tous les `votes` (observateur compris, voulu en tour révélé).
@@ -82,7 +77,8 @@ context:
 **Execution:**
 - [ ] `backend/…/application/` -- extraire le squelette commun (un composant appelé par tous les cas d'usage : `withLock` + `find` + règle + « `save` si l'instance change, `publish` si la `version` change ») et y faire passer toutes les copies D1 ; garder `publishTo` de la connexion quand rien n'est diffusé -- D1, action 13 de l'epic 1.
 - [ ] `backend/…/adapter/in/ws/SessionSocketHandler.java` -- enregistrer l'attente du `hello` avant de programmer son délai ; test avec un délai quasi nul qui ferme en `1008` -- F2.
-- [ ] `backend/…/domain/Session.java` (+ découpage selon la réponse à la question ouverte) -- `changeRole` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR5.
+- [ ] `backend/…/domain/Round.java` (nouveau), `Session.java` -- sortir l'état du tour dans `Round` (sans changer d'attente dans les tests), avant d'ajouter la règle -- T1.
+- [ ] `backend/…/domain/Session.java`, `Round.java` -- `changeRole` selon les règles ; tests du domaine pour chaque ligne de la matrice -- FR5.
 - [ ] `backend/…/application/` -- cas d'usage `changeRole` sur le squelette, ligne de journal -- AD-3.
 - [ ] `backend/…/adapter/in/ws/` -- `ChangeRoleMessage`, routage dans le handler, test d'intégration WebSocket (diffusion `ROLE` à tous) -- AD-4.
 - [ ] `frontend/src/app/api/contract.ts`, `session/session.service.ts` -- message et méthode `changeRole`, tests Vitest -- AD-10.

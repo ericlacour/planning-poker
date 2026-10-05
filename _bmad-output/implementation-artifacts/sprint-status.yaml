@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-05-2026 09:00
+last_updated: 10-05-2026 06:56
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -53,7 +53,7 @@ development_status:
   2-4-reprendre-sa-place-depuis-un-autre-appareil: done
   2-5-une-session-qui-s-efface-d-elle-même: done
   2-6-un-service-qui-tient-face-aux-abus: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: backlog
   3-1-changer-de-rôle-en-pleine-séance: backlog
@@ -84,7 +84,8 @@ action_items:
       les actions 1, 2, 6 et 7 (R2)"
     owner: "Eric"
     status: done
-    resolution: "Premier atelier réel tenu sur v0.3 (noté le 2026-10-05). v0.3 contient tout l'epic 2 ; pas d'étiquette v1.0, qui aurait redéployé la même application."
+    resolution: "Premier atelier réel tenu sur v0.3 (noté le 2026-10-05). v0.3 contient
+      tout l'epic 2 ; pas d'étiquette v1.0, qui aurait redéployé la même application."
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-4-retirer-de-deferred-work-md-l-entrée-sur"
     epic: 1
@@ -113,7 +114,8 @@ action_items:
       sur ce commit, avant v1.0 (V3)"
     owner: "agent dev"
     status: done
-    resolution: "Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte de main avant de poser l'étiquette (deploy/README.md)."
+    resolution: "Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte
+      de main avant de poser l'étiquette (deploy/README.md)."
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-8-story-3-6-contre-le-vrai-webservice-en-c"
     epic: 1
@@ -127,27 +129,27 @@ action_items:
     action: "Faire passer la CI sur les branches de story : déclencheur claude/**
       ou PR en brouillon dès la première story (V2)"
     owner: "agent dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-10-avant-chaque-pr-comparer-le-suivi-de-spr"
     epic: 1
     action: "Avant chaque PR, comparer le suivi de sprint aux en-têtes des specs (L1)"
     owner: "agent dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-11-garder-l-historique-par-story-conserver"
     epic: 1
     action: "Garder l'historique par story : conserver les branches de travail, ou
       fusionner par commit de fusion (L2)"
     owner: "Eric"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-12-avant-de-fusionner-une-série-de-stories"
     epic: 1
     action: "Avant de fusionner une série de stories, relecture humaine explicite
       des décisions de l'agent et des constats rejetés, avec bmad-walkthrough (L5)"
     owner: "Eric + agent dev"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-13-au-début-de-l-epic-2-extraire-le-squelet"
     epic: 1
@@ -156,3 +158,18 @@ action_items:
     owner: "agent dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
+  - id: "epic-2-retro-item-14-inscrire-comme-tâches-de-la-spec-3-1-ext"
+    epic: 2
+    action: "Inscrire comme tâches de la spec 3.1 : extraire le squelette commun des
+      cas d usage, corriger le délai du hello, décider du découpage de Session.java
+      avant hide et changeRole (D1, F2, T1, L1)"
+    owner: "agent dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-05.md"
+  - id: "epic-2-retro-item-15-en-rédigeant-chaque-spec-reprendre-les-e"
+    epic: 2
+    action: "En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui
+      la visent et les solder ou les refuser explicitement (L2, F1)"
+    owner: "agent dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-05.md"

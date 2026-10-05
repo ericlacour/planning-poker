@@ -1,19 +1,19 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-05-2026 06:56). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-05-2026 12:03). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
 | | Avancement |
 | --- | --- |
-| **Stories** | `██████████████░░░░░░` 14/20 (70 %) |
+| **Stories** | `████████████████░░░░` 16/20 (80 %) |
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
-| Epic 3 — Des séances souples et soignées ⚪ | `░░░░░░░░░░░░░░░░░░░░` 0/6 (0 %) |
+| Epic 3 — Des séances souples et soignées 🟡 | `███████░░░░░░░░░░░░░` 2/6 (33 %) |
 | **Actions de rétro** | `█████████████░░░░░░░` 10/15 (67 %) |
 
 **En cours :** aucune story  
-**Prochaine story :** 3.1 Changer de rôle en pleine séance  
+**Prochaine story :** 3.3 Choisir son thème  
 **Actions ouvertes :** 5
 
 ## Stories
@@ -48,12 +48,12 @@
 
 ### Epic 3 — Des séances souples et soignées
 
-⚪ backlog · 0/6 stories · rétrospective : ➖ optional
+🟡 in-progress · 2/6 stories · rétrospective : ➖ optional
 
 | Story | Titre | Statut | Spec |
 | --- | --- | --- | --- |
-| 3.1 | Changer de rôle en pleine séance | ⚪ backlog | — |
-| 3.2 | Masquer pour revoter | ⚪ backlog | — |
+| 3.1 | Changer de rôle en pleine séance | ✅ done | [spec](spec-3-1-changer-de-role-en-pleine-seance.md) |
+| 3.2 | Masquer pour revoter | ✅ done | [spec](spec-3-2-masquer-pour-revoter.md) |
 | 3.3 | Choisir son thème | ⚪ backlog | — |
 | 3.4 | Une révélation qui se voit | ⚪ backlog | — |
 | 3.5 | Un outil accessible à tous | ⚪ backlog | — |

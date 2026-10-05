@@ -29,7 +29,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
 - **FR5 :** Un participant peut passer de votant à observateur, et inversement.
   - Un votant qui devient observateur pendant un tour caché perd son vote.
   - Pendant un tour révélé, son vote reste affiché. Il est retiré au masquage (FR13) ou à l'effacement.
-  - Un observateur qui devient votant pendant un tour révélé vote à partir du tour suivant, même si le tour est masqué entre-temps.
+  - Un observateur qui devient votant pendant un tour révélé vote dès que le tour redevient caché, après un masquage ou un effacement.
 - **FR6 :** Chaque participant voit la liste des participants, avec pour chacun : pseudo, rôle, présence, et « a voté ou non » pendant un tour caché, sans jamais voir la carte des autres.
 - **FR7 :** Reconnexion automatique dans le même navigateur, après une coupure ou un rafraîchissement.
   - Le participant garde son pseudo, son rôle et son vote.
@@ -42,13 +42,13 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - Si le pseudo a été repris entre-temps, la page affiche l'écran Rejoindre avec le pseudo prérempli.
 - **FR8 :** On peut reprendre le pseudo d'un participant déconnecté depuis un autre appareil, avec son rôle et son vote. Le pseudo d'un participant connecté est refusé, et l'appareil d'origine perd ce participant. Reprendre le pseudo d'un autre est un risque accepté.
 - **FR9 :** Un participant déconnecté depuis plus de 5 min est retiré de la liste, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient et que son pseudo est libre, il est remis à sa place automatiquement.
-- **FR10 :** Un votant choisit une carte parmi `0, 1, 2, 3, 5, 8, 13, 21, ?, ☕` pendant un tour caché. Exception : un observateur devenu votant pendant un tour révélé attend le prochain effacement (FR5).
+- **FR10 :** Un votant choisit une carte parmi `0, 1, 2, 3, 5, 8, 13, 21, ?, ☕` pendant un tour caché. Un observateur devenu votant pendant un tour révélé vote dès que le tour redevient caché (FR5).
   - Il peut la changer ou la retirer à volonté.
   - Sa carte n'est visible que par lui jusqu'à la révélation.
   - Un observateur n'a pas de cartes.
 - **FR11 :** Une fois le tour révélé, aucun vote n'est modifiable. Pour revoter, il faut effacer.
 - **FR12 :** Tout participant peut révéler le tour à tout moment, même si des votants n'ont pas voté. Les votes deviennent visibles nominativement, et un votant sans vote apparaît comme « n'a pas voté ».
-- **FR13 :** Tout participant peut masquer un tour révélé. Le tour redevient caché, et les votes redeviennent modifiables, sauf pour un participant devenu votant pendant la révélation, qui vote après le prochain effacement (FR5). Le vote d'un participant devenu observateur pendant la révélation est retiré au masquage.
+- **FR13 :** Tout participant peut masquer un tour révélé. Le tour redevient caché, et tous les votants peuvent de nouveau choisir ou modifier leur carte, y compris ceux arrivés ou devenus votants pendant la révélation (FR2, FR5). Le vote d'un participant devenu observateur pendant la révélation est retiré au masquage.
 - **FR14 :** Une fois le tour révélé, l'outil affiche :
   - la moyenne, arrondie au dixième et au format français ;
   - le consensus, si tous les votes numériques sont identiques et qu'il y en a au moins deux ;
@@ -824,7 +824,7 @@ afin de m'adapter au déroulé de l'atelier (FR5).
 
 **Étant donné** que je suis observateur et que le tour est révélé
 **Quand** je passe votant
-**Alors** l'instantané porte `canVoteThisRound: false` pour moi, ma place affiche « votera au prochain tour », et ma main reste grisée jusqu'au prochain `clear` (FR5).
+**Alors** l'instantané porte `canVoteThisRound: false` pour moi, ma place affiche « votera au prochain tour », et ma main reste grisée jusqu'à ce que le tour redevienne caché, par un masquage ou un `clear` (FR5, FR13).
 
 **Étant donné** un changement de rôle
 **Quand** il est traité

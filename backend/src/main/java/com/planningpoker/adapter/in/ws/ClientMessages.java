@@ -1,6 +1,8 @@
 package com.planningpoker.adapter.in.ws;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.planningpoker.domain.Role;
 
@@ -17,7 +19,9 @@ final class ClientMessages {
     static final int TOKEN_MAX_LENGTH = 64;
     static final int ROUND_ID_MAX_LENGTH = 64;
     static final int CARD_MAX_LENGTH = 16;
-    private static final Set<String> ROLES = Set.of("VOTER", "OBSERVER");
+    /** Rôles acceptés par {@code changeRole} : ceux du domaine, pour que la validation suive l'énumération. */
+    private static final Set<String> ROLES = Arrays.stream(Role.values()).map(Role::name)
+            .collect(Collectors.toUnmodifiableSet());
 
     private ClientMessages() {
     }

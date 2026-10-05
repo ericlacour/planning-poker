@@ -2,7 +2,7 @@
 title: 'Story 3.1 : changer de rôle en pleine séance'
 type: 'feature'
 created: '2026-10-05'
-status: 'in-review'
+status: 'done'
 baseline_commit: '9ed0afc13d388d3aa55cfa5480361eaed06c64a9'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -98,13 +98,13 @@ context:
 
 Relecture du 2026-10-05 (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor), diff `9ed0afc...ba77c17`.
 
-- [ ] [Review][Patch] Observateur déconnecté qui garde un vote : mention combinée « déconnecté · observe » (décision d'Eric, 2026-10-05) [frontend/src/app/session/participant-table.component.ts:25]
-- [ ] [Review][Patch] Menu du participant actif hors connexion : le choix est perdu sans signe, alors que « Je veux voter » est grisé [frontend/src/app/top-bar/participant-menu.component.ts:63]
-- [ ] [Review][Patch] `changeRole` passe par `sendForRound`, contre la Code Map (pas de `roundId`) : extraire un envoi « connexion prête » commun [frontend/src/app/session/session.service.ts:158]
-- [ ] [Review][Patch] `aria-controls` vise `participant-menu-list` même menu fermé, quand l'élément n'existe pas [frontend/src/app/top-bar/participant-menu.component.ts:44]
-- [ ] [Review][Patch] Javadoc modifiée hors largeur du fichier (182 et 200 caractères) [frontend/src/app/session/participant-table.component.ts:18]
-- [ ] [Review][Patch] Liste des rôles en double dans la validation (`ROLES` à côté de l'enum `Role`) : la dériver de `Role.values()` [backend/src/main/java/com/planningpoker/adapter/in/ws/ClientMessages.java:20]
-- [ ] [Review][Patch] `sprint-status.yaml` laisse la story en `in-progress` alors que la spec est `in-review` [_bmad-output/implementation-artifacts/sprint-status.yaml:59]
+- [x] [Review][Patch] Observateur déconnecté qui garde un vote : mention combinée « déconnecté · observe » (décision d'Eric, 2026-10-05) [frontend/src/app/session/participant-table.component.ts:25]
+- [x] [Review][Patch] Menu du participant actif hors connexion : le choix est perdu sans signe, alors que « Je veux voter » est grisé [frontend/src/app/top-bar/participant-menu.component.ts:63]
+- [x] [Review][Patch] `changeRole` passe par `sendForRound`, contre la Code Map (pas de `roundId`) : extraire un envoi « connexion prête » commun [frontend/src/app/session/session.service.ts:158]
+- [x] [Review][Patch] `aria-controls` vise `participant-menu-list` même menu fermé, quand l'élément n'existe pas [frontend/src/app/top-bar/participant-menu.component.ts:44]
+- [x] [Review][Patch] Javadoc modifiée hors largeur du fichier (182 et 200 caractères) [frontend/src/app/session/participant-table.component.ts:18]
+- [x] [Review][Patch] Liste des rôles en double dans la validation (`ROLES` à côté de l'enum `Role`) : la dériver de `Role.values()` [backend/src/main/java/com/planningpoker/adapter/in/ws/ClientMessages.java:20]
+- [x] [Review][Patch] `sprint-status.yaml` laisse la story en `in-progress` alors que la spec est `in-review` [_bmad-output/implementation-artifacts/sprint-status.yaml:59]
 - [x] [Review][Defer] `HelloTimeoutTest` dépend de l'ordonnancement des threads [backend/src/test/java/com/planningpoker/adapter/in/ws/HelloTimeoutTest.java:42] — deferred: maybe-false (medium si vrai). Pour trancher, rejouer le test plusieurs fois contre l'ancien ordre « programmer puis enregistrer », ou rendre le test déterministe avec un planificateur injecté.
 
 Rejetés :

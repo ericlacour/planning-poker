@@ -224,4 +224,22 @@ describe('ParticipantTableComponent', () => {
     expect(emma?.querySelector('.seat-card-observer')).toBeNull();
     expect(emma?.querySelector('.seat-note')?.textContent).toBe('observe');
   });
+
+  it('revealed round: a disconnected observer who kept their vote is « déconnecté · observe »', () => {
+    const revealed = revealedObserver as SessionState;
+    const state: SessionState = {
+      ...revealed,
+      participants: revealed.participants.map((p) =>
+        p.participantId === EMMA
+          ? { ...p, role: 'OBSERVER', connected: false, hasVoted: true, vote: '5', canVoteThisRound: false }
+          : p,
+      ),
+    };
+    const element = render(state);
+    const emma = [...element.querySelectorAll<HTMLElement>('.seat')].find(
+      (s) => s.querySelector('.seat-pseudo')?.textContent === 'Emma',
+    );
+    expect(emma?.querySelector('.seat-card-face')?.getAttribute('aria-label')).toBe(cardName('5'));
+    expect(emma?.querySelector('.seat-note')?.textContent).toBe('déconnecté · observe');
+  });
 });

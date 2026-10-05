@@ -23,8 +23,9 @@ const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
  * Menu du participant (`participant-menu`, UX-DR11), dans la barre du haut de l'écran Session : un bouton qui affiche
  * mon pseudo et une flèche, et ouvre sous la barre une liste « Je vote » / « J'observe », mon rôle actuel coché. Il
  * passe par la connexion que l'écran Session confie à {@link TopBarState}.
- * Choisir l'autre rôle envoie `changeRole` (FR5) ; choisir le rôle actuel ne fait que fermer le menu. Rien n'est
- * affiché avant le premier instantané. Clavier : flèches haut / bas entre les choix, Entrée ou Espace pour choisir,
+ * Choisir l'autre rôle envoie `changeRole` (FR5) ; choisir le rôle actuel ne fait que fermer le menu. Hors connexion,
+ * les choix sont grisés (`aria-disabled`) et sans effet, comme « Je veux voter ». Rien n'est affiché avant le premier
+ * instantané. Clavier : flèches haut / bas entre les choix, Entrée ou Espace pour choisir,
  * Échap ou Tab pour fermer ; à la fermeture par Échap ou par un choix, le focus revient au bouton.
  */
 @Component({
@@ -42,7 +43,7 @@ const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
         class="btn btn-secondary participant-menu-trigger"
         aria-haspopup="menu"
         [attr.aria-expanded]="open()"
-        aria-controls="participant-menu-list"
+        [attr.aria-controls]="open() ? 'participant-menu-list' : null"
         [attr.aria-label]="'Menu du participant : ' + me.pseudo"
         (click)="toggle()"
       >
@@ -65,6 +66,7 @@ const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
                 class="participant-menu-item"
                 role="menuitemradio"
                 [attr.aria-checked]="me.role === option.value"
+                [attr.aria-disabled]="connected() ? null : 'true'"
                 tabindex="-1"
                 (click)="choose(option.value)"
               >
@@ -91,6 +93,8 @@ export class ParticipantMenuComponent {
     const state = this.topBar.session()?.state();
     return state?.participants.find((p) => p.participantId === state.selfParticipantId) ?? null;
   });
+  /** Connexion rétablie : hors connexion, les choix sont grisés et sans effet. */
+  protected readonly connected = computed(() => this.topBar.session()?.connection() === 'open');
 
   protected toggle(): void {
     if (this.open()) {
@@ -103,6 +107,7 @@ export class ParticipantMenuComponent {
   }
 
   protected choose(role: Role): void {
+    if (!this.connected()) return;
     if (role !== this.me()?.role) this.topBar.session()?.changeRole(role);
     this.close();
   }

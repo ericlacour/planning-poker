@@ -84,6 +84,11 @@
   background: var(--primary-soft);
 }
 
+.participant-menu-item[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .participant-menu-check {
   width: 1em;
   color: var(--primary);

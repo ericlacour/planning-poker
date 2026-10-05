@@ -13,17 +13,20 @@ export interface Seat {
    */
   readonly card: 'empty' | 'back' | { readonly face: Card };
   /**
-   * Mention sous la place : « déconnecté » (prioritaire, quel que soit le rôle), « visible par toi seul » (ma face
-   * pendant un tour caché), « votera au prochain tour » (votant arrivé pendant un tour révélé), « n'a pas voté »
-   * (tour révélé, sans vote), « observe » (observateur qui garde son vote d'un tour révélé), ou rien. Une seule ligne par place : l'état du vote reste lisible par la carte.
+   * Mention sous la place : « déconnecté » (prioritaire, quel que soit le rôle ; « déconnecté · observe » pour un
+   * observateur qui garde son vote), « visible par toi seul » (ma face pendant un tour caché), « votera au prochain
+   * tour » (votant arrivé pendant un tour révélé), « n'a pas voté » (tour révélé, sans vote), « observe »
+   * (observateur qui garde son vote d'un tour révélé), ou rien. Une seule ligne par place : l'état du vote reste
+   * lisible par la carte.
    */
   readonly note: string | null;
 }
 
 /** Mention d'une place, d'après l'instantané seul (`connected`, `canVoteThisRound`, `vote`, statut du tour). */
 function noteOf(participant: ParticipantState, isSelf: boolean, hidden: boolean, card: Seat['card']): string | null {
-  if (!participant.connected) return 'déconnecté';
-  if (participant.role !== 'VOTER') return card === 'empty' ? null : 'observe';
+  const observesWithCard = participant.role !== 'VOTER' && card !== 'empty';
+  if (!participant.connected) return observesWithCard ? 'déconnecté · observe' : 'déconnecté';
+  if (participant.role !== 'VOTER') return observesWithCard ? 'observe' : null;
   if (!participant.canVoteThisRound) return 'votera au prochain tour';
   if (card === 'empty') return hidden ? null : "n'a pas voté";
   if (card !== 'back' && hidden && isSelf) return 'visible par toi seul';
@@ -64,7 +67,9 @@ export const PENDING_SEATS = 3;
  * un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
  * par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
  * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
- * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe » dessous. Avant le premier instantané, des places vides en attente, sans pseudo.
+ * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe »
+ * dessous (« déconnecté · observe » hors connexion). Avant le premier instantané, des places vides en attente, sans
+ * pseudo.
  */
 @Component({
   selector: 'app-participant-table',

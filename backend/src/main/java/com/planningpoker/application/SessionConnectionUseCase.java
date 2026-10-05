@@ -21,7 +21,7 @@ public class SessionConnectionUseCase {
     private static final Logger LOG = LoggerFactory.getLogger(SessionConnectionUseCase.class);
 
     private final SessionStore store;
-    private final SessionLocks locks;
+    private final SessionWriter writer;
     private final SessionBroadcaster broadcaster;
     private final Clock clock;
     private final int maxParticipants;
@@ -30,7 +30,7 @@ public class SessionConnectionUseCase {
             Clock clock, int maxParticipants) {
         this.maxParticipants = maxParticipants;
         this.store = store;
-        this.locks = locks;
+        this.writer = new SessionWriter(store, locks, broadcaster);
         this.broadcaster = broadcaster;
         this.clock = clock;
     }
@@ -46,7 +46,7 @@ public class SessionConnectionUseCase {
         if (sessionId == null) {
             return new ConnectResult.SessionNotFound();
         }
-        ConnectResult result = locks.withLock(sessionId, () -> {
+        ConnectResult result = writer.withLock(sessionId, () -> {
             Session session = store.find(sessionId).orElse(null);
             if (session == null) {
                 return new ConnectResult.SessionNotFound();
@@ -61,10 +61,7 @@ public class SessionConnectionUseCase {
                 return new ConnectResult.ConnectionClosed();
             }
             Session connected = session.connect(participant.id(), connectionId, clock.instant());
-            store.save(connected);
-            if (connected.version() != session.version()) {
-                broadcaster.publish(connected);
-            } else {
+            if (!writer.commit(session, connected)) {
                 broadcaster.publishTo(connected, connectionId);
             }
             return new ConnectResult.Connected(participant.id());
@@ -92,8 +89,7 @@ public class SessionConnectionUseCase {
         if (!broadcaster.attach(connectionId, session.id(), departed.id())) {
             return new ConnectResult.ConnectionClosed();
         }
-        store.save(rejoined);
-        broadcaster.publish(rejoined);
+        writer.commit(session, rejoined);
         LOG.info("Participant {} came back after a long absence", departed.id());
         return new ConnectResult.Connected(departed.id());
     }
@@ -103,19 +99,12 @@ public class SessionConnectionUseCase {
      * connexion du participant change l'état observable.
      */
     public void disconnect(String sessionId, UUID participantId, String connectionId) {
-        boolean detached = locks.withLock(sessionId, () -> {
+        boolean detached = writer.withLock(sessionId, () -> {
             if (!broadcaster.detach(connectionId)) {
                 return false;
             }
-            store.find(sessionId).ifPresent(session -> {
-                Session disconnected = session.disconnect(participantId, connectionId, clock.instant());
-                if (disconnected != session) {
-                    store.save(disconnected);
-                    if (disconnected.version() != session.version()) {
-                        broadcaster.publish(disconnected);
-                    }
-                }
-            });
+            store.find(sessionId).ifPresent(session -> writer.commit(session,
+                    session.disconnect(participantId, connectionId, clock.instant())));
             return true;
         });
         if (detached) {
@@ -128,13 +117,9 @@ public class SessionConnectionUseCase {
      * Changement caché : ni {@code version++}, ni diffusion (AD-3). Sans effet pour une connexion inconnue.
      */
     public void touch(String sessionId, String connectionId) {
-        locks.withLock(sessionId, () -> {
-            store.find(sessionId).ifPresent(session -> {
-                Session touched = session.touch(connectionId, clock.instant());
-                if (touched != session) {
-                    store.save(touched);
-                }
-            });
+        writer.withLock(sessionId, () -> {
+            store.find(sessionId)
+                    .ifPresent(session -> writer.commit(session, session.touch(connectionId, clock.instant())));
             return null;
         });
     }

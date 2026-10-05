@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.planningpoker.adapter.out.memory.InMemorySessionStore;
+import com.planningpoker.application.ChangeRoleUseCase;
 import com.planningpoker.application.CheckSessionUseCase;
 import com.planningpoker.application.CreateSessionUseCase;
 import com.planningpoker.application.JoinSessionUseCase;
@@ -81,6 +82,12 @@ public class SessionConfig {
     @Bean
     public VoteUseCase voteUseCase(SessionStore store, SessionLocks locks, SessionBroadcaster broadcaster) {
         return new VoteUseCase(store, locks, broadcaster);
+    }
+
+    @Bean
+    public ChangeRoleUseCase changeRoleUseCase(SessionStore store, SessionLocks locks,
+            SessionBroadcaster broadcaster) {
+        return new ChangeRoleUseCase(store, locks, broadcaster);
     }
 
     @Bean

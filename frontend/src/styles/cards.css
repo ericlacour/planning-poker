@@ -109,6 +109,31 @@
 
 .hand-observer {
   padding: 20px var(--spacing-4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+}
+
+/* Lien « Je veux voter » : un bouton à l'aspect de lien, avec une zone tactile de 44 px. */
+.link-button {
+  min-height: var(--spacing-touch-min);
+  padding: 0 var(--spacing-2);
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-button[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .hand-observer .hand-hint {

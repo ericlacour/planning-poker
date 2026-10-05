@@ -356,8 +356,7 @@ class SessionSocketHandlerTest {
         Connected a = connect(createSession("Alice", "VOTER"));
         a.client().send(ContractExamples.read("heartbeat", "heartbeat"));
         for (String[] example : new String[][] { { "vote", "choose-card" }, { "vote", "withdraw" },
-                { "vote", "coffee" }, { "reveal", "reveal" }, { "hide", "hide" }, { "clear", "clear" },
-                { "change-role", "to-observer" } }) {
+                { "vote", "coffee" }, { "reveal", "reveal" }, { "hide", "hide" }, { "clear", "clear" } }) {
             a.client().send(ContractExamples.read(example[0], example[1]));
         }
         assertThat(next(a.client(), QUIET_MS)).isNull();
@@ -754,5 +753,183 @@ class SessionSocketHandlerTest {
         assertThat(seat(next, farid.participantId()).get("canVoteThisRound").asBoolean()).isTrue();
         f.client().send(vote(next, "5"));
         assertThat(seat(nextState(f.client()), farid.participantId()).get("vote").asString()).isEqualTo("5");
+    }
+
+    // --- Masquer (story 3.2) ---
+
+    @Test
+    void anObserverHidesAndEveryoneGetsAHiddenRoundWithTheSameRoundIdWithinOneSecond() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        Connected a = both[0];
+        Connected b = both[1];
+        String bobId = b.state().get("selfParticipantId").asString();
+        Created emma = join(alice.sessionId(), "Emma", "OBSERVER");
+        nextState(a.client());
+        nextState(b.client());
+        Connected e = connect(emma);
+        nextState(a.client());
+        nextState(b.client());
+
+        a.client().send(vote(a.state(), "3"));
+        nextState(a.client());
+        nextState(b.client());
+        nextState(e.client());
+        b.client().send(vote(b.state(), "8"));
+        nextState(a.client());
+        nextState(b.client());
+        nextState(e.client());
+        a.client().send(intent("reveal", a.state()));
+        nextState(a.client());
+        nextState(b.client());
+        JsonNode revealed = nextState(e.client());
+        long version = revealed.get("version").asLong();
+        String roundId = revealed.get("round").get("roundId").asString();
+
+        long start = System.nanoTime();
+        e.client().send(intent("hide", revealed));
+        JsonNode[] states = { nextState(a.client()), nextState(b.client()), nextState(e.client()) };
+        assertThat(System.nanoTime() - start).isLessThan(1_000_000_000L);
+
+        for (JsonNode state : states) {
+            assertThat(state.get("version").asLong()).isEqualTo(version + 1);
+            assertThat(state.get("round").get("status").asString()).isEqualTo("HIDDEN");
+            assertThat(state.get("round").get("roundId").asString()).isEqualTo(roundId);
+            assertThat(state.get("lastChange").toString())
+                    .isEqualTo("{\"action\":\"HIDE\",\"byParticipantId\":\"" + emma.participantId() + "\"}");
+            assertThat(state.get("summary").isNull()).isTrue();
+            assertThat(state.get("progress").toString()).isEqualTo("{\"voted\":2,\"expected\":2}");
+            assertThat(seat(state, alice.participantId()).get("hasVoted").asBoolean()).isTrue();
+            assertThat(seat(state, bobId).get("hasVoted").asBoolean()).isTrue();
+        }
+        // Filtrage : chacun ne voit que son propre vote pendant un tour caché.
+        assertThat(seat(states[0], alice.participantId()).get("vote").asString()).isEqualTo("3");
+        assertThat(seat(states[0], bobId).get("vote").isNull()).isTrue();
+
+        // Déjà caché : rien. Revoter : accepté.
+        b.client().send(intent("hide", states[1]));
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+        a.client().send(vote(states[0], "5"));
+        assertThat(seat(nextState(a.client()), alice.participantId()).get("vote").asString()).isEqualTo("5");
+    }
+
+    @Test
+    void twoHidesFromTheSameRoundMakeOneChange() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(intent("reveal", both[0].state()));
+        nextState(both[0].client());
+        long version = nextState(both[1].client()).get("version").asLong();
+        String hide = intent("hide", both[0].state());
+
+        both[0].client().send(hide);
+        both[1].client().send(hide);
+
+        JsonNode forAlice = nextState(both[0].client());
+        JsonNode forBob = nextState(both[1].client());
+        assertThat(forAlice.get("version").asLong()).isEqualTo(version + 1);
+        assertThat(forBob.get("round")).isEqualTo(forAlice.get("round"));
+        assertThat(next(both[0].client(), QUIET_MS)).isNull();
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void aStaleHideIsIgnoredWithoutAnswer() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(intent("reveal", both[0].state()));
+        nextState(both[0].client());
+        nextState(both[1].client());
+        both[0].client().send("{\"type\":\"hide\",\"roundId\":\"stale\"}");
+        assertThat(next(both[0].client(), QUIET_MS)).isNull();
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "{\"type\":\"hide\"}", "{\"type\":\"hide\",\"roundId\":\"\"}",
+            "{\"type\":\"hide\",\"roundId\":\"r\",\"extra\":1}" })
+    void aHideOutsideItsSchemaGetsInvalidMessage(String message) throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected[] both = twoVoters(alice);
+        both[0].client().send(message);
+        assertInvalidMessage(next(both[0].client(), WAIT_MS));
+        assertThat(next(both[1].client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void aVoterArrivingDuringARevealedRoundVotesOnceTheRoundIsHidden() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        a.client().send(intent("reveal", a.state()));
+        nextState(a.client());
+
+        Created farid = join(alice.sessionId(), "Farid", "VOTER");
+        nextState(a.client());
+        Connected f = connect(farid);
+        nextState(a.client());
+        assertThat(seat(f.state(), farid.participantId()).get("canVoteThisRound").asBoolean()).isFalse();
+
+        f.client().send(intent("hide", f.state()));
+        JsonNode hidden = nextState(f.client());
+        assertThat(seat(hidden, farid.participantId()).get("canVoteThisRound").asBoolean()).isTrue();
+        assertThat(hidden.get("progress").toString()).isEqualTo("{\"voted\":0,\"expected\":2}");
+        f.client().send(vote(hidden, "5"));
+        assertThat(seat(nextState(f.client()), farid.participantId()).get("vote").asString()).isEqualTo("5");
+    }
+
+    // --- Changement de rôle (story 3.1) ---
+
+    private static String changeRole(String role) {
+        return "{\"type\":\"changeRole\",\"role\":\"" + role + "\"}";
+    }
+
+    @Test
+    void aRoleChangeIsBroadcastToEveryoneWithinOneSecond() throws Exception {
+        Created alice = createSession("Alice", "VOTER");
+        Connected a = connect(alice);
+        Created bob = join(alice.sessionId(), "Bob", "VOTER");
+        nextState(a.client());
+        Connected b = connect(bob);
+        nextState(a.client());
+        a.client().send(vote(b.state(), "5"));
+        nextState(a.client());
+        nextState(b.client());
+
+        long start = System.nanoTime();
+        a.client().send(changeRole("OBSERVER"));
+        JsonNode seenByBob = nextState(b.client());
+        JsonNode seenByAlice = nextState(a.client());
+        assertThat(System.nanoTime() - start).isLessThan(1_000_000_000L);
+
+        for (JsonNode state : new JsonNode[] { seenByBob, seenByAlice }) {
+            assertThat(state.get("lastChange").get("action").asString()).isEqualTo("ROLE");
+            assertThat(state.get("lastChange").get("byParticipantId").asString()).isEqualTo(alice.participantId());
+            assertThat(seat(state, alice.participantId()).get("role").asString()).isEqualTo("OBSERVER");
+            assertThat(seat(state, alice.participantId()).get("hasVoted").asBoolean()).isFalse();
+            assertThat(state.get("progress").get("expected").asInt()).isEqualTo(1);
+            assertThat(state.get("participants").get(1).get("participantId").asString())
+                    .isEqualTo(alice.participantId());
+        }
+    }
+
+    @Test
+    void theSameRoleGetsNoAnswerAndBroadcastsNothing() throws Exception {
+        Connected a = connect(createSession("Alice", "VOTER"));
+        a.client().send(changeRole("VOTER"));
+        assertThat(next(a.client(), QUIET_MS)).isNull();
+    }
+
+    @Test
+    void anObserverBecomingVoterDuringARevealedRoundVotesFromTheNextRound() throws Exception {
+        Connected e = connect(createSession("Emma", "OBSERVER"));
+        e.client().send(intent("reveal", e.state()));
+        JsonNode revealed = nextState(e.client());
+
+        e.client().send(changeRole("VOTER"));
+        JsonNode voter = nextState(e.client());
+        assertThat(voter.get("participants").get(0).get("role").asString()).isEqualTo("VOTER");
+        assertThat(voter.get("participants").get(0).get("canVoteThisRound").asBoolean()).isFalse();
+        e.client().send(vote(revealed, "5"));
+        assertError(next(e.client(), WAIT_MS), "ROUND_REVEALED");
     }
 }

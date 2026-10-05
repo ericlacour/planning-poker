@@ -22,9 +22,8 @@ public class JoinSessionUseCase {
     private static final Logger LOG = LoggerFactory.getLogger(JoinSessionUseCase.class);
 
     private final SessionStore store;
-    private final SessionLocks locks;
+    private final SessionWriter writer;
     private final IdGenerator ids;
-    private final SessionBroadcaster broadcaster;
     private final Clock clock;
     private final int maxParticipants;
 
@@ -32,9 +31,8 @@ public class JoinSessionUseCase {
             SessionBroadcaster broadcaster, Clock clock, int maxParticipants) {
         this.maxParticipants = maxParticipants;
         this.store = store;
-        this.locks = locks;
+        this.writer = new SessionWriter(store, locks, broadcaster);
         this.ids = ids;
-        this.broadcaster = broadcaster;
         this.clock = clock;
     }
 
@@ -55,7 +53,7 @@ public class JoinSessionUseCase {
         }
         UUID newcomerId = ids.newParticipantId();
         String token = ids.newParticipantToken();
-        UUID participantId = locks.withLock(sessionId, () -> {
+        UUID participantId = writer.withLock(sessionId, () -> {
             Session session = store.find(sessionId).orElseThrow(SessionNotFoundException::new);
             Pseudo pseudo = Pseudo.of(rawPseudo);
             Session joined;
@@ -67,10 +65,7 @@ public class JoinSessionUseCase {
                 LOG.info("Join refused: session full");
                 throw e;
             }
-            store.save(joined);
-            if (joined.version() != session.version()) {
-                broadcaster.publish(joined);
-            }
+            writer.commit(session, joined);
             return joined.participantWithToken(token)
                     .orElseThrow(() -> new IllegalStateException("joined participant not found"))
                     .id();

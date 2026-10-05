@@ -150,25 +150,29 @@ describe('SessionService', () => {
     expect(service.state()).toEqual(hiddenRound);
   });
 
-  it('sends reveal and clear with the current roundId, without changing its state', () => {
+  it('sends reveal, hide and clear with the current roundId, without changing its state', () => {
     const { service, socket } = connected();
     socket.serverSends(hiddenRound);
     service.reveal();
+    service.hide();
     service.clear();
     expect(socket.sent.slice(1)).toEqual([
       { type: 'reveal', roundId: hiddenRound.round.roundId },
+      { type: 'hide', roundId: hiddenRound.round.roundId },
       { type: 'clear', roundId: hiddenRound.round.roundId },
     ]);
     expect(service.state()).toEqual(hiddenRound);
   });
 
-  it('sends no reveal nor clear before the first snapshot nor once the socket is closed', () => {
+  it('sends no reveal, hide nor clear before the first snapshot nor once the socket is closed', () => {
     const { service, socket } = connected();
     service.reveal();
+    service.hide();
     service.clear();
     socket.serverSends(hiddenRound);
     socket.serverCloses(1006);
     service.reveal();
+    service.hide();
     service.clear();
     expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }]);
   });
@@ -180,6 +184,22 @@ describe('SessionService', () => {
     socket.serverCloses(1006);
     service.vote('8');
     expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }]);
+  });
+
+  it('sends changeRole without changing its state, and nothing before the first snapshot nor once closed', () => {
+    const { service, socket } = connected();
+    service.changeRole('OBSERVER');
+    socket.serverSends(hiddenRound);
+    service.changeRole('OBSERVER');
+    service.changeRole('VOTER');
+    expect(socket.sent.slice(1)).toEqual([
+      { type: 'changeRole', role: 'OBSERVER' },
+      { type: 'changeRole', role: 'VOTER' },
+    ]);
+    expect(service.state()).toEqual(hiddenRound);
+    socket.serverCloses(1006);
+    service.changeRole('OBSERVER');
+    expect(socket.sent).toHaveLength(3);
   });
 
   it('ignores a lower version on the same connection', () => {

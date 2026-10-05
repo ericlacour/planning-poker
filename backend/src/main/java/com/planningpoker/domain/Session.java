@@ -3,14 +3,13 @@ package com.planningpoker.domain;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Session de Planning Poker, immuable : chaque règle renvoie une nouvelle session, que le cas d'usage enregistre
@@ -18,32 +17,25 @@ import java.util.UUID;
  * (comme la dernière activité d'une connexion) donne une nouvelle instance de même {@code version}.
  *
  * @param version        incrémentée à chaque changement observable ; 1 à la création
+ * @param round          tour en cours : statut, votes et participants qui ne votent qu'à partir du prochain tour
  * @param nextJoinOrder  ordre d'arrivée du prochain participant
  * @param lastChange     dernier changement observable
- * @param roundStatus    tour caché ou révélé
- * @param votes          vote de chaque participant qui a voté pendant le tour courant
- * @param lateArrivals   participants arrivés pendant un tour révélé : ils ne votent qu'à partir du prochain tour
- *                       ({@code clear})
  * @param departed       participants retirés après une longue absence (AD-7) : hors de {@code participants}, donc
  *                       absents de l'instantané et du contrôle d'unicité du pseudo, mais leur jeton reste valable
  *                       pour revenir ({@link #rejoin})
  */
-public record Session(String id, List<Participant> participants, long version, String roundId, int nextJoinOrder,
-        Instant createdAt, LastChange lastChange, RoundStatus roundStatus, Map<UUID, Card> votes,
-        Set<UUID> lateArrivals, List<Participant> departed) {
+public record Session(String id, List<Participant> participants, long version, Round round, int nextJoinOrder,
+        Instant createdAt, LastChange lastChange, List<Participant> departed) {
 
     /** Le contrat impose {@code joinOrder >= 1} : le créateur reçoit 1. */
     public static final int FIRST_JOIN_ORDER = 1;
 
     public Session {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(roundId, "roundId");
+        Objects.requireNonNull(round, "round");
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(lastChange, "lastChange");
-        Objects.requireNonNull(roundStatus, "roundStatus");
         participants = List.copyOf(participants);
-        votes = Map.copyOf(votes);
-        lateArrivals = Set.copyOf(lateArrivals);
         departed = List.copyOf(departed);
     }
 
@@ -51,8 +43,28 @@ public record Session(String id, List<Participant> participants, long version, S
     public static Session create(String id, String roundId, UUID creatorId, Pseudo pseudo, Role role,
             ParticipantToken token, Instant now) {
         Participant creator = new Participant(creatorId, pseudo, role, FIRST_JOIN_ORDER, token, now);
-        return new Session(id, List.of(creator), 1, roundId, FIRST_JOIN_ORDER + 1, now,
-                LastChange.of(ChangeAction.JOIN, creatorId), RoundStatus.HIDDEN, Map.of(), Set.of(), List.of());
+        return new Session(id, List.of(creator), 1, Round.open(roundId), FIRST_JOIN_ORDER + 1, now,
+                LastChange.of(ChangeAction.JOIN, creatorId), List.of());
+    }
+
+    /** Identifiant du tour en cours. */
+    public String roundId() {
+        return round.id();
+    }
+
+    /** Statut du tour en cours. */
+    public RoundStatus roundStatus() {
+        return round.status();
+    }
+
+    /** Vote de chaque participant qui a voté pendant le tour en cours. */
+    public Map<UUID, Card> votes() {
+        return round.votes();
+    }
+
+    /** Participants qui ne votent qu'à partir du prochain tour ({@code clear}) ou du masquage ({@code hide}). */
+    public Set<UUID> lateArrivals() {
+        return round.lateArrivals();
     }
 
     /**
@@ -90,8 +102,7 @@ public record Session(String id, List<Participant> participants, long version, S
             List<Participant> updated = participants.stream()
                     .map(p -> p.id().equals(existing.id()) ? existing.withToken(token) : p)
                     .toList();
-            return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
-                    votes, lateArrivals, departed);
+            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed);
         }
         requireRoomFor(maxParticipants);
         return withNewcomer(new Participant(participantId, pseudo, role, nextJoinOrder, token, now));
@@ -115,14 +126,9 @@ public record Session(String id, List<Participant> participants, long version, S
     private Session withNewcomer(Participant newcomer) {
         List<Participant> joined = new ArrayList<>(participants);
         joined.add(newcomer);
-        Set<UUID> late = lateArrivals;
-        if (roundStatus == RoundStatus.REVEALED) {
-            late = new HashSet<>(lateArrivals);
-            late.add(newcomer.id());
-        }
         List<Participant> stillDeparted = departed.stream().filter(p -> !p.id().equals(newcomer.id())).toList();
-        return new Session(id, joined, version + 1, roundId, nextJoinOrder + 1, createdAt,
-                LastChange.of(ChangeAction.JOIN, newcomer.id()), roundStatus, votes, late, stillDeparted);
+        return new Session(id, joined, version + 1, round.withArrival(newcomer.id()), nextJoinOrder + 1, createdAt,
+                LastChange.of(ChangeAction.JOIN, newcomer.id()), stillDeparted);
     }
 
     private void requireFreePseudo(Pseudo pseudo) {
@@ -154,14 +160,10 @@ public record Session(String id, List<Participant> participants, long version, S
             return this;
         }
         List<Participant> remaining = participants.stream().filter(p -> !p.id().equals(participantId)).toList();
-        Map<UUID, Card> remainingVotes = new HashMap<>(votes);
-        remainingVotes.remove(participantId);
-        Set<UUID> late = new HashSet<>(lateArrivals);
-        late.remove(participantId);
         List<Participant> nowDeparted = new ArrayList<>(departed);
         nowDeparted.add(leaving);
-        return new Session(id, remaining, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.LEAVE, participantId), roundStatus, remainingVotes, late, nowDeparted);
+        return new Session(id, remaining, version + 1, round.without(participantId), nextJoinOrder, createdAt,
+                LastChange.of(ChangeAction.LEAVE, participantId), nowDeparted);
     }
 
     /** Le participant retiré dont {@code token} est le jeton, s'il y en a un. */
@@ -288,21 +290,20 @@ public record Session(String id, List<Participant> participants, long version, S
                 .map(p -> p.id().equals(before.id()) ? after : p)
                 .toList();
         if (before.connected() == after.connected()) {
-            return new Session(id, updated, version, roundId, nextJoinOrder, createdAt, lastChange, roundStatus,
-                    votes, lateArrivals, departed);
+            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed);
         }
-        return new Session(id, updated, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.PRESENCE, before.id()), roundStatus, votes, lateArrivals, departed);
+        return new Session(id, updated, version + 1, round, nextJoinOrder, createdAt,
+                LastChange.of(ChangeAction.PRESENCE, before.id()), departed);
     }
 
     /** Le vote du participant pendant le tour courant, s'il a voté. */
     public Optional<Card> voteOf(UUID participantId) {
-        return Optional.ofNullable(votes.get(participantId));
+        return round.voteOf(participantId);
     }
 
     /** Vrai pour un votant qui peut voter pendant le tour courant (pas arrivé pendant un tour révélé). */
     public boolean canVoteThisRound(Participant participant) {
-        return participant.role() == Role.VOTER && !lateArrivals.contains(participant.id());
+        return participant.role() == Role.VOTER && !round.isLate(participant.id());
     }
 
     /**
@@ -318,31 +319,13 @@ public record Session(String id, List<Participant> participants, long version, S
     public Session vote(UUID participantId, String intentRoundId, String card) {
         Participant participant = participant(participantId)
                 .orElseThrow(() -> new IllegalArgumentException("unknown participant"));
-        if (!roundId.equals(intentRoundId)) {
+        if (!round.id().equals(intentRoundId)) {
             return this;
         }
         if (participant.role() != Role.VOTER) {
             throw new VoteRejectedException(VoteRejectedException.Reason.NOT_A_VOTER);
         }
-        if (roundStatus == RoundStatus.REVEALED || lateArrivals.contains(participantId)) {
-            throw new VoteRejectedException(VoteRejectedException.Reason.ROUND_REVEALED);
-        }
-        Card chosen = null;
-        if (card != null) {
-            chosen = Card.of(card)
-                    .orElseThrow(() -> new VoteRejectedException(VoteRejectedException.Reason.INVALID_CARD));
-        }
-        if (Objects.equals(votes.get(participantId), chosen)) {
-            return this;
-        }
-        Map<UUID, Card> updated = new HashMap<>(votes);
-        if (chosen == null) {
-            updated.remove(participantId);
-        } else {
-            updated.put(participantId, chosen);
-        }
-        return new Session(id, participants, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.VOTE, participantId), roundStatus, updated, lateArrivals, departed);
+        return withRound(round.vote(participantId, card), ChangeAction.VOTE, participantId);
     }
 
     /**
@@ -354,11 +337,31 @@ public record Session(String id, List<Participant> participants, long version, S
      */
     public Session reveal(UUID participantId, String intentRoundId) {
         requireParticipant(participantId);
-        if (!roundId.equals(intentRoundId) || roundStatus == RoundStatus.REVEALED) {
+        if (!round.id().equals(intentRoundId)) {
             return this;
         }
-        return new Session(id, participants, version + 1, roundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.REVEAL, participantId), RoundStatus.REVEALED, votes, lateArrivals, departed);
+        return withRound(round.reveal(), ChangeAction.REVEAL, participantId);
+    }
+
+    /**
+     * Remet le tour révélé en caché pour revoter (FR13), quel que soit l'auteur (votant ou observateur), sous le même
+     * {@code roundId}. Le vote de chaque participant observateur à cet instant est retiré ; ceux des votants restent
+     * et redeviennent modifiables. Plus aucune arrivée tardive : tout votant peut voter dans le tour redevenu caché.
+     * Un {@code roundId} périmé ou un tour déjà caché renvoie la même instance ; sinon {@code version + 1} et
+     * {@code lastChange HIDE}.
+     *
+     * @throws IllegalArgumentException si l'auteur n'est pas dans la session
+     */
+    public Session hide(UUID participantId, String intentRoundId) {
+        requireParticipant(participantId);
+        if (!round.id().equals(intentRoundId)) {
+            return this;
+        }
+        Set<UUID> observers = participants.stream()
+                .filter(p -> p.role() == Role.OBSERVER)
+                .map(Participant::id)
+                .collect(Collectors.toUnmodifiableSet());
+        return withRound(round.hide(observers), ChangeAction.HIDE, participantId);
     }
 
     /**
@@ -372,19 +375,57 @@ public record Session(String id, List<Participant> participants, long version, S
     public Session clear(UUID participantId, String intentRoundId, String newRoundId) {
         requireParticipant(participantId);
         Objects.requireNonNull(newRoundId, "newRoundId");
-        if (!roundId.equals(intentRoundId)) {
+        if (!round.id().equals(intentRoundId)) {
             return this;
         }
-        if (newRoundId.equals(roundId)) {
+        if (newRoundId.equals(round.id())) {
             throw new IllegalArgumentException("a new round needs a new roundId");
         }
-        return new Session(id, participants, version + 1, newRoundId, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.CLEAR, participantId), RoundStatus.HIDDEN, Map.of(), Set.of(), departed);
+        return withRound(Round.open(newRoundId), ChangeAction.CLEAR, participantId);
+    }
+
+    /**
+     * Fait passer le participant de votant à observateur, ou l'inverse, sans quitter la table (FR5). Il garde son ordre
+     * d'arrivée : sa place rejoint son nouveau groupe par le tri de l'instantané. Effet sur le tour en cours :
+     * <ul>
+     * <li>devenu observateur pendant un tour caché, il perd son vote ;</li>
+     * <li>devenu observateur pendant un tour révélé, son vote reste affiché et compté jusqu'au {@code clear} ou au
+     * masquage ;</li>
+     * <li>devenu votant pendant un tour révélé, il ne vote qu'à partir du prochain tour, sauf s'il a un vote dans ce
+     * tour (posé quand il était votant).</li>
+     * </ul>
+     * Le rôle qu'il a déjà renvoie la même instance ; sinon {@code version + 1} et {@code lastChange ROLE}.
+     *
+     * @throws IllegalArgumentException si le participant n'est pas dans la session
+     */
+    public Session changeRole(UUID participantId, Role role) {
+        Objects.requireNonNull(role, "role");
+        Participant participant = requireParticipant(participantId);
+        if (participant.role() == role) {
+            return this;
+        }
+        List<Participant> updated = participants.stream()
+                .map(p -> p.id().equals(participantId) ? p.withRole(role) : p)
+                .toList();
+        return new Session(id, updated, version + 1, round.withRole(participantId, role), nextJoinOrder, createdAt,
+                LastChange.of(ChangeAction.ROLE, participantId), departed);
     }
 
     /** Synthèse du tour révélé ; vide pendant un tour caché (FR-14). */
     public Optional<Summary> summary() {
-        return roundStatus == RoundStatus.REVEALED ? Optional.of(Summary.of(votes.values())) : Optional.empty();
+        return round.summary();
+    }
+
+    /**
+     * Remplace le tour : même instance si la règle du tour est sans effet ; sinon {@code version + 1} et
+     * {@code lastChange {action, participantId}}.
+     */
+    private Session withRound(Round next, ChangeAction action, UUID participantId) {
+        if (next == round) {
+            return this;
+        }
+        return new Session(id, participants, version + 1, next, nextJoinOrder, createdAt,
+                LastChange.of(action, participantId), departed);
     }
 
     private Participant requireParticipant(UUID participantId) {

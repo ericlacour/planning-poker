@@ -166,12 +166,14 @@ describe('SessionPageComponent', () => {
     expect(element.querySelector('.hand')).toBeNull();
   });
 
-  it('puts « Copier le lien » in the top bar while it is displayed', () => {
-    const { fixture } = render();
+  it('puts « Copier le lien » and its connection (participant menu) in the top bar while it is displayed', () => {
+    const { fixture, session } = render();
     const topBar = TestBed.inject(TopBarState);
     expect(topBar.shareUrl()).toBe(`${location.origin}/s/${SESSION_ID}`);
+    expect(topBar.session()).toBe(session);
     fixture.destroy();
     expect(topBar.shareUrl()).toBeNull();
+    expect(topBar.session()).toBeNull();
   });
 
   it('shows the amber « Reconnexion… » banner while reconnecting, above the table that stays visible', () => {

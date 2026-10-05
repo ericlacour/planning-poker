@@ -21,7 +21,7 @@ export function blocksActions(state: SessionState): boolean {
 /**
  * Barre d'action (`action-bar`, `button-primary`, `button-secondary`). Tour caché : le compteur « N votes sur M »
  * tiré de `progress` (ou « Aucun votant »), « Effacer les votes » et « Révéler les votes ». Tour révélé : le panneau
- * de résultat à la place du compteur, « Masquer » (inactif : story 3.2) et « Nouveau tour ». Chaque bouton envoie
+ * de résultat à la place du compteur, « Masquer » (revoter sur le même tour) et « Nouveau tour ». Chaque bouton envoie
  * son intention avec le `roundId` courant, sans confirmation. Sur téléphone (< 600 px), le panneau intégré laisse
  * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
  * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
@@ -43,7 +43,9 @@ export function blocksActions(state: SessionState): boolean {
       }
       <div class="action-buttons">
         @if (revealed()) {
-          <button type="button" class="btn btn-secondary" disabled>Masquer</button>
+          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.hide()">
+            Masquer
+          </button>
           <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.clear()">
             Nouveau tour
           </button>

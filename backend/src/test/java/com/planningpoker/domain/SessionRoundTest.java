@@ -2,6 +2,7 @@ package com.planningpoker.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -10,7 +11,10 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
-/** Règles {@code reveal} et {@code clear} (FR-11, FR-12, FR-15, FR-17) et leur reflet dans l'instantané. */
+/**
+ * Règles {@code reveal}, {@code hide} et {@code clear} (FR-11, FR-12, FR13, FR-15, FR-17) et leur reflet dans
+ * l'instantané.
+ */
 class SessionRoundTest {
 
     private static final Instant NOW = Instant.parse("2026-10-02T09:00:00Z");
@@ -111,6 +115,130 @@ class SessionRoundTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> table().clear(UUID.randomUUID(), ROUND, NEXT))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // --- hide ---
+
+    @Test
+    void hidingARevealedRoundKeepsTheRoundIdAndTheVotes() {
+        Session revealed = table().vote(ALICE, ROUND, "3").vote(BOB, ROUND, "8").reveal(ALICE, ROUND);
+        Session hidden = revealed.hide(BOB, ROUND);
+
+        assertThat(hidden.roundStatus()).isEqualTo(RoundStatus.HIDDEN);
+        assertThat(hidden.roundId()).isEqualTo(ROUND);
+        assertThat(hidden.votes()).containsOnly(entry(ALICE, Card.THREE), entry(BOB, Card.EIGHT));
+        assertThat(hidden.version()).isEqualTo(revealed.version() + 1);
+        assertThat(hidden.lastChange()).isEqualTo(LastChange.of(ChangeAction.HIDE, BOB));
+        assertThat(hidden.summary()).isEmpty();
+
+        SessionSnapshot snapshot = SessionSnapshot.forRecipient(hidden, ALICE);
+        assertThat(snapshot.round()).isEqualTo(new SessionSnapshot.Round(ROUND, RoundStatus.HIDDEN));
+        assertThat(snapshot.summary()).isNull();
+        assertThat(snapshot.progress()).isEqualTo(new SessionSnapshot.Progress(2, 3));
+        assertThat(seat(snapshot, ALICE).vote()).isEqualTo("3");
+        assertThat(seat(snapshot, BOB).hasVoted()).isTrue();
+        assertThat(seat(snapshot, BOB).vote()).isNull();
+    }
+
+    @Test
+    void hidingAnAlreadyHiddenRoundChangesNothing() {
+        Session session = table().vote(ALICE, ROUND, "3");
+        assertThat(session.hide(ALICE, ROUND)).isSameAs(session);
+    }
+
+    @Test
+    void aStaleHideChangesNothing() {
+        Session revealed = table().vote(ALICE, ROUND, "3").reveal(ALICE, ROUND);
+        assertThat(revealed.hide(ALICE, "round-0")).isSameAs(revealed);
+
+        Session cleared = revealed.clear(ALICE, ROUND, NEXT).reveal(ALICE, NEXT);
+        assertThat(cleared.hide(BOB, ROUND)).isSameAs(cleared);
+    }
+
+    @Test
+    void twoHidesFromTheSameRoundMakeOneChange() {
+        Session revealed = table().vote(ALICE, ROUND, "3").reveal(ALICE, ROUND);
+        Session first = revealed.hide(ALICE, ROUND);
+        Session second = first.hide(BOB, ROUND);
+
+        assertThat(second).isSameAs(first);
+        assertThat(second.version()).isEqualTo(revealed.version() + 1);
+    }
+
+    @Test
+    void hidingRemovesTheVoteOfAVoterWhoBecameObserverDuringTheReveal() {
+        Session revealed = table().vote(ALICE, ROUND, "5").vote(BOB, ROUND, "3").reveal(ALICE, ROUND)
+                .changeRole(ALICE, Role.OBSERVER);
+        assertThat(revealed.voteOf(ALICE)).contains(Card.FIVE);
+
+        Session hidden = revealed.hide(BOB, ROUND);
+        assertThat(hidden.voteOf(ALICE)).isEmpty();
+        assertThat(hidden.voteOf(BOB)).contains(Card.THREE);
+        SessionSnapshot snapshot = SessionSnapshot.forRecipient(hidden, ALICE);
+        assertThat(seat(snapshot, ALICE).hasVoted()).isFalse();
+        assertThat(seat(snapshot, ALICE).vote()).isNull();
+        assertThat(snapshot.progress()).isEqualTo(new SessionSnapshot.Progress(1, 2));
+    }
+
+    @Test
+    void aVoterMayVoteAgainOnceTheRoundIsHidden() {
+        Session hidden = table().vote(ALICE, ROUND, "3").reveal(ALICE, ROUND).hide(ALICE, ROUND);
+        Session revoted = hidden.vote(ALICE, ROUND, "5");
+        assertThat(revoted.voteOf(ALICE)).contains(Card.FIVE);
+        assertThat(revoted.version()).isEqualTo(hidden.version() + 1);
+    }
+
+    @Test
+    void revealHideRevoteRevealGivesASummaryOfTheNewVotes() {
+        // Première révélation : Alice (5), Bob (3), Chloé (8) ; Alice passe observatrice, son vote reste compté.
+        Session firstReveal = table().vote(ALICE, ROUND, "5").vote(BOB, ROUND, "3").vote(CHLOE, ROUND, "8")
+                .reveal(ALICE, ROUND).changeRole(ALICE, Role.OBSERVER);
+        assertThat(firstReveal.summary()).hasValueSatisfying(
+                summary -> assertThat(summary.average()).isEqualByComparingTo("5.3"));
+
+        // Masquer retire le vote d'Alice ; Bob change sa carte ; on révèle à nouveau.
+        Session revoted = firstReveal.hide(EMMA, ROUND).vote(BOB, ROUND, "13");
+        Session secondReveal = revoted.reveal(CHLOE, ROUND);
+
+        assertThat(secondReveal.roundId()).isEqualTo(ROUND);
+        assertThat(secondReveal.votes()).containsOnly(entry(BOB, Card.THIRTEEN), entry(CHLOE, Card.EIGHT));
+        assertThat(secondReveal.summary()).contains(new Summary(new BigDecimal("10.5"),
+                new Summary.MostVoted(List.of(Card.EIGHT, Card.THIRTEEN), 1), Card.EIGHT, Card.THIRTEEN, false));
+        assertThat(secondReveal.version()).isEqualTo(revoted.version() + 1);
+        assertThat(secondReveal.lastChange()).isEqualTo(LastChange.of(ChangeAction.REVEAL, CHLOE));
+    }
+
+    @Test
+    void anObserverMayHide() {
+        Session revealed = table().vote(ALICE, ROUND, "3").reveal(ALICE, ROUND);
+        Session hidden = revealed.hide(EMMA, ROUND);
+        assertThat(hidden.roundStatus()).isEqualTo(RoundStatus.HIDDEN);
+        assertThat(hidden.lastChange()).isEqualTo(LastChange.of(ChangeAction.HIDE, EMMA));
+    }
+
+    @Test
+    void anUnknownAuthorOfAHideIsAProgrammingError() {
+        Session revealed = table().reveal(ALICE, ROUND);
+        assertThatThrownBy(() -> revealed.hide(UUID.randomUUID(), ROUND))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void lateArrivalsMayVoteOnceTheRoundIsHidden() {
+        // Farid arrive pendant la révélation ; Emma, observatrice, devient votante pendant la révélation.
+        Session revealed = table().vote(ALICE, ROUND, "8").reveal(ALICE, ROUND)
+                .join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW, 30)
+                .changeRole(EMMA, Role.VOTER);
+        assertThat(revealed.lateArrivals()).containsExactlyInAnyOrder(FARID, EMMA);
+
+        Session hidden = revealed.hide(BOB, ROUND);
+        assertThat(hidden.lateArrivals()).isEmpty();
+        SessionSnapshot snapshot = SessionSnapshot.forRecipient(hidden, FARID);
+        assertThat(seat(snapshot, FARID).canVoteThisRound()).isTrue();
+        assertThat(seat(snapshot, EMMA).canVoteThisRound()).isTrue();
+        assertThat(snapshot.progress()).isEqualTo(new SessionSnapshot.Progress(1, 5));
+        assertThat(hidden.vote(FARID, ROUND, "5").voteOf(FARID)).contains(Card.FIVE);
+        assertThat(hidden.vote(EMMA, ROUND, "3").voteOf(EMMA)).contains(Card.THREE);
     }
 
     // --- clear ---

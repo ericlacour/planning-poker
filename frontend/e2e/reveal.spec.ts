@@ -90,6 +90,12 @@ const newRound = (version: number, by: string) => ({
   lastChange: { action: 'CLEAR', byParticipantId: by },
 });
 
+/** Le même tour remis en caché par `by` : même `roundId`, votes gardés, synthèse absente. */
+const hiddenAgain = (version: number, by: string) => ({
+  ...hidden(version),
+  lastChange: { action: 'HIDE', byParticipantId: by },
+});
+
 const button = (page: Page, name: string) => page.locator('.action-bar').getByRole('button', { name, exact: true });
 const live = (page: Page) => page.locator('div.visually-hidden[aria-live="polite"]');
 
@@ -126,7 +132,7 @@ test('révéler, lire le résultat, passer au tour suivant', async ({ page }) =>
   await expect(page.locator('.result-min')).toHaveText(/Min\s*5/);
   await expect(page.locator('.result-max')).toHaveText(/Max\s*8/);
   await expect(page.locator('.consensus-badge')).toHaveCount(0);
-  await expect(button(page, 'Masquer')).toBeDisabled();
+  await expect(button(page, 'Masquer')).toBeEnabled();
   await expect(button(page, 'Nouveau tour')).toBeEnabled();
   await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveAttribute('aria-disabled', 'true');
   await expect(live(page)).toHaveText(
@@ -179,5 +185,52 @@ test('après une révélation faite par un autre, les boutons restent inactifs 1
   await expect(button(page, 'Révéler les votes')).toBeEnabled({ timeout: 3_000 });
   await button(page, 'Révéler les votes').click();
   await expect.poll(() => intents).toEqual([{ type: 'reveal', roundId: NEXT_ROUND }]);
+  await check();
+});
+
+test('révéler, masquer, revoter sur le même tour', async ({ page }) => {
+  const check = await watchPage(page);
+  await openWithToken(page);
+  const intents: unknown[] = [];
+  let version = 8;
+  await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    ws.send(JSON.stringify(hidden(version)));
+    ws.onMessage((message) => {
+      const json = JSON.parse(String(message)) as { type: string; roundId?: string };
+      if (json.type !== 'reveal' && json.type !== 'hide' && json.type !== 'vote') return;
+      intents.push(json);
+      version += 1;
+      if (json.type === 'reveal') ws.send(JSON.stringify(revealed(version, ALICE)));
+      if (json.type === 'hide') ws.send(JSON.stringify(hiddenAgain(version, ALICE)));
+    });
+  });
+  await page.goto(`/s/${SESSION_ID}`);
+
+  await button(page, 'Révéler les votes').click();
+  await expect(page.locator('.result-average .result-value')).toHaveText('6,5');
+  await expect(button(page, 'Masquer')).toHaveClass(/btn-secondary/);
+
+  // Masquer : l'instantané caché remet les dos, le compteur et la main active, sans synthèse.
+  await button(page, 'Masquer').click();
+  const seats = page.locator('.seat');
+  await expect(seats.nth(1).locator('.seat-card-back')).toHaveCount(1);
+  await expect(seats.nth(1).locator('.seat-card-face')).toHaveCount(0);
+  await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
+  await expect(page.locator('.result-panel')).toHaveCount(0);
+  await expect(page.locator('app-result-line')).toHaveCount(0);
+  await expect(button(page, 'Révéler les votes')).toBeEnabled();
+  const hand = page.getByRole('toolbar', { name: 'Ta carte' });
+  await expect(hand).not.toHaveAttribute('aria-disabled', 'true');
+
+  // Revoter sur le même tour.
+  await expect(hand.getByRole('button', { name: 'Carte 5', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await hand.getByRole('button', { name: 'Carte 8', exact: true }).click();
+  await expect
+    .poll(() => intents)
+    .toEqual([
+      { type: 'reveal', roundId: ROUND },
+      { type: 'hide', roundId: ROUND },
+      { type: 'vote', roundId: ROUND, card: '8' },
+    ]);
   await check();
 });

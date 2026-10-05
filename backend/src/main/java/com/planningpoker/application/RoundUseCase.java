@@ -2,36 +2,45 @@ package com.planningpoker.application;
 
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.UnaryOperator;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.planningpoker.domain.IdGenerator;
 import com.planningpoker.domain.Session;
 
 /**
- * Intentions {@code reveal} (FR-11, FR-12) et {@code clear} (FR-15) : sous le verrou de la session, charger →
- * règle → {@code save} → {@code publish} seulement si la {@code version} a changé (AD-3). Une intention périmée ou
- * déjà satisfaite ne fait rien (FR-17), sans réponse.
+ * Intentions {@code reveal} (FR-11, FR-12), {@code hide} (FR13) et {@code clear} (FR-15) : sous le verrou de la
+ * session, charger → règle → {@code save} → {@code publish} seulement si la {@code version} a changé (AD-3). Une
+ * intention périmée ou déjà satisfaite ne fait rien (FR-17), sans réponse ; un masquage effectif laisse une ligne de
+ * journal.
  */
 public class RoundUseCase {
 
-    private final SessionStore store;
-    private final SessionLocks locks;
+    private static final Logger LOG = LoggerFactory.getLogger(RoundUseCase.class);
+
+    private final SessionWriter writer;
     private final IdGenerator ids;
-    private final SessionBroadcaster broadcaster;
 
     public RoundUseCase(SessionStore store, SessionLocks locks, IdGenerator ids, SessionBroadcaster broadcaster) {
-        this.store = Objects.requireNonNull(store, "store");
-        this.locks = Objects.requireNonNull(locks, "locks");
+        this.writer = new SessionWriter(Objects.requireNonNull(store, "store"),
+                Objects.requireNonNull(locks, "locks"), Objects.requireNonNull(broadcaster, "broadcaster"));
         this.ids = Objects.requireNonNull(ids, "ids");
-        this.broadcaster = Objects.requireNonNull(broadcaster, "broadcaster");
     }
 
     public void reveal(String sessionId, UUID participantId, String roundId) {
-        apply(sessionId, participantId, session -> session.reveal(participantId, roundId));
+        writer.apply(sessionId, participantId, session -> session.reveal(participantId, roundId));
+    }
+
+    public void hide(String sessionId, UUID participantId, String roundId) {
+        if (writer.apply(sessionId, participantId, session -> session.hide(participantId, roundId))) {
+            // Ni pseudo, ni identifiant de session (le lien) dans les journaux.
+            LOG.info("Participant {} hid the round", participantId);
+        }
     }
 
     public void clear(String sessionId, UUID participantId, String roundId) {
-        apply(sessionId, participantId, session -> session.clear(participantId, roundId, newRoundId(session)));
+        writer.apply(sessionId, participantId, session -> session.clear(participantId, roundId, newRoundId(session)));
     }
 
     private String newRoundId(Session session) {
@@ -40,20 +49,5 @@ public class RoundUseCase {
             candidate = ids.newRoundId();
         }
         return candidate;
-    }
-
-    private void apply(String sessionId, UUID participantId, UnaryOperator<Session> rule) {
-        locks.withLock(sessionId, () -> {
-            Session session = store.find(sessionId).orElse(null);
-            if (session == null || session.participant(participantId).isEmpty()) {
-                return null;
-            }
-            Session changed = rule.apply(session);
-            if (changed.version() != session.version()) {
-                store.save(changed);
-                broadcaster.publish(changed);
-            }
-            return null;
-        });
     }
 }

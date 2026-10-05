@@ -3,11 +3,14 @@ import { DestroyRef, Injectable, InjectionToken, Signal, inject, signal } from '
 
 import {
   Card,
+  changeRoleMessage,
   clearMessage,
   heartbeatMessage,
   helloMessage,
+  hideMessage,
   parseServerMessage,
   revealMessage,
+  Role,
   SessionState,
   voteMessage,
 } from '../api/contract';
@@ -144,9 +147,22 @@ export class SessionService {
     this.sendForRound(revealMessage);
   }
 
+  /** Intention `hide` pour le tour de l'instantané courant (« Masquer ») : le remettre en caché pour revoter. */
+  hide(): void {
+    this.sendForRound(hideMessage);
+  }
+
   /** Intention `clear` pour le tour de l'instantané courant (« Nouveau tour », « Effacer les votes »). */
   clear(): void {
     this.sendForRound(clearMessage);
+  }
+
+  /**
+   * Intention `changeRole` : passer votant ou observateur (« Je vote », « J'observe », « Je veux voter »). Aucune
+   * mise à jour optimiste ; hors connexion rétablie (ou avant le premier instantané), rien n'est envoyé.
+   */
+  changeRole(role: Role): void {
+    this.sendWhenOpen(changeRoleMessage(role));
   }
 
   /** Ferme la connexion et arrête toute reconnexion, sans rien changer à l'état affiché. */
@@ -161,9 +177,17 @@ export class SessionService {
   /** Envoie une intention liée au `roundId` courant ; seulement sur une connexion rétablie. */
   private sendForRound(message: (roundId: string) => object): void {
     const state = this.stateSignal();
+    if (state) this.sendWhenOpen(message(state.round.roundId));
+  }
+
+  /**
+   * Envoie une intention seulement sur une connexion rétablie (`open` ne vient qu'avec un instantané reçu sur ce
+   * socket) ; sinon rien n'est envoyé.
+   */
+  private sendWhenOpen(message: object): void {
     const socket = this.socket;
-    if (!state || !socket || socket.readyState !== OPEN || this.connectionSignal() !== 'open') return;
-    socket.send(JSON.stringify(message(state.round.roundId)));
+    if (!socket || socket.readyState !== OPEN || this.connectionSignal() !== 'open') return;
+    socket.send(JSON.stringify(message));
   }
 
   /** Une tentative : relit le jeton, ouvre un socket et rejoue `hello` à son ouverture. */

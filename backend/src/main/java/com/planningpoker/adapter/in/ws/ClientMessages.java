@@ -1,6 +1,10 @@
 package com.planningpoker.adapter.in.ws;
 
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.planningpoker.domain.Role;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -15,7 +19,9 @@ final class ClientMessages {
     static final int TOKEN_MAX_LENGTH = 64;
     static final int ROUND_ID_MAX_LENGTH = 64;
     static final int CARD_MAX_LENGTH = 16;
-    private static final Set<String> ROLES = Set.of("VOTER", "OBSERVER");
+    /** Rôles acceptés par {@code changeRole} : ceux du domaine, pour que la validation suive l'énumération. */
+    private static final Set<String> ROLES = Arrays.stream(Role.values()).map(Role::name)
+            .collect(Collectors.toUnmodifiableSet());
 
     private ClientMessages() {
     }
@@ -48,8 +54,12 @@ final class ClientMessages {
     record ClearMessage(String type, String roundId) implements ClientMessage {
     }
 
-    /** {@code hide} ou {@code changeRole} conforme à son schéma, encore ignoré (stories 3.x). */
-    record Intent(String type) implements ClientMessage {
+    /** {@code change-role.json} */
+    record ChangeRoleMessage(String type, Role role) implements ClientMessage {
+    }
+
+    /** {@code hide.json} */
+    record HideMessage(String type, String roundId) implements ClientMessage {
     }
 
     /** JSON invalide, {@code type} inconnu ou message hors schéma. */
@@ -86,8 +96,10 @@ final class ClientMessages {
             case "vote" -> new VoteMessage(type, node.get("roundId").asString(),
                     node.get("card").isNull() ? null : node.get("card").asString());
             case "reveal" -> new RevealMessage(type, node.get("roundId").asString());
+            case "hide" -> new HideMessage(type, node.get("roundId").asString());
             case "clear" -> new ClearMessage(type, node.get("roundId").asString());
-            default -> new Intent(type);
+            case "changeRole" -> new ChangeRoleMessage(type, Role.valueOf(node.get("role").asString()));
+            default -> new Invalid();
         };
     }
 

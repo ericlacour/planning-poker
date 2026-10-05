@@ -69,6 +69,14 @@ describe('result formatting', () => {
     // Un vote, une présence, un tour révélé qui reste révélé : rien.
     expect(announcementFor(hiddenRound as SessionState, { ...(hiddenRound as SessionState), version: 8 }, 'fr')).toBeNull();
     expect(announcementFor(revealedTie as SessionState, revealedObserver as SessionState, 'fr')).toBeNull();
+    // Masquer (même tour, revenu caché) : rien, la table suffit.
+    expect(
+      announcementFor(
+        revealedTie as SessionState,
+        { ...hidden, version: revealedTie.version + 1, lastChange: { action: 'HIDE', byParticipantId: revealedTie.participants[1].participantId } },
+        'fr',
+      ),
+    ).toBeNull();
   });
 });
 

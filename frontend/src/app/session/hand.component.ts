@@ -5,7 +5,8 @@ import { CardFaceComponent, cardName } from './cards';
 import { SessionService } from './session.service';
 
 /**
- * Main « Ta carte » (`poker-card`, `poker-card-selected`) pour un votant, ou « Tu observes » pour un observateur.
+ * Main « Ta carte » (`poker-card`, `poker-card-selected`) pour un votant, ou « Tu observes » et le lien « Je veux
+ * voter » (`changeRole VOTER`) pour un observateur.
  * Barre d'outils de 10 boutons bascule à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
@@ -49,6 +50,14 @@ import { SessionService } from './session.service';
       } @else {
         <div class="hand hand-observer">
           <p class="hand-hint">Tu observes</p>
+          <button
+            type="button"
+            class="link-button"
+            [attr.aria-disabled]="connected() ? null : 'true'"
+            (click)="becomeVoter()"
+          >
+            Je veux voter
+          </button>
         </div>
       }
     }
@@ -82,6 +91,8 @@ export class HandComponent {
       this.state()?.round.status === 'HIDDEN' &&
       this.me()?.canVoteThisRound === true,
   );
+  /** Connexion rétablie : hors connexion, « Je veux voter » est grisé (`aria-disabled`) et sans effet. */
+  protected readonly connected = computed(() => this.session.connection() === 'open');
   /** Seul arrêt de tabulation : la dernière carte visitée, sinon la carte choisie, sinon la première. */
   protected readonly activeIndex = computed(() => {
     const focused = this.focused();
@@ -93,6 +104,10 @@ export class HandComponent {
   protected choose(card: Card): void {
     if (!this.open()) return;
     this.session.vote(card === this.myVote() ? null : card);
+  }
+
+  protected becomeVoter(): void {
+    if (this.connected()) this.session.changeRole('VOTER');
   }
 
   protected onKeydown(event: KeyboardEvent): void {

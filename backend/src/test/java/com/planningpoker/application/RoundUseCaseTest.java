@@ -69,6 +69,46 @@ class RoundUseCaseTest {
     }
 
     @Test
+    void aHideIsSavedAndPublishedToEveryone() {
+        String round = session().roundId();
+        votes.vote(alice.sessionId(), alice.participantId(), round, "8");
+        rounds.reveal(alice.sessionId(), alice.participantId(), round);
+        broadcaster.published.clear();
+        long before = session().version();
+
+        rounds.hide(alice.sessionId(), emma.participantId(), round);
+
+        assertThat(session().version()).isEqualTo(before + 1);
+        assertThat(session().roundStatus()).isEqualTo(RoundStatus.HIDDEN);
+        assertThat(session().roundId()).isEqualTo(round);
+        assertThat(session().votes()).hasSize(1);
+        assertThat(session().lastChange().action()).isEqualTo(ChangeAction.HIDE);
+        assertThat(broadcaster.published).singleElement().satisfies(p -> {
+            assertThat(p.session()).isSameAs(session());
+            assertThat(p.onlyTo()).isNull();
+        });
+    }
+
+    @Test
+    void anAlreadySatisfiedOrStaleHidePublishesNothing() {
+        String round = session().roundId();
+        broadcaster.published.clear();
+        rounds.hide(alice.sessionId(), alice.participantId(), round);
+        assertThat(broadcaster.published).isEmpty();
+
+        rounds.reveal(alice.sessionId(), alice.participantId(), round);
+        rounds.hide(alice.sessionId(), alice.participantId(), round);
+        broadcaster.published.clear();
+        Session before = session();
+
+        rounds.hide(alice.sessionId(), emma.participantId(), round);
+        rounds.hide(alice.sessionId(), alice.participantId(), "stale");
+
+        assertThat(session()).isSameAs(before);
+        assertThat(broadcaster.published).isEmpty();
+    }
+
+    @Test
     void aClearStartsANewRoundWithAGeneratedIdAndPublishesOnce() {
         String round = session().roundId();
         votes.vote(alice.sessionId(), alice.participantId(), round, "8");
@@ -93,6 +133,8 @@ class RoundUseCaseTest {
         rounds.clear("k3Jx9QvT2mLpZ8wR4nYb7A", alice.participantId(), "r");
         rounds.reveal(alice.sessionId(), UUID.randomUUID(), before.roundId());
         rounds.clear(alice.sessionId(), UUID.randomUUID(), before.roundId());
+        rounds.hide("k3Jx9QvT2mLpZ8wR4nYb7A", alice.participantId(), "r");
+        rounds.hide(alice.sessionId(), UUID.randomUUID(), before.roundId());
         assertThat(session()).isSameAs(before);
         assertThat(broadcaster.published).isEmpty();
     }

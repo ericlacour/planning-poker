@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-05-2026 12:03
+last_updated: 10-06-2026 14:00
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -58,7 +58,7 @@ development_status:
   epic-3: in-progress
   3-1-changer-de-rôle-en-pleine-séance: done
   3-2-masquer-pour-revoter: done
-  3-3-choisir-son-thème: backlog
+  3-3-choisir-son-thème: review
   3-4-une-révélation-qui-se-voit: backlog
   3-5-un-outil-accessible-à-tous: backlog
   3-6-les-trois-parcours-garantis-de-bout-en-bout: backlog
@@ -156,7 +156,9 @@ action_items:
     action: "Au début de l'epic 2, extraire le squelette commun des cas d'usage et
       enregistrer le délai du hello avant de le programmer (D1, F3)"
     owner: "agent dev"
-    status: open
+    status: done
+    resolution: "Fait dans la story 3.1 (tâches D1 et F2 de la spec 3.1) : squelette
+      commun des cas d'usage extrait, délai du hello enregistré avant d'être programmé."
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-2-retro-item-14-inscrire-comme-tâches-de-la-spec-3-1-ext"
     epic: 2
@@ -164,7 +166,10 @@ action_items:
       cas d usage, corriger le délai du hello, décider du découpage de Session.java
       avant hide et changeRole (D1, F2, T1, L1)"
     owner: "agent dev"
-    status: open
+    status: done
+    resolution: "Fait dans la story 3.1 (tâches D1, F2 et T1 de la spec 3.1) : squelette
+      commun, délai du hello, état du tour sorti dans domain/Round (option B, décision
+      d'Eric du 2026-10-05)."
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-05.md"
   - id: "epic-2-retro-item-15-en-rédigeant-chaque-spec-reprendre-les-e"
     epic: 2

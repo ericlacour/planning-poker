@@ -290,4 +290,24 @@ describe('ParticipantTableComponent', () => {
     expect(flipping.every((f) => f?.classList.contains('seat-card-flip'))).toBe(true);
     expect(flipping.map((f) => f?.style.getPropertyValue('--flip-delay'))).toEqual(['0ms', '67ms', '133ms', '200ms']);
   });
+
+  it("hidden round: an empty card is an image named « n'a pas voté »; revealed: hidden, the visible note is enough", () => {
+    const hidden = render(hiddenRound as SessionState);
+    const chloe = [...hidden.querySelectorAll<HTMLElement>('.seat')].find(
+      (s) => s.querySelector('.seat-pseudo')?.textContent === 'Chloé',
+    );
+    const empty = chloe?.querySelector('.seat-card-empty');
+    expect(empty?.getAttribute('role')).toBe('img');
+    expect(empty?.getAttribute('aria-label')).toBe("n'a pas voté");
+    expect(empty?.hasAttribute('aria-hidden')).toBe(false);
+
+    const revealed = render({
+      ...(revealedTie as SessionState),
+      participants: revealedTie.participants.map((p, i) => (i === 1 ? { ...p, hasVoted: false, vote: null } : p)),
+    } as SessionState);
+    const silent = revealed.querySelector('.seat-card-empty');
+    expect(silent?.getAttribute('aria-hidden')).toBe('true');
+    expect(silent?.hasAttribute('role')).toBe(false);
+    expect(silent?.closest('.seat')?.querySelector('.seat-note')?.textContent).toBe("n'a pas voté");
+  });
 });

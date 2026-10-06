@@ -10,12 +10,14 @@ import { SessionService } from './session.service';
  * Barre d'outils de 10 boutons bascule à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
- * Tour révélé, ou arrivée pendant la révélation : main grisée, sans effet.
+ * Tour révélé, ou arrivée pendant la révélation : main grisée, sans effet. L'hôte est un repère (`region`
+ * « Ta main »), la main étant hors de `<main>`.
  */
 @Component({
   selector: 'app-hand',
   imports: [CardFaceComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: { role: 'region', 'aria-label': 'Ta main' },
   template: `
     @if (me(); as me) {
       @if (me.role === 'VOTER') {

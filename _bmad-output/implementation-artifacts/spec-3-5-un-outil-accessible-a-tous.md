@@ -3,7 +3,7 @@ title: 'Story 3.5 : un outil accessible à tous'
 type: 'feature'
 created: '2026-10-06'
 baseline_commit: '4c4833289a1e93cc7e569d5c19efdf479eed11bb'
-status: 'in-progress'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -66,14 +66,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/package.json` -- ajouter `@axe-core/playwright` en devDependency, version exacte (4.13.0) -- l'audit est demandé par le critère d'acceptation.
-- [ ] `frontend/src/app/session/action-bar.component.ts` + `src/styles/base.css` -- boutons stables à libellé variable, `aria-disabled` au lieu de `disabled`, garde de clic dans le composant -- conserver le focus.
-- [ ] `frontend/src/app/session/result.ts` -- `arrivalAnnouncements(previous, next)` pure -- arrivées.
-- [ ] `frontend/src/app/session/session-page.component.ts` -- arrivées dans `announcements`, région de compteur limitée à une annonce par 5 s (minuteur nettoyé à la destruction), `role="region"` pour la main -- annonces.
-- [ ] `frontend/src/app/session/participant-table.component.ts` -- carte vide nommée en tour caché -- place muette.
-- [ ] Specs unitaires de ces composants -- matrice I/O (faux minuteurs pour les 5 s).
-- [ ] `frontend/e2e/accessibility.spec.ts` -- audit axe des écrans dans les deux thèmes ; séance au clavier seul (rejoindre, voter, révéler, effacer, changer de rôle, focus visible) ; focus conservé après une révélation par un autre ; contenu des régions live ; 640 × 400 et 360 px.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- solder les trois reports 3.5 (présence, « n'a pas voté », main dans un repère).
+- [x] `frontend/package.json` -- ajouter `@axe-core/playwright` en devDependency, version exacte (4.13.0) -- l'audit est demandé par le critère d'acceptation.
+- [x] `frontend/src/app/session/action-bar.component.ts` + `src/styles/base.css` -- boutons stables à libellé variable, `aria-disabled` au lieu de `disabled`, garde de clic dans le composant -- conserver le focus.
+- [x] `frontend/src/app/session/result.ts` -- `arrivalAnnouncements(previous, next)` pure -- arrivées.
+- [x] `frontend/src/app/session/session-page.component.ts` -- arrivées dans `announcements`, région de compteur limitée à une annonce par 5 s (minuteur nettoyé à la destruction), `role="region"` pour la main -- annonces.
+- [x] `frontend/src/app/session/participant-table.component.ts` -- carte vide nommée en tour caché -- place muette.
+- [x] Specs unitaires de ces composants -- matrice I/O (faux minuteurs pour les 5 s).
+- [x] `frontend/e2e/accessibility.spec.ts` -- audit axe des écrans dans les deux thèmes ; séance au clavier seul (rejoindre, voter, révéler, effacer, changer de rôle, focus visible) ; focus conservé après une révélation par un autre ; contenu des régions live ; 640 × 400 et 360 px.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- solder les trois reports 3.5 (présence, « n'a pas voté », main dans un repère).
 
 **Acceptance Criteria:**
 - Given tous les écrans dans les deux thèmes, when l'audit axe s'exécute, then il ne relève aucune violation WCAG 2.2 AA.
@@ -82,9 +82,34 @@ context:
 
 ## Implementation Notes
 
+- Le repère de la main est posé sur l'hôte de `HandComponent` (`host`), comme le dit la Code Map, plutôt que dans le gabarit de la page.
+- Coupure : un `effect` sur `connection()` marque toute période hors `open` ; le premier instantané qui suit n'annonce aucune arrivée (`SessionService` inchangé).
+- L'audit à 360 px a révélé un débordement de 20 px sur l'accueil et Rejoindre (`app-entry-form`, élément flexible, gardait la largeur de 400 px du panneau) : `max-width: 100%` sur l'hôte dans `entry-form.css`.
+- Le champ pseudo garde son contour de 1 px doublé d'une bordure `primary` (story 1.4) ; l'e2e clavier vérifie un contour plein en `primary`, d'au moins 1 px.
+- Prettier : `.prettierrc` à 100 colonnes, code existant à 120 (cf. 3.3). Seul le nouveau `e2e/accessibility.spec.ts` est formaté ; les fichiers existants modifiés suivent le style voisin et échouaient déjà à `prettier --check`.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Couche | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | edge-case | Boutons stables : une touche Entrée ou Espace maintenue sur « Révéler les votes » (ou « Masquer ») enchaîne sur le bouton renommé et envoie `clear` | medium | Avant, le remplacement des boutons faisait perdre le focus ; la répétition de touche déclenche un clic natif à chaque `keydown` | patch : répétitions ignorées (`event.repeat`) |
+| 2 | blind, edge-case | Le compteur différé peut répéter le dernier texte annoncé (vote puis retrait en moins de 5 s) | low | Courant en séance ; correction directe | patch : échéance ignorée si le texte est identique |
+| 3 | blind, edge-case | `innerText() ?? type` ne retombe jamais sur `type` dans `expectReflowAndTargets` | low | `innerText()` renvoie `''`, jamais `null` | patch : `||` |
+| 4 | blind | Statut de la story différent entre la spec (`in-review`) et le suivi de sprint (`in-progress`) | false | Le workflow synchronise le suivi de sprint à la présentation (étape 5) | rejeté |
+| 5 | blind | Report de présence soldé sans changement de code | false | Décision gelée de la spec : la mention « déconnecté » (2.1) suffit, testée dans `participant-table.component.spec.ts` | rejeté |
+| 6 | blind | Repère « Ta main » vide avant le premier instantané, ou contenant « Tu observes » ; deux noms (« Ta main », « Ta carte ») | low | Repère et nom imposés par la spec ; axe ne relève rien ; aucune gêne courante | rejeté |
+| 7 | blind | `afterCut` dépend de l'ordre de deux `effect` | false | Une coupure dure au moins le délai de reconnexion (réseau, asynchrone) : l'effet de connexion s'exécute avant le retour ; `session.service.ts` pose l'état puis `open` dans le même gestionnaire | rejeté |
+| 8 | blind | Une arrivée déclenche aussi l'annonce du compteur (`expected` change) | low | Conforme à la spec (« quand `progress` change ») ; une annonce de plus par arrivée, limitée à une toutes les 5 s | rejeté |
+| 9 | blind, edge-case | E2E des régions live sur l'horloge réelle (`waitForTimeout`, `> 3 000 ms`) | maybe-false | Instable seulement si plus de 2 s séparent l'annonce « 0 vote sur 3 » de `sentAt` ; 4 passages sans échec en local | rejeté (low si vrai) |
+| 10 | blind | `package-lock.json` change le nom du paquet et ajoute `engines` | low | Simple resynchronisation par `npm install` avec le `package.json` existant ; sans effet | rejeté |
+| 11 | blind | Bouton inactif focalisé sans explication pour le lecteur d'écran | low | `aria-disabled` annonce « indisponible » ; une explication ajouterait des liaisons | rejeté |
+| 12 | blind | Cas combinés non testés (révélation et arrivée dans un même instantané ; `lastCounterAt` d'un tour à l'autre) | low | Le tableau `texts` est construit dans l'ordre ; garder l'intervalle de 5 s d'un tour à l'autre respecte « au plus toutes les 5 s » | rejeté |
+| 13 | blind | 44 × 44 px est de niveau AAA, au-delà de l'AA | false | Exigé par NFR5 et par le critère d'acceptation de l'epic | rejeté |
+| 14 | edge-case | Premier instantané après une coupure : le compteur est annoncé si `progress` a changé | low | Information juste et limitée à une annonce ; la spec ne coupe que les arrivées | rejeté |
+| 15 | edge-case | `boundingBox()` nul : cible ignorée en silence | false | Seules les cibles visibles sont mesurées ; un élément visible a toujours une boîte | rejeté |
+| 16 | verification-gap | Aucun écart de vérification | — | — | — |
 
 ## Verification
 

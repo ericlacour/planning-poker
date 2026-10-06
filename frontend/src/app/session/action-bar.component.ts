@@ -26,6 +26,8 @@ export function blocksActions(state: SessionState): boolean {
  * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
  * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
  * trop tôt ne tombe pas sur le nouveau bouton. Connexion perdue : boutons inactifs jusqu'à son rétablissement.
+ * Les deux boutons restent les mêmes éléments d'un état du tour à l'autre (seul le libellé change) et un bouton
+ * inactif porte `aria-disabled` plutôt que `disabled` : le focus reste posé quand un autre révèle ou efface.
  */
 @Component({
   selector: 'app-action-bar',
@@ -41,22 +43,24 @@ export function blocksActions(state: SessionState): boolean {
       } @else {
         <span class="vote-counter">{{ counter() }}</span>
       }
-      <div class="action-buttons">
-        @if (revealed()) {
-          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.hide()">
-            Masquer
-          </button>
-          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.clear()">
-            Nouveau tour
-          </button>
-        } @else {
-          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.clear()">
-            Effacer les votes
-          </button>
-          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.reveal()">
-            Révéler les votes
-          </button>
-        }
+      <!-- Deux boutons rendus une fois pour toutes : seul le libellé change, pour que le focus reste posé. -->
+      <div class="action-buttons" (keydown)="onKeydown($event)">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [attr.aria-disabled]="inactive() ? 'true' : null"
+          (click)="secondary()"
+        >
+          {{ revealed() ? 'Masquer' : 'Effacer les votes' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [attr.aria-disabled]="inactive() ? 'true' : null"
+          (click)="primary()"
+        >
+          {{ revealed() ? 'Nouveau tour' : 'Révéler les votes' }}
+        </button>
       </div>
     </div>
   `,
@@ -72,6 +76,28 @@ export class ActionBarComponent {
   protected readonly guarded = signal(false);
   /** Boutons inactifs : garde de 1 s, ou connexion pas (encore) rétablie. */
   protected readonly inactive = computed(() => this.guarded() || this.session.connection() !== 'open');
+
+  /**
+   * Le focus restant sur le bouton relibellé, une touche Entrée ou Espace maintenue (répétition) déclencherait
+   * l'action suivante (« Révéler » puis « Nouveau tour ») : les répétitions sont ignorées.
+   */
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.repeat && (event.key === 'Enter' || event.key === ' ')) event.preventDefault();
+  }
+
+  /** Bouton secondaire : « Masquer » (tour révélé) ou « Effacer les votes » (tour caché) ; sans effet si inactif. */
+  protected secondary(): void {
+    if (this.inactive()) return;
+    if (this.revealed()) this.session.hide();
+    else this.session.clear();
+  }
+
+  /** Bouton principal : « Nouveau tour » (tour révélé) ou « Révéler les votes » (tour caché) ; sans effet si inactif. */
+  protected primary(): void {
+    if (this.inactive()) return;
+    if (this.revealed()) this.session.clear();
+    else this.session.reveal();
+  }
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private lastSeen: SessionState | null = null;

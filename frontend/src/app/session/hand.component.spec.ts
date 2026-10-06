@@ -202,4 +202,11 @@ describe('HandComponent', () => {
     cards()[3].click();
     expect(session.vote).toHaveBeenCalledTimes(1);
   });
+
+  it('is a landmark: region « Ta main »', () => {
+    const { fixture } = render(hiddenRound as SessionState);
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.getAttribute('role')).toBe('region');
+    expect(host.getAttribute('aria-label')).toBe('Ta main');
+  });
 });

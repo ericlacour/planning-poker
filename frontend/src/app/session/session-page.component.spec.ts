@@ -1,14 +1,14 @@
 import { LOCALE_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { SessionState } from '../api/contract';
 import { TopBarState } from '../top-bar/top-bar-state';
-import { REVEAL_FLIP_MS, SessionPageComponent, sessionLink } from './session-page.component';
+import { COUNTER_ANNOUNCE_MS, REVEAL_FLIP_MS, SessionPageComponent, sessionLink } from './session-page.component';
 import { ConnectionStatus, SessionService } from './session.service';
 
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
@@ -197,6 +197,144 @@ describe('SessionPageComponent', () => {
     fixture.detectChanges();
     expect(element.querySelector('.status-banner')).toBeNull();
     expect(element.querySelector('main')?.firstElementChild).toBe(region);
+  });
+
+  describe('arrivals', () => {
+    const base = hiddenRound as SessionState;
+    const [alice, bob] = base.participants;
+    const sofia = { ...bob, participantId: 'aa0b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06', pseudo: 'Sofia', hasVoted: false };
+    const before = { ...base, participants: [alice, bob] };
+    const after = { ...base, version: 8, participants: [alice, bob, sofia], lastChange: { action: 'JOIN', byParticipantId: sofia.participantId } };
+    const live = (element: HTMLElement) => element.querySelector('[aria-live="polite"]')?.textContent?.trim();
+
+    it('announces « Sofia a rejoint la session » in the polite region', () => {
+      const { element, show } = render();
+      show(before);
+      expect(live(element)).toBe('');
+      show(after);
+      expect(live(element)).toBe('Sofia a rejoint la session');
+    });
+
+    it('announces nobody on the first snapshot, nor on the first snapshot after a cut', () => {
+      const { element, session, show, fixture } = render();
+      show(after);
+      expect(live(element)).toBe('');
+      const third = { ...sofia, participantId: 'bb0b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06', pseudo: 'Yann' };
+      session.connection.set('lost');
+      fixture.detectChanges();
+      session.connection.set('open');
+      show({ ...after, version: 9, participants: [alice, bob, sofia, third] });
+      expect(live(element)).toBe('');
+      // Ensuite, les arrivées sont de nouveau annoncées.
+      const fourth = { ...third, participantId: 'cc0b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06', pseudo: 'Zoé' };
+      show({ ...after, version: 10, participants: [alice, bob, sofia, third, fourth] });
+      expect(live(element)).toBe('Zoé a rejoint la session');
+    });
+  });
+
+  describe('vote counter announcements', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    const base = hiddenRound as SessionState;
+    const withVotes = (voted: number, version: number): SessionState => ({
+      ...base,
+      version,
+      progress: { voted, expected: 4 },
+    });
+    const counter = (element: HTMLElement) => element.querySelector('.counter-region')?.textContent?.trim();
+
+    function start() {
+      const page = render();
+      page.show(withVotes(0, 10));
+      const tick = (ms: number) => {
+        vi.advanceTimersByTime(ms);
+        page.fixture.detectChanges();
+      };
+      return { ...page, tick };
+    }
+
+    it('is a separate polite region, silent on the first snapshot', () => {
+      const { element } = start();
+      expect(element.querySelector('.counter-region')?.getAttribute('aria-live')).toBe('polite');
+      expect(counter(element)).toBe('');
+    });
+
+    it('3 votes in 2 s: one announcement at once, then a single one at +5 s with the last count', () => {
+      const { element, show, tick } = start();
+      show(withVotes(1, 11));
+      expect(counter(element)).toBe('1 vote sur 4');
+      tick(1_000);
+      show(withVotes(2, 12));
+      expect(counter(element)).toBe('1 vote sur 4');
+      tick(1_000);
+      show(withVotes(3, 13));
+      expect(counter(element)).toBe('1 vote sur 4');
+      tick(COUNTER_ANNOUNCE_MS - 2_000 - 1);
+      expect(counter(element)).toBe('1 vote sur 4');
+      const firstNode = element.querySelector('.counter-region')?.firstElementChild;
+      tick(1);
+      expect(counter(element)).toBe('3 votes sur 4');
+      expect(element.querySelector('.counter-region')?.firstElementChild).not.toBe(firstNode);
+      expect(element.querySelectorAll('.counter-region p')).toHaveLength(1);
+    });
+
+    it('a vote then its withdrawal within 5 s: no second announcement of the same count', () => {
+      const { element, show, tick } = start();
+      show(withVotes(1, 11));
+      const firstNode = element.querySelector('.counter-region')?.firstElementChild;
+      show(withVotes(2, 12));
+      show(withVotes(1, 13));
+      tick(COUNTER_ANNOUNCE_MS);
+      expect(counter(element)).toBe('1 vote sur 4');
+      expect(element.querySelector('.counter-region')?.firstElementChild).toBe(firstNode);
+    });
+
+    it('a change 5 s or more after the last announcement is announced at once', () => {
+      const { element, show, tick } = start();
+      show(withVotes(1, 11));
+      tick(COUNTER_ANNOUNCE_MS);
+      show(withVotes(2, 12));
+      expect(counter(element)).toBe('2 votes sur 4');
+    });
+
+    it('revealed before the deadline: no counter announcement, the reveal is announced', () => {
+      const { element, show, tick } = start();
+      show(withVotes(1, 11));
+      show(withVotes(2, 12));
+      show({ ...withVotes(2, 13), round: { ...base.round, status: 'REVEALED' }, summary: revealedTie.summary } as SessionState);
+      tick(COUNTER_ANNOUNCE_MS);
+      expect(counter(element)).toBe('1 vote sur 4');
+      expect(element.querySelector('[aria-live="polite"]')?.textContent).toContain('Votes révélés.');
+    });
+
+    it('cleared before the deadline: no counter announcement', () => {
+      const { element, show, tick } = start();
+      show(withVotes(1, 11));
+      show(withVotes(2, 12));
+      show({ ...withVotes(0, 13), round: { roundId: 'Zz9pX9tA', status: 'HIDDEN' } });
+      tick(COUNTER_ANNOUNCE_MS);
+      expect(counter(element)).toBe('1 vote sur 4');
+    });
+
+    it('nothing when progress does not change, nor during a revealed round', () => {
+      const { element, show } = start();
+      show({ ...withVotes(0, 11), lastChange: { action: 'PRESENCE', byParticipantId: null } });
+      expect(counter(element)).toBe('');
+      const revealed = { ...withVotes(2, 12), round: { ...base.round, status: 'REVEALED' }, summary: revealedTie.summary } as SessionState;
+      show(revealed);
+      show({ ...revealed, version: 13, progress: { voted: 1, expected: 4 } });
+      expect(counter(element)).toBe('');
+    });
+
+    it('stops the pending announcement when the page goes away', () => {
+      const { fixture, show } = start();
+      show(withVotes(1, 11));
+      show(withVotes(2, 12));
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+      fixture.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 
   describe('reveal flip', () => {

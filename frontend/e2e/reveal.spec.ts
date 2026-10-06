@@ -97,7 +97,7 @@ const hiddenAgain = (version: number, by: string) => ({
 });
 
 const button = (page: Page, name: string) => page.locator('.action-bar').getByRole('button', { name, exact: true });
-const live = (page: Page) => page.locator('div.visually-hidden[aria-live="polite"]');
+const live = (page: Page) => page.locator('div.visually-hidden[aria-live="polite"]:not(.counter-region)');
 
 test('révéler, lire le résultat, passer au tour suivant', async ({ page }) => {
   const check = await watchPage(page);

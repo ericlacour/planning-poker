@@ -47,7 +47,9 @@ describe('SessionPageComponent', () => {
   }
 
   it('builds the link as origin + /s/ + sessionId', () => {
-    expect(sessionLink('https://pp.example', SESSION_ID)).toBe(`https://pp.example/s/${SESSION_ID}`);
+    expect(sessionLink('https://pp.example', SESSION_ID)).toBe(
+      `https://pp.example/s/${SESSION_ID}`,
+    );
   });
 
   it('connects to the session of the link, and disconnects when it goes away', () => {
@@ -70,7 +72,9 @@ describe('SessionPageComponent', () => {
     const link = `${location.origin}/s/${SESSION_ID}`;
     expect(element.querySelectorAll('.seat')).toHaveLength(1);
     expect(element.querySelector('.seat-me')?.textContent).toBe('(toi)');
-    expect(element.querySelector('.invite-text')?.textContent).toBe('Partage le lien pour inviter ton équipe');
+    expect(element.querySelector('.invite-text')?.textContent).toBe(
+      'Partage le lien pour inviter ton équipe',
+    );
     expect(element.querySelector('.invite-url')?.textContent).toBe(link);
     const button = element.querySelector('.invite button');
     expect(button?.textContent?.trim()).toBe('Copier le lien');
@@ -83,7 +87,9 @@ describe('SessionPageComponent', () => {
     expect(element.querySelectorAll('.seat')).toHaveLength(5);
     expect(element.querySelector('.invite')).toBeNull();
     expect(element.querySelector('.action-bar .vote-counter')?.textContent).toBe('3 votes sur 4');
-    expect(element.querySelector('.action-bar .btn-primary')?.textContent?.trim()).toBe('Révéler les votes');
+    expect(element.querySelector('.action-bar .btn-primary')?.textContent?.trim()).toBe(
+      'Révéler les votes',
+    );
   });
 
   it('marks the page « session-revealed » while the round is revealed (phone drawer folds away)', () => {
@@ -107,10 +113,23 @@ describe('SessionPageComponent', () => {
     expect(element.lastElementChild?.classList).toContain('hand-dock');
   });
 
+  it('puts my hand in a landmark named « Ta main »', () => {
+    const { element, show } = render();
+    show(hiddenRound);
+    const landmark = element.querySelector('[role="region"][aria-label="Ta main"]');
+    expect(landmark?.classList).toContain('hand-dock');
+    expect(landmark?.querySelector('[role="toolbar"][aria-label="Ta carte"]')).not.toBeNull();
+  });
+
   it('announces a reveal then a new round in a polite live region, whoever made them', () => {
     const { element, show } = render();
     const live = () => element.querySelector('[aria-live="polite"]');
-    const hidden = { ...revealedTie, round: { ...revealedTie.round, status: 'HIDDEN' }, summary: null, version: 8 };
+    const hidden = {
+      ...revealedTie,
+      round: { ...revealedTie.round, status: 'HIDDEN' },
+      summary: null,
+      version: 8,
+    };
     show(hidden);
     expect(live()).not.toBeNull();
     expect(live()?.textContent?.trim()).toBe('');
@@ -136,7 +155,11 @@ describe('SessionPageComponent', () => {
   it('announces nothing for the first snapshot nor for a vote', () => {
     const { element, show } = render();
     show(revealedTie);
-    show({ ...revealedTie, version: 10, lastChange: { action: 'PRESENCE', byParticipantId: null } });
+    show({
+      ...revealedTie,
+      version: 10,
+      lastChange: { action: 'PRESENCE', byParticipantId: null },
+    });
     expect(element.querySelector('[aria-live="polite"]')?.textContent?.trim()).toBe('');
   });
 
@@ -153,7 +176,15 @@ describe('SessionPageComponent', () => {
     show({
       ...hiddenRound,
       selfParticipantId: observer.participantId,
-      participants: [observer, { ...observer, participantId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', pseudo: 'Farid', joinOrder: 6 }],
+      participants: [
+        observer,
+        {
+          ...observer,
+          participantId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+          pseudo: 'Farid',
+          joinOrder: 6,
+        },
+      ],
       progress: { voted: 0, expected: 0 },
     });
     expect(element.querySelector('.vote-counter')?.textContent).toBe('Aucun votant');
@@ -199,6 +230,148 @@ describe('SessionPageComponent', () => {
     expect(element.querySelector('main')?.firstElementChild).toBe(region);
   });
 
+  describe('arrivals and counter announcements', () => {
+    afterEach(() => vi.useRealTimers());
+
+    const live = (element: HTMLElement) =>
+      element.querySelector('[aria-live="polite"]')?.textContent?.trim();
+    const regions = (element: HTMLElement) => element.querySelectorAll('[aria-live]');
+    const sofia = {
+      ...hiddenRound.participants[2],
+      participantId: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+      pseudo: 'Sofia',
+      joinOrder: 6,
+      hasVoted: false,
+    };
+    const [alice, bob, chloe, david, emma] = hiddenRound.participants;
+    /** Tour caché vu par Alice, `voted` votes sur 4. */
+    const hiddenWith = (version: number, voted: number, extra: object = {}) => ({
+      ...hiddenRound,
+      version,
+      progress: { voted, expected: 4 },
+      lastChange: { action: 'VOTE', byParticipantId: bob.participantId },
+      ...extra,
+    });
+
+    it('announces an arrival, joined with the counter it changes, but never on the first snapshot', () => {
+      vi.useFakeTimers();
+      const { element, show } = render();
+      show(hiddenRound);
+      expect(live(element)).toBe('');
+      show({
+        ...hiddenRound,
+        version: 8,
+        participants: [alice, bob, chloe, david, sofia, emma],
+        progress: { voted: 3, expected: 5 },
+        lastChange: { action: 'JOIN', byParticipantId: sofia.participantId },
+      });
+      expect(live(element)).toBe('Sofia a rejoint la session. 3 votes sur 5');
+      expect(regions(element)).toHaveLength(1);
+    });
+
+    it('announces the counter at most every 5 s, with the value at the end of the window', () => {
+      vi.useFakeTimers();
+      const { fixture, element, show } = render();
+      show(hiddenWith(7, 0));
+      show(hiddenWith(8, 1));
+      expect(live(element)).toBe('1 vote sur 4');
+      vi.advanceTimersByTime(1_000);
+      show(hiddenWith(9, 2));
+      vi.advanceTimersByTime(1_000);
+      show(hiddenWith(10, 3));
+      expect(live(element)).toBe('1 vote sur 4');
+      vi.advanceTimersByTime(2_999);
+      fixture.detectChanges();
+      expect(live(element)).toBe('1 vote sur 4');
+      vi.advanceTimersByTime(1);
+      fixture.detectChanges();
+      expect(live(element)).toBe('3 votes sur 4');
+    });
+
+    it('a reveal cancels the deferred counter announcement', () => {
+      vi.useFakeTimers();
+      const { fixture, element, show } = render();
+      const hidden = {
+        ...revealedTie,
+        round: { ...revealedTie.round, status: 'HIDDEN' },
+        summary: null,
+      };
+      show({ ...hidden, version: 6, progress: { voted: 2, expected: 4 } });
+      show({ ...hidden, version: 7, progress: { voted: 3, expected: 4 } });
+      vi.advanceTimersByTime(1_000);
+      show({ ...hidden, version: 8, progress: { voted: 4, expected: 4 } });
+      show(revealedTie);
+      vi.advanceTimersByTime(10_000);
+      fixture.detectChanges();
+      expect(live(element)).toMatch(/^Votes révélés\./);
+    });
+
+    it('no counter announcement for a new round, nor for the snapshot of a reveal', () => {
+      vi.useFakeTimers();
+      const { element, show } = render();
+      show(hiddenWith(7, 3));
+      show(hiddenWith(8, 0, { round: { roundId: 'Vn4pX9tA', status: 'HIDDEN' } }));
+      expect(live(element)).toBe('Nouveau tour');
+    });
+
+    it('« 1 vote sur 4 » in two consecutive rounds within 5 s is announced both times', () => {
+      vi.useFakeTimers();
+      const { element, show } = render();
+      const next = { round: { roundId: 'Vn4pX9tA', status: 'HIDDEN' } };
+      show(hiddenWith(7, 0));
+      show(hiddenWith(8, 1));
+      expect(live(element)).toBe('1 vote sur 4');
+      vi.advanceTimersByTime(1_000);
+      show(hiddenWith(9, 0, next));
+      expect(live(element)).toBe('Nouveau tour');
+      vi.advanceTimersByTime(1_000);
+      show(hiddenWith(10, 1, next));
+      expect(live(element)).toBe('1 vote sur 4');
+    });
+
+    it('stops the deferred counter announcement when the page goes away', () => {
+      vi.useFakeTimers();
+      const { fixture, show } = render();
+      show(hiddenWith(7, 0));
+      show(hiddenWith(8, 1));
+      show(hiddenWith(9, 2));
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+      fixture.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('keeps the focus on « Révéler les votes » when someone else reveals: same button, now « Nouveau tour »', () => {
+      vi.useFakeTimers();
+      const { fixture, element, show } = render();
+      document.body.appendChild(element);
+      const hidden = {
+        ...revealedTie,
+        round: { ...revealedTie.round, status: 'HIDDEN' },
+        summary: null,
+        version: 8,
+      };
+      show(hidden);
+      const primary = element.querySelector<HTMLButtonElement>('.action-bar .btn-primary')!;
+      expect(primary.textContent?.trim()).toBe('Révéler les votes');
+      primary.focus();
+      show({
+        ...revealedTie,
+        lastChange: {
+          action: 'REVEAL',
+          byParticipantId: hiddenRound.participants[1].participantId,
+        },
+      });
+      expect(document.activeElement).toBe(primary);
+      expect(primary.textContent?.trim()).toBe('Nouveau tour');
+      expect(primary.getAttribute('aria-disabled')).toBe('true');
+      vi.advanceTimersByTime(1_000);
+      fixture.detectChanges();
+      expect(primary.hasAttribute('aria-disabled')).toBe(false);
+      expect(document.activeElement).toBe(primary);
+      element.remove();
+    });
+  });
+
   describe('reveal flip', () => {
     afterEach(() => {
       vi.useRealTimers();
@@ -207,9 +380,20 @@ describe('SessionPageComponent', () => {
 
     /** `prefers-reduced-motion` simulé. */
     const motion = (reduced: boolean) =>
-      vi.stubGlobal('matchMedia', (query: string) => ({ matches: reduced && query === '(prefers-reduced-motion: reduce)' }));
-    const hidden = { ...revealedTie, round: { ...revealedTie.round, status: 'HIDDEN' }, summary: null, version: 8 };
-    const hiddenAgain = { ...hidden, version: 10, lastChange: { action: 'HIDE', byParticipantId: revealedTie.selfParticipantId } };
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: reduced && query === '(prefers-reduced-motion: reduce)',
+      }));
+    const hidden = {
+      ...revealedTie,
+      round: { ...revealedTie.round, status: 'HIDDEN' },
+      summary: null,
+      version: 8,
+    };
+    const hiddenAgain = {
+      ...hidden,
+      version: 10,
+      lastChange: { action: 'HIDE', byParticipantId: revealedTie.selfParticipantId },
+    };
     const flipping = (element: HTMLElement) => element.classList.contains('session-flipping');
 
     function revealAfterHidden(reduced = false) {
@@ -226,7 +410,9 @@ describe('SessionPageComponent', () => {
       expect(flipping(element)).toBe(true);
       expect(element.querySelectorAll('.seat-card-flip')).toHaveLength(4);
       expect(element.querySelector('.seat-card-flip')?.getAttribute('aria-label')).toBe('Carte 8');
-      expect(element.querySelector('[aria-live="polite"]')?.textContent).toContain('Votes révélés.');
+      expect(element.querySelector('[aria-live="polite"]')?.textContent).toContain(
+        'Votes révélés.',
+      );
       expect(element.querySelector('.result-panel')).not.toBeNull();
       vi.advanceTimersByTime(REVEAL_FLIP_MS - 1);
       fixture.detectChanges();
@@ -248,7 +434,11 @@ describe('SessionPageComponent', () => {
       const { element, show } = render();
       show(revealedTie);
       expect(flipping(element)).toBe(false);
-      show({ ...revealedTie, version: 10, lastChange: { action: 'PRESENCE', byParticipantId: null } });
+      show({
+        ...revealedTie,
+        version: 10,
+        lastChange: { action: 'PRESENCE', byParticipantId: null },
+      });
       expect(flipping(element)).toBe(false);
     });
 

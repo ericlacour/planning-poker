@@ -7,6 +7,11 @@
   padding: var(--spacing-6) var(--spacing-margin-mobile);
 }
 
+/* Le panneau rétrécit sous 400 px (téléphone de 360 px) au lieu de déborder de l'écran. */
+.entry-screen > app-entry-form {
+  min-width: 0;
+}
+
 .entry-form {
   width: var(--spacing-panel-narrow);
   max-width: 100%;

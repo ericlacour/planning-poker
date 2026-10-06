@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 
 import { ChangeAction, SessionState } from '../api/contract';
 import { voteCounter } from './cards';
@@ -14,7 +23,8 @@ const GUARDED_ACTIONS: readonly ChangeAction[] = ['REVEAL', 'HIDE', 'CLEAR'];
 /** Vrai si cet instantané doit bloquer les boutons : révéler, masquer ou effacer fait par un autre que moi. */
 export function blocksActions(state: SessionState): boolean {
   return (
-    GUARDED_ACTIONS.includes(state.lastChange.action) && state.lastChange.byParticipantId !== state.selfParticipantId
+    GUARDED_ACTIONS.includes(state.lastChange.action) &&
+    state.lastChange.byParticipantId !== state.selfParticipantId
   );
 }
 
@@ -26,6 +36,9 @@ export function blocksActions(state: SessionState): boolean {
  * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
  * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
  * trop tôt ne tombe pas sur le nouveau bouton. Connexion perdue : boutons inactifs jusqu'à son rétablissement.
+ * Les deux boutons (secondaire, principal) restent les mêmes éléments d'un tour à l'autre et ne sont jamais
+ * `disabled` : inactifs, ils portent `aria-disabled="true"` et leur clic est sans effet, si bien qu'un bouton qui a
+ * le focus le garde quand un autre révèle ou efface.
  */
 @Component({
   selector: 'app-action-bar',
@@ -42,21 +55,23 @@ export function blocksActions(state: SessionState): boolean {
         <span class="vote-counter">{{ counter() }}</span>
       }
       <div class="action-buttons">
-        @if (revealed()) {
-          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.hide()">
-            Masquer
-          </button>
-          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.clear()">
-            Nouveau tour
-          </button>
-        } @else {
-          <button type="button" class="btn btn-secondary" [disabled]="inactive()" (click)="session.clear()">
-            Effacer les votes
-          </button>
-          <button type="button" class="btn btn-primary" [disabled]="inactive()" (click)="session.reveal()">
-            Révéler les votes
-          </button>
-        }
+        <!-- Deux boutons stables : seuls libellé et action changent, pour que le focus survive à une révélation. -->
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [attr.aria-disabled]="inactive() ? 'true' : null"
+          (click)="secondary()"
+        >
+          {{ revealed() ? 'Masquer' : 'Effacer les votes' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          [attr.aria-disabled]="inactive() ? 'true' : null"
+          (click)="primary()"
+        >
+          {{ revealed() ? 'Nouveau tour' : 'Révéler les votes' }}
+        </button>
       </div>
     </div>
   `,
@@ -71,7 +86,23 @@ export class ActionBarComponent {
   /** Boutons inactifs pendant 1 s après un changement d'état fait par un autre. */
   protected readonly guarded = signal(false);
   /** Boutons inactifs : garde de 1 s, ou connexion pas (encore) rétablie. */
-  protected readonly inactive = computed(() => this.guarded() || this.session.connection() !== 'open');
+  protected readonly inactive = computed(
+    () => this.guarded() || this.session.connection() !== 'open',
+  );
+
+  /** Bouton secondaire : « Masquer » en tour révélé, « Effacer les votes » en tour caché. */
+  protected secondary(): void {
+    if (this.inactive()) return;
+    if (this.revealed()) this.session.hide();
+    else this.session.clear();
+  }
+
+  /** Bouton principal : « Nouveau tour » en tour révélé, « Révéler les votes » en tour caché. */
+  protected primary(): void {
+    if (this.inactive()) return;
+    if (this.revealed()) this.session.clear();
+    else this.session.reveal();
+  }
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private lastSeen: SessionState | null = null;

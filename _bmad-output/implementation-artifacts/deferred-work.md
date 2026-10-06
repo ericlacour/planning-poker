@@ -25,12 +25,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-voir-la-table-en-direct.md`
   summary: Rendre la présence de chaque place perceptible aux lecteurs d'écran (texte masqué ou aria-label à côté de la pastille `presence-dot`).
   evidence: La pastille est en `aria-hidden="true"` sans alternative textuelle ; les libellés de présence relèvent de la story 2.1 et l'accessibilité de la story 3.5.
+  status: soldé par la story 3.5 — la présence est portée par la mention visible « déconnecté » (story 2.1), lue par les lecteurs d'écran ; la pastille reste décorative et aucun libellé « en ligne » n'est ajouté.
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-voter-a-l-aveugle.md`
   summary: Donner un libellé « n'a pas voté » (ou un état sur l'étiquette de la place) aux places sans vote, pour les lecteurs d'écran.
   evidence: La carte vide est en `aria-hidden` alors que le dos annonce « a voté » ; relève de la story 3.5.
+  status: soldé par la story 3.5 — en tour caché, la place d'un votant sans vote porte le texte masqué « n'a pas voté » (`participant-table.component.ts`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-voter-a-l-aveugle.md`
   summary: Placer la main « Ta carte » dans un repère (dans `main` ou une section nommée).
   evidence: `<app-hand>` est rendu après `</main>` dans `session-page.component.ts` ; à traiter avec la disposition téléphone (1.8) ou l'accessibilité (3.5).
+  status: soldé par la story 3.5 — `<app-hand>` est lui-même le repère `role="region"` nommé « Ta main » (`session-page.component.ts`).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-voir-qui-est-vraiment-la.md`
   summary: Couvrir par un test qu'un message binaire après la poignée de main compte comme activité (variante binaire de `LivenessTest.anyMessageCountsAsActivity`).
@@ -56,3 +59,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-une-revelation-qui-se-voit.md`
   summary: Dans `e2e/reveal-motion.spec.ts`, `observeReveal` pourrait démarrer après l'affichage du tour révélé, ce qui fausserait les mesures de durée.
   evidence: Non vérifié (maybe-false, medium si vrai) : à trancher en observant des échecs en CI, ou en installant l'observateur par un `evaluate` attendu avant l'envoi de l'instantané.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-5-un-outil-accessible-a-tous.md`
+  summary: Vérifier que `e2e/keyboard.spec.ts` (déplacement du focus par Tab) passe sur WebKit.
+  evidence: Non vérifié (maybe-false, medium si vrai) : seul Chromium tourne dans le bac à sable ; WebKit peut sauter les boutons au Tab. À trancher par `PLAYWRIGHT_WEBKIT=1 npx playwright test e2e/keyboard.spec.ts` ou la première CI.

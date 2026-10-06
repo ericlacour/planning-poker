@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, LOCALE_ID, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  LOCALE_ID,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { CopyLinkComponent } from '../share/copy-link';
@@ -6,6 +15,8 @@ import { TopBarState } from '../top-bar/top-bar-state';
 import { ActionBarComponent } from './action-bar.component';
 import { HandComponent } from './hand.component';
 import { ParticipantTableComponent } from './participant-table.component';
+import { arrivalAnnouncement, CounterAnnouncer, joinSentences } from './announcements';
+import { voteCounter } from './cards';
 import { announcementFor } from './result';
 import { SessionService } from './session.service';
 
@@ -26,8 +37,11 @@ export function sessionLink(origin: string, sessionId: string): string {
  * Écran Session : ouvre la connexion de la session ({@link SessionService}) et montre la table des participants
  * en direct. Seul dans la session : « Partage le lien pour inviter ton équipe » et « Copier le lien » en bouton
  * principal, sans barre d'action. Avec d'autres : la barre d'action (compteur ou résultat, et ses boutons). En bas,
- * la main « Ta carte » (votant) ou « Tu observes » (observateur). Une région `aria-live="polite"` annonce chaque
- * révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau tour »), quel qu'en soit l'auteur.
+ * la main « Ta carte » (votant) ou « Tu observes » (observateur), dans le repère « Ta main ». Une seule région
+ * `aria-live="polite"` annonce chaque révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau
+ * tour »), quel qu'en soit l'auteur, les arrivées (« Sofia a rejoint la session ») et, pendant un tour caché, le
+ * compteur « N votes sur M » au plus toutes les 5 s ({@link CounterAnnouncer}), jamais vote par vote. Aucune
+ * annonce ne déplace le focus.
  * Coupure de plus de 2 s : bandeau ambre « Reconnexion… » sous la barre du haut, la table restant visible.
  * Mise en page (`styles/session-layout.css`) : l'écran tient dans la hauteur de la fenêtre, seule la zone de la table
  * (`session-scroll`) défile ; sur téléphone, la main devient un tiroir qui se replie quand le tour est révélé.
@@ -71,7 +85,7 @@ export function sessionLink(origin: string, sessionId: string): string {
         }
       </div>
     </main>
-    <app-hand class="hand-dock" [state]="session.state()" />
+    <app-hand class="hand-dock" role="region" aria-label="Ta main" [state]="session.state()" />
   `,
 })
 export class SessionPageComponent {
@@ -87,12 +101,16 @@ export class SessionPageComponent {
    * Dernière annonce, rendue dans un nouvel élément à chaque fois (clé `id`) pour qu'une même phrase, comme deux
    * « Nouveau tour » de suite, soit annoncée de nouveau.
    */
-  protected readonly announcements = signal<readonly { readonly id: number; readonly text: string }[]>([]);
+  protected readonly announcements = signal<
+    readonly { readonly id: number; readonly text: string }[]
+  >([]);
 
   constructor() {
     const locale = inject(LOCALE_ID);
     let previous = this.session.state();
     let nextId = 0;
+    const announce = (text: string) => this.announcements.set([{ id: nextId++, text }]);
+    const counter = new CounterAnnouncer(announce);
     let flipTimer: ReturnType<typeof setTimeout> | undefined;
     const stopFlip = () => {
       clearTimeout(flipTimer);
@@ -102,17 +120,37 @@ export class SessionPageComponent {
     effect(() => {
       const state = this.session.state();
       if (state === previous) return;
-      const text = state ? announcementFor(previous, state, locale) : null;
+      const round = state ? announcementFor(previous, state, locale) : null;
+      // Révélation, nouveau tour ou fin de l'état : l'annonce différée du compteur n'a plus lieu d'être.
+      if (round || !state) counter.reset();
+      const arrivals = state ? arrivalAnnouncement(previous, state) : null;
+      const progress =
+        state &&
+        previous &&
+        !round &&
+        state.round.status === 'HIDDEN' &&
+        previous.round.status === 'HIDDEN' &&
+        state.round.roundId === previous.round.roundId &&
+        voteCounter(state.progress) !== voteCounter(previous.progress)
+          ? counter.update(voteCounter(state.progress))
+          : null;
+      const text = joinSentences(
+        [round, arrivals, progress].filter((t): t is string => t !== null),
+      );
       const status = state?.round.status;
       if (status === 'HIDDEN') {
         stopFlip();
-      } else if (status === 'REVEALED' && previous?.round.status === 'HIDDEN' && !prefersReducedMotion()) {
+      } else if (
+        status === 'REVEALED' &&
+        previous?.round.status === 'HIDDEN' &&
+        !prefersReducedMotion()
+      ) {
         stopFlip();
         this.flipping.set(true);
         flipTimer = setTimeout(stopFlip, REVEAL_FLIP_MS);
       }
       previous = state;
-      if (text) this.announcements.set([{ id: nextId++, text }]);
+      if (text) announce(text);
     });
 
     const topBar = inject(TopBarState);
@@ -121,6 +159,7 @@ export class SessionPageComponent {
     this.session.connect(this.sessionId);
     inject(DestroyRef).onDestroy(() => {
       stopFlip();
+      counter.cancel();
       topBar.shareUrl.set(null);
       topBar.session.set(null);
       this.session.disconnect();

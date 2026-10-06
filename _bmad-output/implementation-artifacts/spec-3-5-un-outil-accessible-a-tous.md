@@ -2,7 +2,7 @@
 title: 'Story 3.5 : un outil accessible à tous'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '6de6969f522eb5364c02ca261222769848a0f5cb'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -62,14 +62,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/src/app/session/announcements.ts` (+ `.spec.ts`) -- `arrivalAnnouncement(previous, state)` et `CounterAnnouncer` (fenêtre 5 s, minuteurs injectés) -- règles d'annonce testées à part.
-- [ ] `frontend/src/app/session/session-page.component.ts` (+ spec) -- annonces combinées ; main dans le repère « Ta main » -- point unique des annonces.
-- [ ] `frontend/src/app/session/action-bar.component.ts` (+ spec), `frontend/src/styles/base.css` -- deux boutons stables, `aria-disabled`, clic ignoré -- focus conservé.
-- [ ] `frontend/src/app/session/participant-table.component.ts` (+ spec) -- « n'a pas voté » masqué en tour caché.
-- [ ] `frontend/package.json` -- `@axe-core/playwright` en `devDependencies`.
-- [ ] `frontend/e2e/a11y.spec.ts` -- audit axe des écrans × thèmes ; 360 × 740 et 640 × 400 sans défilement horizontal, cibles ≥ 44 px.
-- [ ] `frontend/e2e/keyboard.spec.ts` -- séance au clavier seul (rejoindre, voter, révéler, lire, effacer, changer de rôle), focus visible en `primary` ; focus conservé après la révélation d'un autre ; annonces d'arrivée et de compteur.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- marquer soldés les trois reports 1.5, 1.6 (×2).
+- [x] `frontend/src/app/session/announcements.ts` (+ `.spec.ts`) -- `arrivalAnnouncement(previous, state)` et `CounterAnnouncer` (fenêtre 5 s, minuteurs injectés) -- règles d'annonce testées à part.
+- [x] `frontend/src/app/session/session-page.component.ts` (+ spec) -- annonces combinées ; main dans le repère « Ta main » -- point unique des annonces.
+- [x] `frontend/src/app/session/action-bar.component.ts` (+ spec), `frontend/src/styles/base.css` -- deux boutons stables, `aria-disabled`, clic ignoré -- focus conservé.
+- [x] `frontend/src/app/session/participant-table.component.ts` (+ spec) -- « n'a pas voté » masqué en tour caché.
+- [x] `frontend/package.json` -- `@axe-core/playwright` en `devDependencies`.
+- [x] `frontend/e2e/a11y.spec.ts` -- audit axe des écrans × thèmes ; 360 × 740 et 640 × 400 sans défilement horizontal, cibles ≥ 44 px.
+- [x] `frontend/e2e/keyboard.spec.ts` -- séance au clavier seul (rejoindre, voter, révéler, lire, effacer, changer de rôle), focus visible en `primary` ; focus conservé après la révélation d'un autre ; annonces d'arrivée et de compteur.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- marquer soldés les trois reports 1.5, 1.6 (×2).
 
 **Acceptance Criteria:**
 - Given chaque écran dans chaque thème, when axe s'exécute, then aucune violation WCAG 2.2 AA.
@@ -78,9 +78,35 @@ context:
 
 ## Implementation Notes
 
+- Repère « Ta main » : l'hôte `<app-hand class="hand-dock">` porte lui-même `role="region"` et `aria-label="Ta main"`, ce qui laisse `session-layout.css` intact (`.hand-dock > .hand`).
+- Annonces : `round`, arrivées puis compteur, joints par `joinSentences` (« Sofia a rejoint la session. 3 votes sur 5 » quand une arrivée change le compteur). Une annonce différée dont la valeur est revenue à celle déjà annoncée est abandonnée.
+- Écart trouvé par le contrôle 360 px : le formulaire d'entrée (400 px) débordait de 20 px à l'accueil et sur Rejoindre ; `.entry-screen > app-entry-form { min-width: 0 }` le laisse rétrécir.
+- Focus visible : 2 px `primary` partout, sauf le champ de saisie (1 px collé à sa bordure `primary`, style existant) ; `keyboard.spec.ts` vérifie un contour plein en `primary` d'au moins 1 px.
+- Les commandes Angular exigent Node ≥ 22.22.3 / 24.15 ; le build e2e doit recevoir `API_BASE_URL=http://127.0.0.1:4310` comme en CI.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Couche | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | blind, edge-case | `cancel()` garde `lastAt`/`lastText` : au tour suivant, dans les 5 s, le premier compteur est différé puis abandonné comme « déjà annoncé » | medium | `flush` compare à `lastText` du tour précédent ; le nouveau tour n'appelle que `cancel()` | patch : `reset()` au changement de tour, test |
+| 2 | edge-case | `Date.now()` peut reculer et allonger la fenêtre | low | Réglage d'horloge rare, correction directe | patch : `performance.now()` |
+| 3 | blind | Test de garde de `keyboard.spec.ts` dépendant du vrai délai de 1 s | medium | Cinq assertions avant Entrée ; un runner lent dépasse 1 s et `clear` part | patch : `page.clock` |
+| 4 | blind, edge-case | Débordement horizontal mesuré sur le document seul | medium | `.session-scroll` défile ; un débordement interne passerait | patch : conteneurs défilants contrôlés |
+| 5 | blind | Axe jamais lancé en largeur téléphone | medium | Tiroir et `.result-line` jamais audités | patch : axe à 360 × 740 |
+| 6 | verification-gap | Absence de `.seat-unvoted` non vérifiée en tour révélé et pour `canVoteThisRound: false` | medium | Gap pré-vérifié : retirer une condition ne casse aucun test | patch : assertions ajoutées |
+| 7 | verification-gap | Aspect atténué des boutons `aria-disabled` non vérifié | medium | Gap pré-vérifié : aucun test ne lit l'opacité | patch : `toHaveCSS('opacity', '0.4')` |
+| 8 | verification-gap | Tests au Tab jamais exécutés sur WebKit | maybe-false | WebKit peut sauter les boutons au Tab ; à trancher par un passage `PLAYWRIGHT_WEBKIT=1` ou la première CI | différé (medium si vrai) |
+| 9 | edge-case | Seuil 43,5 px au lieu de 44 | low | Tolérance d'arrondi sous-pixel ; aucun actionnable mesuré entre 43,5 et 44 | rejeté |
+| 10 | blind | `package-lock.json` renomme le paquet et ajoute `engines` | false | `package.json` portait déjà ce nom et ce champ ; le verrou était en retard | rejeté |
+| 11 | blind | Reformatage Prettier mêlé au diff | false | `.prettierrc` fixe `printWidth: 100` ; le code existant ne le respectait pas | rejeté |
+| 12 | blind | Statut de sprint `in-progress` et heure qui recule | low | Le passage en revue est synchronisé à la présentation | rejeté |
+| 13 | blind | Écrans « seul », observateur, « Reconnexion… » non audités | low | Mêmes composants et jetons que les écrans audités ; la liste gelée est couverte | rejeté |
+| 14 | blind | Repère « Ta main » nommé ainsi pour un observateur, vide avant le premier instantané | low | Région sans contenu non signalée par axe ; nom acceptable | rejeté |
+| 15 | blind | Échap, Maj+Tab, copier le lien, thème au clavier non testés en e2e | low | Menu et copie déjà couverts par leurs specs ; aucune nouvelle surface | rejeté |
+| 16 | blind | Décision « aucun libellé en ligne » non consignée | false | Elle est dans le bloc gelé (Always, Reports) | rejeté |
+| 17 | blind | Survol encore actif sur les boutons inactifs | false | Aucune règle `:hover`/`:active` sur `.btn` dans `src/styles` | rejeté |
 
 ## Verification
 

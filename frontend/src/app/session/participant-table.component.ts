@@ -23,7 +23,12 @@ export interface Seat {
 }
 
 /** Mention d'une place, d'après l'instantané seul (`connected`, `canVoteThisRound`, `vote`, statut du tour). */
-function noteOf(participant: ParticipantState, isSelf: boolean, hidden: boolean, card: Seat['card']): string | null {
+function noteOf(
+  participant: ParticipantState,
+  isSelf: boolean,
+  hidden: boolean,
+  card: Seat['card'],
+): string | null {
   const observesWithCard = participant.role !== 'VOTER' && card !== 'empty';
   if (!participant.connected) return observesWithCard ? 'déconnecté · observe' : 'déconnecté';
   if (participant.role !== 'VOTER') return observesWithCard ? 'observe' : null;
@@ -78,8 +83,9 @@ export const PENDING_SEATS = 3;
 
 /**
  * Table des participants (`seat-card-empty`, `seat-card-back`, `seat-card-face`, `presence-dot`) : pseudo,
- * pastille de présence (grise, pseudo atténué et mention « déconnecté » pour un participant déconnecté), et pour
- * un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
+ * pastille de présence (grise, pseudo atténué et mention « déconnecté » pour un participant déconnecté : seule la
+ * mention visible porte la présence, sans libellé « en ligne »), et pour un votant une carte vide en pointillés
+ * (« n'a pas voté » en texte masqué pendant un tour caché), un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
  * par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
  * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
  * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe »
@@ -95,14 +101,25 @@ export const PENDING_SEATS = 3;
     @if (seats(); as seats) {
       <ul class="seats" aria-label="Participants">
         @for (seat of seats; track seat.participant.participantId) {
-          <li class="seat" [class.seat-self]="seat.isSelf" [class.offline]="!seat.participant.connected">
+          <li
+            class="seat"
+            [class.seat-self]="seat.isSelf"
+            [class.offline]="!seat.participant.connected"
+          >
             @if (showsCard(seat)) {
               @switch (seat.card) {
                 @case ('empty') {
                   <span class="seat-card seat-card-empty" aria-hidden="true"></span>
+                  @if (unvotedHidden(seat)) {
+                    <span class="seat-unvoted visually-hidden">n'a pas voté</span>
+                  }
                 }
                 @case ('back') {
-                  <span class="seat-card seat-card-back card-back" role="img" aria-label="a voté"></span>
+                  <span
+                    class="seat-card seat-card-back card-back"
+                    role="img"
+                    aria-label="a voté"
+                  ></span>
                 }
                 @default {
                   <span
@@ -166,6 +183,19 @@ export class ParticipantTableComponent {
    */
   protected showsCard(seat: Seat): boolean {
     return seat.participant.role === 'VOTER' || seat.card !== 'empty';
+  }
+
+  /**
+   * Votant sans vote pendant un tour caché : la carte vide est décorative, un texte masqué « n'a pas voté » la dit aux
+   * lecteurs d'écran (en tour révélé, la mention visible s'en charge ; « votera au prochain tour » se suffit).
+   */
+  protected unvotedHidden(seat: Seat): boolean {
+    return (
+      this.state()?.round.status === 'HIDDEN' &&
+      seat.participant.role === 'VOTER' &&
+      seat.participant.canVoteThisRound &&
+      seat.card === 'empty'
+    );
   }
 
   protected faceOf(seat: Seat): Card {

@@ -1,6 +1,6 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 15:00). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 19:30). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
@@ -12,8 +12,8 @@
 | Epic 3 — Des séances souples et soignées 🟡 | `█████████████░░░░░░░` 4/6 (67 %) |
 | **Actions de rétro** | `████████████████░░░░` 12/15 (80 %) |
 
-**En cours :** aucune story  
-**Prochaine story :** 3.5 Un outil accessible à tous  
+**En cours :** 3.5 Un outil accessible à tous (🟡 in-progress)  
+**Prochaine story :** 3.6 Les trois parcours garantis de bout en bout  
 **Actions ouvertes :** 3
 
 ## Stories
@@ -56,7 +56,7 @@
 | 3.2 | Masquer pour revoter | ✅ done | [spec](spec-3-2-masquer-pour-revoter.md) |
 | 3.3 | Choisir son thème | ✅ done | [spec](spec-3-3-choisir-son-theme.md) |
 | 3.4 | Une révélation qui se voit | ✅ done | [spec](spec-3-4-une-revelation-qui-se-voit.md) |
-| 3.5 | Un outil accessible à tous | ⚪ backlog | — |
+| 3.5 | Un outil accessible à tous | 🟡 in-progress | [spec](spec-3-5-un-outil-accessible-a-tous.md) |
 | 3.6 | Les trois parcours garantis de bout en bout | ⚪ backlog | — |
 
 ## Actions de rétrospective

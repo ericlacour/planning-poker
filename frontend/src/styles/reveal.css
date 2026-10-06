@@ -1,0 +1,74 @@
+/*
+ * Révélation (DESIGN › un seul moment de mise en scène) : pendant `session-flipping` (400 ms, posé par l'écran
+ * Session), les faces des autres places (`seat-card-flip`) se retournent l'une après l'autre, chacune en 200 ms
+ * après son délai `--flip-delay` : le dos (`::after`) se referme, puis la face s'ouvre. La synthèse reste cachée
+ * jusqu'à la fin. L'état est déjà à jour : seul l'affichage est animé.
+ */
+@property --seat-card-flip-back {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Dos qui se referme (scaleX 1 → 0, dos visible), puis face qui s'ouvre (0 → 1, dos retiré). */
+@keyframes seat-card-flip {
+  0% {
+    --seat-card-flip-back: 1;
+    transform: scaleX(1);
+    animation-timing-function: ease-in;
+  }
+  49.9% {
+    --seat-card-flip-back: 1;
+  }
+  50% {
+    --seat-card-flip-back: 0;
+    transform: scaleX(0);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    --seat-card-flip-back: 0;
+    transform: scaleX(1);
+  }
+}
+
+.session-flipping .seat-card-flip {
+  animation: seat-card-flip 200ms both;
+  animation-delay: var(--flip-delay, 0ms);
+}
+
+/* Dos de carte posé sur la face pendant la première moitié (et l'attente) : motif de card-back.css. */
+.session-flipping .seat-card-flip::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-card);
+  background-color: var(--card-back);
+  background-image:
+    repeating-linear-gradient(45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(-45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px);
+  box-shadow: inset 0 0 0 4px var(--card-face);
+  opacity: var(--seat-card-flip-back);
+  pointer-events: none;
+}
+
+/* Synthèse (panneau sur PC, ligne condensée sur téléphone) : invisible pendant le retournement, puis sans fondu. */
+.session-flipping .result-panel,
+.session-flipping .result-line {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-flipping .seat-card-flip {
+    animation: none;
+  }
+
+  .session-flipping .seat-card-flip::after {
+    content: none;
+  }
+
+  .session-flipping .result-panel,
+  .session-flipping .result-line {
+    visibility: visible;
+  }
+}

@@ -2,7 +2,7 @@
 title: 'Story 3.4 : une révélation qui se voit'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '6804e26c4bd47ebaf697c6ff53cb963ad22a3025'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -61,12 +61,12 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/src/app/session/participant-table.component.ts` -- fonction pure exportée `flipDelays(seats)` (délai en ms par `participantId` pour les faces des autres, étalés de 0 à 200 ms) ; classe `seat-card-flip` et `--flip-delay` sur ces faces -- ordre et durée de l'étalement.
-- [ ] `frontend/src/app/session/session-page.component.ts` -- signal `flipping` et classe d'hôte `session-flipping` : vrai à `HIDDEN → REVEALED` si le mouvement n'est pas réduit, faux après `REVEAL_FLIP_MS` (400), à tout `HIDDEN` et à la destruction -- point unique du retournement.
-- [ ] `frontend/src/styles/reveal.css` (importé dans `styles.css`) -- `@keyframes seat-card-flip` (scaleX 1 → 0 avec le dos en `::after`, puis 0 → 1 sur la face), 200 ms, `animation-delay: var(--flip-delay)`, `fill-mode: both`, sous `.session-flipping` ; `visibility: hidden` de `.result-panel` et `.result-line` sous `.session-flipping` ; tout désactivé sous `prefers-reduced-motion` -- l'affichage seul est animé.
-- [ ] `frontend/src/app/session/participant-table.component.spec.ts`, `session-page.component.spec.ts` -- matrice I/O (faux minuteurs, `matchMedia` simulé).
-- [ ] `frontend/scripts/motion.test.mjs` -- les seuls `@keyframes` de `src/styles` sont `shuffle-left`, `shuffle-right`, `seat-card-flip` ; aucun `vibrate`, `new Audio`, `<dialog`, `confetti` dans `src` -- garde « aucune autre animation ».
-- [ ] `frontend/e2e/reveal-motion.spec.ts` -- révélation par un autre : « Carte 8 » présente aussitôt, animation en cours sur la face, synthèse cachée puis visible en moins d'1 s ; `emulateMedia({ reducedMotion: 'reduce' })` : synthèse visible aussitôt, aucune animation ; aucune violation de CSP.
+- [x] `frontend/src/app/session/participant-table.component.ts` -- fonction pure exportée `flipDelays(seats)` (délai en ms par `participantId` pour les faces des autres, étalés de 0 à 200 ms) ; classe `seat-card-flip` et `--flip-delay` sur ces faces -- ordre et durée de l'étalement.
+- [x] `frontend/src/app/session/session-page.component.ts` -- signal `flipping` et classe d'hôte `session-flipping` : vrai à `HIDDEN → REVEALED` si le mouvement n'est pas réduit, faux après `REVEAL_FLIP_MS` (400), à tout `HIDDEN` et à la destruction -- point unique du retournement.
+- [x] `frontend/src/styles/reveal.css` (importé dans `styles.css`) -- `@keyframes seat-card-flip` (scaleX 1 → 0 avec le dos en `::after`, puis 0 → 1 sur la face), 200 ms, `animation-delay: var(--flip-delay)`, `fill-mode: both`, sous `.session-flipping` ; `visibility: hidden` de `.result-panel` et `.result-line` sous `.session-flipping` ; tout désactivé sous `prefers-reduced-motion` -- l'affichage seul est animé.
+- [x] `frontend/src/app/session/participant-table.component.spec.ts`, `session-page.component.spec.ts` -- matrice I/O (faux minuteurs, `matchMedia` simulé).
+- [x] `frontend/scripts/motion.test.mjs` -- les seuls `@keyframes` de `src/styles` sont `shuffle-left`, `shuffle-right`, `seat-card-flip` ; aucun `vibrate`, `new Audio`, `<dialog`, `confetti` dans `src` -- garde « aucune autre animation ».
+- [x] `frontend/e2e/reveal-motion.spec.ts` -- révélation par un autre : « Carte 8 » présente aussitôt, animation en cours sur la face, synthèse cachée puis visible en moins d'1 s ; `emulateMedia({ reducedMotion: 'reduce' })` : synthèse visible aussitôt, aucune animation ; aucune violation de CSP.
 
 **Acceptance Criteria:**
 - Given un tour caché avec des votes, when le tour est révélé, then les cartes des autres se retournent l'une après l'autre en environ 400 ms, puis la synthèse apparaît, l'état étant déjà à jour.
@@ -78,6 +78,22 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Couche | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | verification-gap, edge-case | Synthèse du téléphone (`.result-line`) jamais vérifiée pendant le retournement ; `observeReveal` vise `.result-panel` en dur | medium | Sous 600 px, `.result-panel` est en `display: none` ; l'e2e tourne en `Desktop Chrome` et les unitaires ne lisent pas `visibility` | patch : sélecteur paramétré, cas e2e téléphone |
+| 2 | verification-gap, blind | Bloc `prefers-reduced-motion` de `reveal.css` jamais atteint ni testé | low | Le TS ne pose pas `session-flipping` sous mouvement réduit ; le bloc est la garde CSS voulue par la spec, utile seulement si la préférence change pendant 400 ms | rejeté |
+| 3 | edge-case, blind | Une présence ou un rôle qui change pendant les 400 ms recalcule `--flip-delay` | low | Réel mais rare (instantané dans la fenêtre de 400 ms) ; geler les délais ajoute un état | rejeté |
+| 4 | edge-case, blind | `HIDDEN` puis `REVEALED` d'un autre tour (reconnexion) déclenche le retournement | false | Conforme au déclencheur gelé (« un `REVEALED` qui suit un `HIDDEN` ») : l'écran montrait des dos, il les retourne | rejeté |
+| 5 | edge-case | État `null` pendant le retournement : `session-flipping` persiste | false | `SessionService` ne remet jamais l'état à `null` | rejeté |
+| 6 | edge-case, blind | `motion.test.mjs` : modales et sons hors liste (`role="dialog"`, `showModal`, `.animate(`, `AudioContext`), et faux positifs possibles dans les specs | low | Liste incomplète ; correction directe | patch : mots ajoutés, `*.spec.ts` exclus |
+| 7 | edge-case, blind | `@keyframes` dans des styles en ligne de composants non vus | false | Aucun composant ne déclare `styles` (CSP, `styles.css`) | rejeté |
+| 8 | edge-case | `observeReveal` peut démarrer après l'affichage révélé (course de protocole) | maybe-false | Dépend de l'ordre des messages Playwright entre `evaluate` et l'envoi WebSocket ; si vrai, e2e instable (medium) | différé |
+| 9 | blind | Synthèse cachée 400 ms même avec une seule carte, ou aucune | false | La matrice gelée fixe « Une seule autre carte : synthèse à 400 ms » ; le commentaire de `flipDelays` était faux | patch : commentaire corrigé |
+| 10 | blind | Durées dupliquées entre TS (`REVEAL_FLIP_MS`) et CSS (200 ms) | low | Aucun appelant ne diverge aujourd'hui ; les relier ajoute une propriété | rejeté |
+| 11 | blind | Tests de `flipDelays` sans observateur gardant un vote ni votant déconnecté | low | Le filtre repose sur `seat.card`, déjà couvert par `seatsOf` | rejeté |
+| 12 | blind | « Ma carte ne bouge pas » ne prouve pas l'absence d'animation | false | L'animation ne s'applique qu'à `.seat-card-flip`, absente de ma carte | rejeté |
+| 13 | blind | Repli sans `@property` non vérifié | low | Safari 16.4+ et Firefox 128+ le gèrent ; WebKit tourne en CI | rejeté |
 
 ## Verification
 

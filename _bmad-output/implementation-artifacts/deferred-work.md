@@ -52,3 +52,7 @@
 ## Deferred from: code review of spec-3-1-changer-de-role-en-pleine-seance.md (2026-10-05)
 
 - **`HelloTimeoutTest` dépend de l'ordonnancement** : avec un délai de 0 ms et 20 connexions, rien ne garantit que le délai expire avant la fin de `afterConnectionEstablished`, donc le test pourrait passer contre l'ancien ordre. Non vérifié (medium si vrai). Pour trancher : rejouer le test contre l'ancien code plusieurs fois, ou injecter un planificateur qui exécute la tâche tout de suite.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-une-revelation-qui-se-voit.md`
+  summary: Dans `e2e/reveal-motion.spec.ts`, `observeReveal` pourrait démarrer après l'affichage du tour révélé, ce qui fausserait les mesures de durée.
+  evidence: Non vérifié (maybe-false, medium si vrai) : à trancher en observant des échecs en CI, ou en installant l'observateur par un `evaluate` attendu avant l'envoi de l'instantané.

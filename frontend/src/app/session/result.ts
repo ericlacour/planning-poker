@@ -65,6 +65,19 @@ export function announcementFor(previous: SessionState | null, next: SessionStat
 }
 
 /**
+ * Annonces d'arrivée en passant de `previous` à `next` : « {pseudo} a rejoint la session » pour chaque
+ * `participantId` absent de `previous`, autre que moi, dans l'ordre de l'instantané ; aucune pour le premier
+ * instantané (`previous` à `null`).
+ */
+export function arrivalAnnouncements(previous: SessionState | null, next: SessionState): string[] {
+  if (!previous) return [];
+  const known = new Set(previous.participants.map((p) => p.participantId));
+  return next.participants
+    .filter((p) => p.participantId !== next.selfParticipantId && !known.has(p.participantId))
+    .map((p) => `${p.pseudo} a rejoint la session`);
+}
+
+/**
  * Panneau de résultat (`result-panel`, `consensus-badge`) : affichage pur de la synthèse reçue, sans aucun calcul.
  * Moyenne au format français, badge « Consensus ! », « Plus votée », « Min », « Max » ; sans vote numérique,
  * « Pas de résultat chiffré ».

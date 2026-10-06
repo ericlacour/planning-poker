@@ -1,4 +1,4 @@
-# CI V1 (AR15) : contrat, webservice et front à chaque push sur main et sur chaque pull request.
+# CI V1 (AR15) : contrat, webservice, front et parcours de bout en bout à chaque push sur main et sur chaque pull request.
 # Aucun déploiement ici : il se fait sur étiquette v* (deploy.yml, AD-13).
 name: CI
 
@@ -93,3 +93,49 @@ jobs:
           API_BASE_URL: http://127.0.0.1:4310
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run e2e
+      - name: Traces des e2e en échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: frontend/test-results/
+          retention-days: 7
+
+  # Story 3.6 : parcours UJ-1 à UJ-3 sur Chromium et WebKit, le front construit contre le vrai webservice (jar).
+  journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+      - name: Jar du webservice
+        working-directory: backend
+        run: ./mvnw -B package -DskipTests
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+        working-directory: frontend
+      - name: Build e2e
+        working-directory: frontend
+        run: npm run build:e2e
+        env:
+          API_BASE_URL: http://127.0.0.1:4310
+      - run: npx playwright install --with-deps chromium webkit
+        working-directory: frontend
+      - name: Parcours de bout en bout
+        working-directory: frontend
+        run: npm run e2e:journeys
+      - name: Traces des parcours en échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journeys-test-results
+          path: frontend/test-results/
+          retention-days: 7

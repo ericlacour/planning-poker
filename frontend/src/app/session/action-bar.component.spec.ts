@@ -18,6 +18,9 @@ const withChange = (example: unknown, action: ChangeAction, by: string | null, v
   lastChange: { action, byParticipantId: by },
 });
 
+/** Bouton inactif : `aria-disabled="true"` (jamais `disabled`, qui ferait perdre le focus). */
+const inactive = (button: HTMLButtonElement | undefined) => button?.getAttribute('aria-disabled') === 'true';
+
 describe('ActionBarComponent', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -57,7 +60,7 @@ describe('ActionBarComponent', () => {
     expect(labels()).toEqual(['Effacer les votes', 'Révéler les votes']);
     expect(buttons()[0].classList).toContain('btn-secondary');
     expect(buttons()[1].classList).toContain('btn-primary');
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
     expect(element.querySelector('.result-panel')).toBeNull();
     expect(element.querySelector('.result-line')).toBeNull();
   });
@@ -79,9 +82,9 @@ describe('ActionBarComponent', () => {
     expect(element.querySelector('app-result-line')?.nextElementSibling?.classList).toContain('action-bar');
     expect(labels()).toEqual(['Masquer', 'Nouveau tour']);
     expect(buttons()[0].classList).toContain('btn-secondary');
-    expect(buttons()[0].disabled).toBe(false);
+    expect(inactive(buttons()[0])).toBe(false);
     expect(buttons()[1].classList).toContain('btn-primary');
-    expect(buttons()[1].disabled).toBe(false);
+    expect(inactive(buttons()[1])).toBe(false);
     buttons()[1].click();
     expect(session.clear).toHaveBeenCalledTimes(1);
     expect(session.reveal).not.toHaveBeenCalled();
@@ -99,11 +102,11 @@ describe('ActionBarComponent', () => {
     const { session, buttons, show, tick } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
     show(withChange(revealedTie, 'REVEAL', BOB, 8));
     const hide = () => buttons().find((b) => b.textContent?.trim() === 'Masquer')!;
-    expect(hide().disabled).toBe(true);
+    expect(inactive(hide())).toBe(true);
     hide().click();
     expect(session.hide).not.toHaveBeenCalled();
     tick(CROSS_CLICK_GUARD_MS);
-    expect(hide().disabled).toBe(false);
+    expect(inactive(hide())).toBe(false);
     hide().click();
     expect(session.hide).toHaveBeenCalledTimes(1);
   });
@@ -115,47 +118,47 @@ describe('ActionBarComponent', () => {
     expect(element.querySelector('.vote-counter')?.textContent).toBe('3 votes sur 4');
     expect(element.querySelector('.result-panel')).toBeNull();
     expect(element.querySelector('app-result-line')).toBeNull();
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
     tick(CROSS_CLICK_GUARD_MS);
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
   });
 
   it.each<ChangeAction>(['REVEAL', 'CLEAR', 'HIDE'])('a %s made by someone else disables the buttons for 1 s', (action) => {
     const { buttons, show, tick, session } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
     const next = action === 'REVEAL' ? withChange(revealedTie, action, BOB) : withChange(hiddenRound, action, BOB);
     show(next);
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
     buttons().forEach((b) => b.click());
     expect(session.clear).not.toHaveBeenCalled();
     expect(session.reveal).not.toHaveBeenCalled();
     expect(session.hide).not.toHaveBeenCalled();
     tick(CROSS_CLICK_GUARD_MS - 1);
-    expect(buttons().some((b) => !b.disabled)).toBe(false);
+    expect(buttons().some((b) => !inactive(b))).toBe(false);
     tick(1);
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
   });
 
   it('a CLEAR by the server (sweeper) blocks too', () => {
     const { buttons, show } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
     show(withChange(hiddenRound, 'CLEAR', null));
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
   });
 
   it('no block for my own REVEAL, nor for a VOTE or a JOIN by someone else', () => {
     const { buttons, show } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
     show(withChange(hiddenRound, 'JOIN', BOB, 8));
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
     show(withChange(revealedTie, 'REVEAL', ALICE, 9));
-    expect(buttons().find((b) => b.textContent?.trim() === 'Nouveau tour')?.disabled).toBe(false);
+    expect(inactive(buttons().find((b) => b.textContent?.trim() === 'Nouveau tour'))).toBe(false);
   });
 
   it('no block on the first snapshot, nor when the same version comes back (reconnection)', () => {
     const { buttons, show } = render(withChange(revealedTie, 'REVEAL', BOB, 9));
     const newRound = () => buttons().find((b) => b.textContent?.trim() === 'Nouveau tour');
-    expect(newRound()?.disabled).toBe(false);
+    expect(inactive(newRound())).toBe(false);
     show(withChange(revealedTie, 'REVEAL', BOB, 9));
-    expect(newRound()?.disabled).toBe(false);
+    expect(inactive(newRound())).toBe(false);
   });
 
   it('a second block restarts the second', () => {
@@ -164,9 +167,9 @@ describe('ActionBarComponent', () => {
     tick(600);
     show(withChange(hiddenRound, 'CLEAR', BOB, 9));
     tick(600);
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
     tick(400);
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
   });
 
   it('blocksActions', () => {
@@ -181,20 +184,62 @@ describe('ActionBarComponent', () => {
   it('a lost connection disables every button at once, until it is back', () => {
     const { session, buttons, setConnection } = render(hiddenRound as SessionState);
     setConnection('lost');
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
     buttons()[1].click();
     expect(session.reveal).not.toHaveBeenCalled();
     setConnection('open');
-    expect(buttons().every((b) => !b.disabled)).toBe(true);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
   });
 
   it('a lost connection disables « Masquer » too', () => {
     const { session, buttons, setConnection } = render(withChange(revealedTie, 'REVEAL', ALICE));
     setConnection('lost');
-    expect(buttons().every((b) => b.disabled)).toBe(true);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
     buttons()[0].click();
     expect(session.hide).not.toHaveBeenCalled();
     setConnection('open');
-    expect(buttons()[0].disabled).toBe(false);
+    expect(inactive(buttons()[0])).toBe(false);
+  });
+
+  it('the same two buttons stay in place from one round state to the other, only their label changes', () => {
+    const { buttons, labels, show } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
+    const [secondary, primary] = buttons();
+    primary.focus();
+    show(withChange(revealedTie, 'REVEAL', BOB, 8));
+    expect(labels()).toEqual(['Masquer', 'Nouveau tour']);
+    expect(buttons()[0]).toBe(secondary);
+    expect(buttons()[1]).toBe(primary);
+    expect(document.activeElement).toBe(primary);
+    show(withChange(hiddenRound, 'CLEAR', ALICE, 9));
+    expect(labels()).toEqual(['Effacer les votes', 'Révéler les votes']);
+    expect(buttons()[1]).toBe(primary);
+    expect(document.activeElement).toBe(primary);
+  });
+
+  it('an inactive button is aria-disabled, never disabled, and keeps the focus', () => {
+    const { buttons, show } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
+    buttons()[1].focus();
+    show(withChange(revealedTie, 'REVEAL', BOB, 8));
+    expect(buttons().every((b) => inactive(b) && !b.disabled)).toBe(true);
+    expect(document.activeElement).toBe(buttons()[1]);
+  });
+
+  it('an active button has no aria-disabled attribute', () => {
+    const { buttons } = render(hiddenRound as SessionState);
+    expect(buttons().every((b) => !b.hasAttribute('aria-disabled'))).toBe(true);
+  });
+
+  it('ignores a held Enter or Space (key repeat) on the action buttons, but not a first press', () => {
+    const { buttons } = render(hiddenRound as SessionState);
+    for (const key of ['Enter', ' ']) {
+      for (const button of buttons()) {
+        const repeated = new KeyboardEvent('keydown', { key, repeat: true, bubbles: true, cancelable: true });
+        button.dispatchEvent(repeated);
+        expect(repeated.defaultPrevented).toBe(true);
+        const first = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+        button.dispatchEvent(first);
+        expect(first.defaultPrevented).toBe(false);
+      }
+    }
   });
 });

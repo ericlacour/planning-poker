@@ -79,9 +79,9 @@ export const PENDING_SEATS = 3;
 /**
  * Table des participants (`seat-card-empty`, `seat-card-back`, `seat-card-face`, `presence-dot`) : pseudo,
  * pastille de présence (grise, pseudo atténué et mention « déconnecté » pour un participant déconnecté), et pour
- * un votant une carte vide en pointillés, un dos à croisillons s'il a voté, ou la face de ma carte avec « visible
- * par toi seul ». Tour révélé : toutes les faces, « n'a pas voté » sur une place
- * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
+ * un votant une carte vide en pointillés (nommée « n'a pas voté » pour les lecteurs d'écran en tour caché), un dos
+ * à croisillons s'il a voté, ou la face de ma carte avec « visible par toi seul ». Tour révélé : toutes les faces,
+ * « n'a pas voté » sur une place sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
  * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe »
  * dessous (« déconnecté · observe » hors connexion). Avant le premier instantané, des places vides en attente, sans
  * pseudo. Les faces des autres portent `seat-card-flip` et leur délai `--flip-delay` ({@link flipDelays}) : la
@@ -99,7 +99,11 @@ export const PENDING_SEATS = 3;
             @if (showsCard(seat)) {
               @switch (seat.card) {
                 @case ('empty') {
-                  <span class="seat-card seat-card-empty" aria-hidden="true"></span>
+                  @if (hidden()) {
+                    <span class="seat-card seat-card-empty" role="img" aria-label="n'a pas voté"></span>
+                  } @else {
+                    <span class="seat-card seat-card-empty" aria-hidden="true"></span>
+                  }
                 }
                 @case ('back') {
                   <span class="seat-card seat-card-back card-back" role="img" aria-label="a voté"></span>
@@ -156,6 +160,8 @@ export class ParticipantTableComponent {
     const state = this.state();
     return state ? seatsOf(state) : null;
   });
+  /** Tour caché : une carte vide est nommée « n'a pas voté » (en tour révélé, la mention visible suffit). */
+  protected readonly hidden = computed(() => this.state()?.round.status === 'HIDDEN');
   /** Départs du retournement des faces des autres ; l'animation ne joue que sous `.session-flipping`. */
   protected readonly delays = computed(() => flipDelays(this.seats() ?? []));
   protected readonly pending = Array.from({ length: PENDING_SEATS }, (_, i) => i);

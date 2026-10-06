@@ -7,6 +7,11 @@
   padding: var(--spacing-6) var(--spacing-margin-mobile);
 }
 
+/* Le formulaire ne déborde jamais d'un écran étroit (360 px, zoom 200 %) : l'hôte reste dans l'écran. */
+.entry-screen > app-entry-form {
+  max-width: 100%;
+}
+
 .entry-form {
   width: var(--spacing-panel-narrow);
   max-width: 100%;

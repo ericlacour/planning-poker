@@ -22,15 +22,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
   summary: Story 2.4 — remplacer le 409 systématique par la reprise d'un participant déconnecté portant le même pseudo (FR-8, `openapi.yaml` joinSession).
   evidence: `Session.join` lève `PseudoTakenException` pour tout pseudo présent ; la notion de déconnexion n'existait pas encore.
-- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-voir-la-table-en-direct.md`
-  summary: Rendre la présence de chaque place perceptible aux lecteurs d'écran (texte masqué ou aria-label à côté de la pastille `presence-dot`).
-  evidence: La pastille est en `aria-hidden="true"` sans alternative textuelle ; les libellés de présence relèvent de la story 2.1 et l'accessibilité de la story 3.5.
-- source_spec: `_bmad-output/implementation-artifacts/spec-1-6-voter-a-l-aveugle.md`
-  summary: Donner un libellé « n'a pas voté » (ou un état sur l'étiquette de la place) aux places sans vote, pour les lecteurs d'écran.
-  evidence: La carte vide est en `aria-hidden` alors que le dos annonce « a voté » ; relève de la story 3.5.
-- source_spec: `_bmad-output/implementation-artifacts/spec-1-6-voter-a-l-aveugle.md`
-  summary: Placer la main « Ta carte » dans un repère (dans `main` ou une section nommée).
-  evidence: `<app-hand>` est rendu après `</main>` dans `session-page.component.ts` ; à traiter avec la disposition téléphone (1.8) ou l'accessibilité (3.5).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-voir-qui-est-vraiment-la.md`
   summary: Couvrir par un test qu'un message binaire après la poignée de main compte comme activité (variante binaire de `LivenessTest.anyMessageCountsAsActivity`).

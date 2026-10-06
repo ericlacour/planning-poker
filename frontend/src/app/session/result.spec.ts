@@ -11,6 +11,7 @@ import revealedTie from '../../../../contract/examples/session-state/revealed-ti
 import { SessionState, Summary } from '../api/contract';
 import {
   announcementFor,
+  arrivalAnnouncements,
   compactMostVoted,
   formatAverage,
   joinValues,
@@ -77,6 +78,26 @@ describe('result formatting', () => {
         'fr',
       ),
     ).toBeNull();
+  });
+
+  it('announces each new participant other than me, never on the first snapshot', () => {
+    const state = hiddenRound as SessionState;
+    const [alice, bob, chloe] = state.participants;
+    const before = { ...state, participants: [alice, bob] };
+    const sofia = { ...chloe, participantId: 'aa0b5d3e-6f2a-4b1c-9d7e-5a4f3b2c1d06', pseudo: 'Sofia' };
+    expect(arrivalAnnouncements(null, state)).toEqual([]);
+    expect(arrivalAnnouncements(before, { ...before, participants: [alice, bob, sofia] })).toEqual([
+      'Sofia a rejoint la session',
+    ]);
+    expect(arrivalAnnouncements(before, { ...before, participants: [alice, bob, chloe, sofia] })).toEqual([
+      'Chloé a rejoint la session',
+      'Sofia a rejoint la session',
+    ]);
+    // Moi : jamais annoncé.
+    expect(arrivalAnnouncements({ ...state, participants: [bob] }, { ...state, participants: [alice, bob] })).toEqual([]);
+    // Un départ, un vote : rien.
+    expect(arrivalAnnouncements(state, { ...state, participants: [alice, bob] })).toEqual([]);
+    expect(arrivalAnnouncements(state, { ...state, version: 8 })).toEqual([]);
   });
 });
 

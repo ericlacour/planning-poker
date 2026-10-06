@@ -24,7 +24,7 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 10_000 },
   reporter: process.env['CI'] ? 'github' : 'list',
-  use: { baseURL: 'http://127.0.0.1:4300' },
+  use: { baseURL: 'http://127.0.0.1:4300', trace: 'retain-on-failure' },
   projects: [
     {
       name: 'chromium',
@@ -43,7 +43,8 @@ export default defineConfig({
       url: 'http://127.0.0.1:4310/api/health',
       env: { PORT: '4310', ALLOWED_ORIGINS: 'http://127.0.0.1:4300' },
       timeout: 120_000,
-      reuseExistingServer: !process.env['CI'],
+      // Toujours un webservice neuf : un serveur déjà lancé n'aurait ni les plafonds relevés ni ALLOWED_ORIGINS.
+      reuseExistingServer: false,
       stdout: 'ignore',
       stderr: 'pipe',
     },

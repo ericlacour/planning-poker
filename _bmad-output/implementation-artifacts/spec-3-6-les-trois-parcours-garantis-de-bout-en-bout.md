@@ -3,7 +3,7 @@ title: 'Story 3.6 : les trois parcours garantis de bout en bout'
 type: 'feature'
 created: '2026-10-06'
 baseline_commit: '27ea02b0a950ee180d84d90c9b1f17f1bf1bc2ee'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -87,10 +87,33 @@ context:
 - UJ-3 ajoute Nadia à la session A pour que son compteur soit visible (seul, Karim n'a pas de barre d'action).
 - UJ-2 vérifie aussi le refus du pseudo « Sofia » (« Ce pseudo est déjà pris dans cette session. ») tant que le premier téléphone est connecté : colonne Erreurs de la matrice.
 - Vérifié en local sur Chromium seulement : WebKit ne se télécharge pas dans le bac à sable ; il tournera en CI.
+- Onglet caché : seul `visibilityState` est simulé, les minuteries ne sont pas ralenties. Le test prouve qu'un onglet caché et inactif reste connecté au-delà de `liveness-timeout` contre le vrai webservice ; un onglet réellement ralenti est couvert par le pong de protocole du webservice (`LivenessTest`) et par le test de 20 min en horloge simulée `e2e/reconnect.spec.ts`.
 
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Couche | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | blind, edge-case, verification-gap | Onglet caché : seul `visibilityState` est simulé, les minuteries ne ralentissent pas ; le test prouve moins que son nom | low | Conforme à la décision gelée (« `visibilityState` simulé ») ; le ralentissement réel est couvert par le pong de protocole côté serveur (`LivenessTest`) et par le test de 20 min en horloge simulée (`e2e/reconnect.spec.ts:134`) | patch : titre et commentaires réécrits pour dire exactement ce qui est prouvé |
+| 2 | blind | L'observateur `.seat.offline` n'a pas de témoin positif : une classe renommée le rendrait aveugle | low | Correction directe | patch : détection du texte « déconnecté » dans `ul[aria-label="Participants"]` |
+| 3 | edge-case | `closing()` relaie les codes 1001 à 1014, que `WebSocket.close()` refuse : connexion serveur laissée ouverte | low | Les deux jambes du mandataire sont de vrais WebSocket de page ; `close()` n'accepte que 1000 et 3000–4999 | patch : seuls ces codes sont relayés |
+| 4 | blind | Second téléphone : le rôle dépend de la valeur par défaut du formulaire | low | Correction directe | patch : « Je vote » choisi explicitement |
+| 5 | blind, edge-case | `reuseExistingServer` peut réutiliser en local un webservice périmé, sans les plafonds relevés | low | Correction directe | patch : `reuseExistingServer: false` pour le jar |
+| 6 | blind | Aucune trace ni artefact en cas d'échec en CI | medium | Le premier passage WebKit n'aura lieu qu'en CI ; un échec n'y laisserait rien à examiner | patch : `trace: 'retain-on-failure'` et envoi de `test-results/` si échec |
+| 7 | blind | `last_updated` recule (21:00 → 19:43) | low | Valeurs précédentes à l'heure de Paris | patch : heure de Paris |
+| 8 | blind | `cut()` envoie une fermeture propre : la détection par `liveness-timeout` (perte silencieuse) n'est pas jouée | low | Conforme à la matrice gelée (« mandataire fermé ») ; l'expiration de vivacité est couverte par `LivenessTest` ; la jouer ajouterait 15 s et un mode de mandataire | rejeté |
+| 9 | blind | Reconnexions refusées par ouverture puis 1011, au lieu d'un échec 1006 | false | `session.service.ts` traite de la même façon toute fermeture hors 4401/4404 | rejeté |
+| 10 | blind | Action 8 de la rétro passée à `done` avant un passage WebKit vert | low | La CI de la PR, WebKit compris, conditionne la fusion | rejeté |
+| 11 | blind | Statut `in-review` dans la spec, `in-progress` dans le suivi de sprint | false | Le workflow synchronise le suivi de sprint à la présentation (étape 5) | rejeté |
+| 12 | blind | Le job `journeys` n'est pas imposé au déploiement | false | Contrôle manuel retenu par Eric le 2026-10-04 (action V3) ; README mis à jour | rejeté |
+| 13 | blind | Le jar est construit deux fois et le cache des navigateurs n'est pas utilisé | low | Coût accepté par la décision d'Eric (2 à 3 min de CI) | rejeté |
+| 14 | blind | UJ-3 ne prouve pas que les deux sessions se chevauchent | false | La session B existe, connectée, pendant toute la création de A ; l'AC demande une seconde session active, pas un trafic simultané | rejeté |
+| 15 | blind | Délais de reconnexion (2 s, échelons) non vérifiés | false | Couverts par `e2e/reconnect.spec.ts` ; hors des parcours | rejeté |
+| 16 | blind | « Effacer les votes » jamais utilisé dans UJ-1 | false | En tour révélé, l'effacement s'appelle « Nouveau tour » (même intention `clear`, story 1.7) | rejeté |
+| 17 | edge-case | `vote()` désélectionne une carte déjà choisie | false | Aucun appel sur une carte déjà choisie : le revote suit « Nouveau tour », qui efface les votes | rejeté |
+| 18 | edge-case | Copie du lien non vérifiée sur WebKit | false | Décision gelée : presse-papiers lu sur Chromium, lien lu dans l'URL sur WebKit | rejeté |
+| 19 | verification-gap | Aucun écart de vérification | — | — | — |
 
 ## Verification
 

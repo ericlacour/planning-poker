@@ -17,7 +17,10 @@ import {
  * UJ-2 : Sofia vote depuis son téléphone. Une coupure réseau la montre « déconnecté » chez les autres et lui
  * affiche « Reconnexion… » ; au retour elle retrouve sa place et sa carte. Si elle rejoint avec son pseudo depuis
  * un autre appareil pendant une coupure, le nouvel appareil reprend sa place et l'ancien l'apprend à son retour.
- * Enfin, un onglet laissé en arrière-plan au-delà du seuil de vivacité ne passe jamais « déconnecté ».
+ * Enfin, un onglet caché et inactif (seul `visibilityState` est simulé) au-delà du seuil de vivacité du vrai
+ * webservice ne passe jamais « déconnecté ». Les minuteries ne sont pas ralenties ici : un onglet réellement mis en
+ * veille est couvert par le pong de protocole du webservice (`LivenessTest`) et par le test de 20 min en horloge
+ * simulée de `e2e/reconnect.spec.ts`.
  */
 
 /** Gabarit téléphone : 390 × 844, tactile. */
@@ -67,12 +70,15 @@ test('UJ-2 : sur téléphone, Sofia vote, perd le réseau, revient à sa place, 
   const secondPhone = await (await contexts.open(PHONE)).newPage();
   await secondPhone.goto(sessionUrl);
   await secondPhone.getByLabel('Ton pseudo').fill('Sofia');
+  await secondPhone.getByRole('radio', { name: 'Je vote', exact: true }).click();
+  await expect(secondPhone.getByRole('radio', { name: 'Je vote', exact: true })).toBeChecked();
   await secondPhone.getByRole('button', { name: 'Rejoindre', exact: true }).click();
   await expect(secondPhone.getByText('Ce pseudo est déjà pris dans cette session.')).toBeVisible();
 
   // Nouvelle coupure : Sofia rejoint avec son pseudo depuis le second téléphone, qui retrouve son vote.
   await network.cut();
   await expect(seat(eric, 'Sofia')).toContainText('déconnecté');
+  await expect(secondPhone.getByRole('radio', { name: 'Je vote', exact: true })).toBeChecked();
   await secondPhone.getByRole('button', { name: 'Rejoindre', exact: true }).click();
   await expect(seat(secondPhone, 'Sofia')).toContainText('(toi)');
   await expect(card(secondPhone, '8')).toHaveAttribute('aria-pressed', 'true');
@@ -96,7 +102,10 @@ test('UJ-2 : sur téléphone, Sofia vote, perd le réseau, revient à sa place, 
   await expect(seat(eric, 'Sofia')).not.toContainText('déconnecté');
 });
 
-/** Simule un onglet passé en arrière-plan (ou revenu au premier plan). */
+/**
+ * Simule un onglet caché (ou revenu au premier plan) : seuls `visibilityState`, `hidden` et `visibilitychange`
+ * changent ; les minuteries de la page ne sont pas ralenties.
+ */
 async function setHidden(page: Page, hidden: boolean): Promise<void> {
   await page.evaluate((hidden) => {
     Object.defineProperty(document, 'visibilityState', {
@@ -108,7 +117,7 @@ async function setHidden(page: Page, hidden: boolean): Promise<void> {
   }, hidden);
 }
 
-test('onglet en arrière-plan plus longtemps que le seuil de vivacité : jamais « déconnecté » chez les autres', async ({
+test('onglet caché et inactif plus longtemps que le seuil de vivacité (minuteries non ralenties) : jamais « déconnecté » chez les autres', async ({
   contexts,
 }) => {
   const { eric, phone, sessionUrl } = await ericAndPhone(contexts);
@@ -116,12 +125,13 @@ test('onglet en arrière-plan plus longtemps que le seuil de vivacité : jamais 
   await vote(sofia, '8', { tap: true });
   await expect(seat(eric, 'Sofia')).not.toContainText('déconnecté');
 
-  // Chez Eric, toute apparition de « déconnecté » est relevée, même fugace.
+  // Chez Eric, toute apparition du texte « déconnecté » dans la liste des participants est relevée, même fugace.
   await eric.evaluate(() => {
     const w = window as unknown as { sawOffline: boolean };
     w.sawOffline = false;
     const check = () => {
-      if (document.querySelector('.seat.offline')) w.sawOffline = true;
+      const list = document.querySelector('ul[aria-label="Participants"]') as HTMLElement | null;
+      if (list?.innerText.includes('déconnecté')) w.sawOffline = true;
     };
     new MutationObserver(check).observe(document.body, {
       subtree: true,
@@ -132,7 +142,8 @@ test('onglet en arrière-plan plus longtemps que le seuil de vivacité : jamais 
   });
 
   await setHidden(sofia, true);
-  // Seule attente fixe autorisée : la durée de l'onglet caché, au-delà du seuil de 15 s du webservice.
+  // Seule attente fixe autorisée : la durée de l'onglet caché, au-delà du seuil de 15 s du webservice. Sofia reste
+  // inactive ; ses minuteries tournent normalement (le ralentissement réel est couvert ailleurs, voir plus haut).
   await sofia.waitForTimeout(BACKGROUND_MS);
   expect(await eric.evaluate(() => (window as unknown as { sawOffline: boolean }).sawOffline)).toBe(
     false,

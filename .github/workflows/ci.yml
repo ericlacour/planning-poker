@@ -125,3 +125,10 @@ jobs:
       - name: Parcours de bout en bout
         working-directory: frontend
         run: npm run e2e:journeys
+      - name: Traces des parcours en échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journeys-test-results
+          path: frontend/test-results/
+          retention-days: 7

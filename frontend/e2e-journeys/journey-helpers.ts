@@ -134,15 +134,15 @@ export function reconnecting(page: Page) {
   return page.getByRole('status').filter({ hasText: 'Reconnexion…' });
 }
 
-/** Fermeture relayable : un code réservé (1005, 1006…) ne peut pas être renvoyé, la fermeture part alors sans code. */
+/**
+ * Fermeture relayable : `WebSocket.close()` n'accepte que 1000 ou 3000–4999 ; tout autre code (1001, 1006…) ferait
+ * échouer la fermeture, qui part alors sans code.
+ */
 function closing(
   code: number | undefined,
   reason: string | undefined,
 ): { code?: number; reason?: string } {
-  const sendable =
-    code === 1000 ||
-    (code !== undefined && code >= 3000 && code <= 4999) ||
-    (code !== undefined && code >= 1001 && code <= 1014 && ![1004, 1005, 1006].includes(code));
+  const sendable = code === 1000 || (code !== undefined && code >= 3000 && code <= 4999);
   return sendable ? { code, reason } : {};
 }
 

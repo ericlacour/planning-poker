@@ -27,11 +27,14 @@ context:
 - UJ-3 : Karim crée une session en votant pendant qu'une autre session (deux participants) vote et révèle. Aucun pseudo, vote, révélation ou compteur ne passe d'une session à l'autre.
 - Onglet en arrière-plan : contre le vrai webservice, un participant dont l'onglet est caché (`visibilityState` simulé) pendant plus que `liveness-timeout` (15 s réelles) n'apparaît jamais « déconnecté » chez les autres. Les 20 minutes restent couvertes en horloge simulée par `e2e/reconnect.spec.ts:134` (autorisé par epics.md:659).
 - Sélecteurs par rôle et libellés exacts de l'interface.
+- Décision d'Eric du 2026-10-06 : parcours contre le vrai webservice en CI, ce qui solde l'action 8 de la rétrospective de l'epic 1, malgré les 2 à 3 min de CI en plus.
+- Décision d'Eric du 2026-10-06 : la story livre les tests ; après fusion et CI verte sur `main`, Eric pose `v1.0` hors atelier (action ouverte ajoutée à `sprint-status.yaml`).
 
 **Never:**
 - Aucun changement du contrat, du webservice, ni du code applicatif du front.
 - Pas de `waitForTimeout` pour attendre un état : attentes sur l'interface, sauf pour la durée de l'onglet caché.
 - Ne pas modifier ni retirer les e2e simulés existants.
+- L'agent ne pose aucune étiquette `v*` et ne déclenche aucun déploiement.
 
 ## I/O & Edge-Case Matrix
 
@@ -43,11 +46,6 @@ context:
 | Sessions parallèles | Session B révèle | Session A inchangée (tour caché, ses seuls participants) | — |
 
 </frozen-after-approval>
-
-## Open Questions
-
-1. **Vrai webservice ou simulation ?** — (A, recommandé) parcours contre le vrai webservice en CI, ce qui solde l'action 8 de la rétrospective de l'epic 1 ; le job de CI construit aussi le jar (Java 25), soit environ 2 à 3 min de plus. (B) parcours avec la simulation actuelle, plus rapides, mais aucune vérification du couple front–webservice ; l'action 8 resterait ouverte.
-2. **Pose de l'étiquette de déploiement** — (A, recommandé) la story livre les tests ; après fusion et CI verte sur `main`, Eric pose `v1.0` hors atelier (ajouté comme action ouverte dans `sprint-status.yaml`), l'agent ne pose aucune étiquette. (B) l'agent pose l'étiquette `v1.0` sur `main` après fusion, ce qui déclenche le déploiement Render et efface les sessions en cours.
 
 ## Code Map
 
@@ -72,7 +70,7 @@ context:
 - [ ] `frontend/e2e-journeys/uj2-telephone.spec.ts` -- UJ-2, reprise, et onglet caché > 15 s.
 - [ ] `frontend/e2e-journeys/uj3-sessions-paralleles.spec.ts` -- UJ-3.
 - [ ] `.github/workflows/ci.yml` -- job `journeys` : Java 25 + jar, Node 24 + `build:e2e`, Playwright Chromium et WebKit, `npm run e2e:journeys` -- à chaque PR et push sur `main`.
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- action `epic-1-retro-item-8` passée à `done` avec sa résolution (selon la réponse 1) ; action de pose de `v1.0` (selon la réponse 2).
+- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- action `epic-1-retro-item-8` passée à `done` avec sa résolution ; nouvelle action ouverte « Poser `v1.0` hors atelier après fusion et CI verte » (owner Eric).
 - [ ] `deploy/README.md` -- rappeler que la CI verte inclut le job `journeys`.
 
 **Acceptance Criteria:**

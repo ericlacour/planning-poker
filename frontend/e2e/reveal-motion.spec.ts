@@ -105,37 +105,64 @@ interface Observed {
 }
 
 /**
- * Observe, dans la page et à chaque image, la révélation qui va arriver : l'instant où la face de Bob apparaît (son
- * nom accessible, ses animations, la synthèse et l'annonce à ce moment-là), puis celui où la synthèse devient visible.
+ * Observe la révélation qui va arriver. Un `MutationObserver`, posé avant l'envoi de l'instantané (`await`), date
+ * l'apparition de la face de Bob dès l'écriture du DOM, sans attendre une image : démarrer le chrono à la première
+ * image retardait la mesure (jusqu'à 150 ms sur WebKit en CI). À la première image suivante, on relève son nom
+ * accessible, ses animations, la synthèse et l'annonce ; puis on attend que la synthèse devienne visible.
+ * Renvoie la fonction qui rend ces relevés, à appeler après l'envoi.
  */
-function observeReveal(page: Page, synthesisSelector = '.result-panel'): Promise<Observed> {
-  return page.evaluate(async (selector) => {
-    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
-    let face: Element | null = null;
-    while (!(face = document.querySelector('.seat-card-flip'))) await frame();
-    const start = performance.now();
-    // Synthèse absente : « missing » plutôt qu'une TypeError, pour un échec lisible.
-    const synthesis = () => {
+async function observeReveal(
+  page: Page,
+  synthesisSelector = '.result-panel',
+): Promise<() => Promise<Observed>> {
+  await page.evaluate((selector) => {
+    const w = window as unknown as { flipAt?: number; synthesisAtFlip?: string };
+    const visibility = () => {
       const element = document.querySelector(selector);
       return element ? getComputedStyle(element).visibility : 'missing';
     };
-    const observed = {
-      label: face.getAttribute('aria-label'),
-      animations: face.getAnimations().map((a) => (a as CSSAnimation).animationName),
-      flipping: !!document.querySelector('app-session-page.session-flipping'),
-      back:
-        getComputedStyle(face, '::after').content === 'none'
-          ? 'none'
-          : getComputedStyle(face, '::after').opacity,
-      synthesis: synthesis(),
-      live:
-        document.querySelector('div.visually-hidden[aria-live="polite"]')?.textContent?.trim() ??
-        '',
+    const seen = () => {
+      if (w.flipAt !== undefined || !document.querySelector('.seat-card-flip')) return;
+      w.flipAt = performance.now();
+      w.synthesisAtFlip = visibility();
+      observer.disconnect();
     };
-    while (!['visible', 'missing'].includes(synthesis()) && performance.now() - start < 2_000)
-      await frame();
-    return { ...observed, synthesisAfter: performance.now() - start };
+    const observer = new MutationObserver(seen);
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true });
   }, synthesisSelector);
+  return () =>
+    page.evaluate(async (selector) => {
+      const w = window as unknown as { flipAt?: number; synthesisAtFlip?: string };
+      const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+      while (w.flipAt === undefined) await frame();
+      await frame();
+      const start = w.flipAt;
+      const face = document.querySelector('.seat-card-flip')!;
+      // Synthèse absente : « missing » plutôt qu'une TypeError, pour un échec lisible.
+      const synthesis = () => {
+        const element = document.querySelector(selector);
+        return element ? getComputedStyle(element).visibility : 'missing';
+      };
+      const observed = {
+        label: face.getAttribute('aria-label'),
+        animations: face.getAnimations().map((a) => (a as CSSAnimation).animationName),
+        flipping: !!document.querySelector('app-session-page.session-flipping'),
+        back:
+          getComputedStyle(face, '::after').content === 'none'
+            ? 'none'
+            : getComputedStyle(face, '::after').opacity,
+        synthesis: w.synthesisAtFlip!,
+        live:
+          document.querySelector('div.visually-hidden[aria-live="polite"]')?.textContent?.trim() ??
+          '',
+      };
+      // Synthèse déjà visible à l'apparition de la face (mouvement réduit) : aucun délai.
+      if (['visible', 'missing'].includes(observed.synthesis))
+        return { ...observed, synthesisAfter: 0 };
+      while (!['visible', 'missing'].includes(synthesis()) && performance.now() - start < 2_000)
+        await frame();
+      return { ...observed, synthesisAfter: performance.now() - start };
+    }, synthesisSelector);
 }
 
 test('révélation par un autre : les faces se retournent, puis la synthèse apparaît', async ({
@@ -147,9 +174,9 @@ test('révélation par un autre : les faces se retournent, puis la synthèse app
   await page.goto(`/s/${SESSION_ID}`);
   await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
 
-  const observing = observeReveal(page);
+  const observing = await observeReveal(page);
   server.routes[0].send(JSON.stringify(revealed));
-  const observed = await observing;
+  const observed = await observing();
 
   // État à jour dès la réception : face nommée et annonce ; seul l'affichage est animé.
   expect(observed.label).toBe('Carte 8');
@@ -176,9 +203,9 @@ test('mouvement réduit : faces et synthèse aussitôt, sans animation', async (
   await page.goto(`/s/${SESSION_ID}`);
   await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
 
-  const observing = observeReveal(page);
+  const observing = await observeReveal(page);
   server.routes[0].send(JSON.stringify(revealed));
-  const observed = await observing;
+  const observed = await observing();
 
   expect(observed.label).toBe('Carte 8');
   expect(observed.flipping).toBe(false);
@@ -203,9 +230,9 @@ test.describe('téléphone', () => {
     await page.goto(`/s/${SESSION_ID}`);
     await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
 
-    const observing = observeReveal(page, '.result-line');
+    const observing = await observeReveal(page, '.result-line');
     server.routes[0].send(JSON.stringify(revealed));
-    const observed = await observing;
+    const observed = await observing();
 
     expect(observed.flipping).toBe(true);
     expect(observed.synthesis).toBe('hidden');

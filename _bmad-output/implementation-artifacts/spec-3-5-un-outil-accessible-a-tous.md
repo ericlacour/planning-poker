@@ -2,7 +2,8 @@
 title: 'Story 3.5 : un outil accessible à tous'
 type: 'feature'
 created: '2026-10-06'
-status: 'draft'
+status: 'in-progress'
+baseline_commit: '6de6969f522eb5364c02ca261222769848a0f5cb'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

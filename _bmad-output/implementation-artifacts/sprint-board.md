@@ -1,6 +1,6 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-05-2026 12:03). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 12:00). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
@@ -10,11 +10,11 @@
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
 | Epic 3 — Des séances souples et soignées 🟡 | `███████░░░░░░░░░░░░░` 2/6 (33 %) |
-| **Actions de rétro** | `█████████████░░░░░░░` 10/15 (67 %) |
+| **Actions de rétro** | `████████████████░░░░` 12/15 (80 %) |
 
 **En cours :** aucune story  
 **Prochaine story :** 3.3 Choisir son thème  
-**Actions ouvertes :** 5
+**Actions ouvertes :** 3
 
 ## Stories
 
@@ -61,17 +61,15 @@
 
 ## Actions de rétrospective
 
-### 🔴 À faire (5)
+### 🔴 À faire (3)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 8 | Story 3.6 contre le vrai webservice en CI, ou test de fumée qui fait tourner le front et le webservice ensemble plus tôt (V1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 13 | Au début de l'epic 2, extraire le squelette commun des cas d'usage et enregistrer le délai du hello avant de le programmer (D1, F3) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 14 | Inscrire comme tâches de la spec 3.1 : extraire le squelette commun des cas d usage, corriger le délai du hello, décider du découpage de Session.java avant hide et changeRole (D1, F2, T1, L1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
 | 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
 
-### ✅ Faites (10)
+### ✅ Faites (12)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
@@ -85,6 +83,8 @@
 | 10 | Avant chaque PR, comparer le suivi de sprint aux en-têtes des specs (L1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 11 | Garder l'historique par story : conserver les branches de travail, ou fusionner par commit de fusion (L2) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 12 | Avant de fusionner une série de stories, relecture humaine explicite des décisions de l'agent et des constats rejetés, avec bmad-walkthrough (L5) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 13 | Au début de l'epic 2, extraire le squelette commun des cas d'usage et enregistrer le délai du hello avant de le programmer (D1, F3)<br>↳ _Fait dans la story 3.1 (tâches D1 et F2 de la spec 3.1) : squelette commun des cas d'usage extrait, délai du hello enregistré avant d'être programmé._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 14 | Inscrire comme tâches de la spec 3.1 : extraire le squelette commun des cas d usage, corriger le délai du hello, décider du découpage de Session.java avant hide et changeRole (D1, F2, T1, L1)<br>↳ _Fait dans la story 3.1 (tâches D1, F2 et T1 de la spec 3.1) : squelette commun, délai du hello, état du tour sorti dans domain/Round (option B, décision d'Eric du 2026-10-05)._ | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
 
 ---
 

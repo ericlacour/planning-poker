@@ -93,6 +93,13 @@ jobs:
           API_BASE_URL: http://127.0.0.1:4310
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run e2e
+      - name: Traces des e2e en échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: frontend/test-results/
+          retention-days: 7
 
   # Story 3.6 : parcours UJ-1 à UJ-3 sur Chromium et WebKit, le front construit contre le vrai webservice (jar).
   journeys:

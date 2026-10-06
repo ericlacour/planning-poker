@@ -363,6 +363,8 @@ test('une séance complète au clavier seul, avec un contour primary visible', a
   await tabTo(page, pseudo);
   await expectPrimaryOutline(page);
   await page.keyboard.type('Alice');
+  // Comme un utilisateur, attendre que « Rejoindre » soit actif : un bouton encore désactivé bloque l'envoi par Entrée.
+  await expect(page.getByRole('button', { name: 'Rejoindre', exact: true })).toBeEnabled();
   await page.keyboard.press('Enter');
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 2');
 

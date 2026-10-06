@@ -16,7 +16,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   reporter: process.env['CI'] ? 'github' : 'list',
-  use: { baseURL: 'http://127.0.0.1:4300' },
+  use: { baseURL: 'http://127.0.0.1:4300', trace: 'retain-on-failure' },
   projects: [
     {
       name: 'chromium',

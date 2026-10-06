@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-06-2026 22:00
+last_updated: 10-06-2026 22:07
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -61,7 +61,7 @@ development_status:
   3-3-choisir-son-thème: done
   3-4-une-révélation-qui-se-voit: done
   3-5-un-outil-accessible-à-tous: done
-  3-6-les-trois-parcours-garantis-de-bout-en-bout: review
+  3-6-les-trois-parcours-garantis-de-bout-en-bout: done
   epic-3-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-exécuter-le-test-de-charge-de-10-min-5-1"

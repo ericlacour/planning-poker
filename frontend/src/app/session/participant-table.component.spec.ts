@@ -7,7 +7,7 @@ import revealedObserver from '../../../../contract/examples/session-state/reveal
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { ParticipantState, SessionState } from '../api/contract';
 import { cardName } from './cards';
-import { ParticipantTableComponent, PENDING_SEATS, seatsOf } from './participant-table.component';
+import { flipDelays, ParticipantTableComponent, PENDING_SEATS, seatsOf } from './participant-table.component';
 
 const ALICE = '3f6c2a1e-8b4d-4c7a-9e2f-1d5b6a7c8e90';
 const BOB = '7d2e9f4a-1c3b-4e5d-8a6f-2b9c0d1e3f45';
@@ -53,6 +53,43 @@ describe('seatsOf', () => {
     expect(pseudos(FARID)).toEqual(['Alice', 'Bob', 'Chloé', 'Farid', 'Emma']);
     expect(pseudos(ALICE)).toEqual(['Alice', 'Bob', 'Chloé', 'Emma', 'Farid']);
     expect(seatsOf(table(FARID)).filter((s) => s.isSelf).map((s) => s.participant.pseudo)).toEqual(['Farid']);
+  });
+});
+
+describe('flipDelays', () => {
+  const revealed = (self: string, votes: Record<string, string | null>): SessionState => ({
+    ...table(self),
+    round: { roundId: 'Jd8sK2pQ', status: 'REVEALED' },
+    participants: table(self).participants.map((p) => {
+      const vote = (votes[p.participantId] ?? null) as ParticipantState['vote'];
+      return { ...p, vote, hasVoted: vote !== null };
+    }),
+  });
+
+  it('spreads the starts of the others\' faces from 0 to 200 ms in table order, without my card nor empty seats', () => {
+    // Alice (moi) 5, Bob et Chloé ont voté.
+    const delays = flipDelays(seatsOf(revealed(ALICE, { [ALICE]: '5', [BOB]: '8', [CHLOE]: '3' })));
+    expect([...delays]).toEqual([
+      [BOB, 0],
+      [CHLOE, 200],
+    ]);
+  });
+
+  it('a single other card starts at 0 ms', () => {
+    expect([...flipDelays(seatsOf(revealed(ALICE, { [BOB]: '8' })))]).toEqual([[BOB, 0]]);
+  });
+
+  it('spreads evenly whatever the number of cards, the last one starting at 200 ms', () => {
+    const delays = flipDelays(seatsOf(revealed(FARID, { [ALICE]: '1', [BOB]: '2', [CHLOE]: '3', [FARID]: '5' })));
+    expect([...delays]).toEqual([
+      [ALICE, 0],
+      [BOB, 100],
+      [CHLOE, 200],
+    ]);
+  });
+
+  it('nothing to flip in a hidden round (backs and my own face)', () => {
+    expect(flipDelays(seatsOf(hiddenRound as SessionState)).size).toBe(0);
   });
 });
 
@@ -241,5 +278,16 @@ describe('ParticipantTableComponent', () => {
     );
     expect(emma?.querySelector('.seat-card-face')?.getAttribute('aria-label')).toBe(cardName('5'));
     expect(emma?.querySelector('.seat-note')?.textContent).toBe('déconnecté · observe');
+  });
+
+  it('marks the faces of the others « seat-card-flip » with their delay, never my card', () => {
+    const element = render(revealedTie as SessionState);
+    const seats = [...element.querySelectorAll<HTMLElement>('.seat')];
+    const face = (i: number) => seats[i].querySelector<HTMLElement>('.seat-card-face');
+    expect(face(0)?.classList).not.toContain('seat-card-flip');
+    expect(face(0)?.style.getPropertyValue('--flip-delay')).toBe('');
+    const flipping = seats.slice(1, 5).map((_, i) => face(i + 1));
+    expect(flipping.every((f) => f?.classList.contains('seat-card-flip'))).toBe(true);
+    expect(flipping.map((f) => f?.style.getPropertyValue('--flip-delay'))).toEqual(['0ms', '67ms', '133ms', '200ms']);
   });
 });

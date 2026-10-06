@@ -6,14 +6,14 @@
 
 | | Avancement |
 | --- | --- |
-| **Stories** | `█████████████████░░░` 17/20 (85 %) |
+| **Stories** | `██████████████████░░` 18/20 (90 %) |
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
-| Epic 3 — Des séances souples et soignées 🟡 | `██████████░░░░░░░░░░` 3/6 (50 %) |
+| Epic 3 — Des séances souples et soignées 🟡 | `█████████████░░░░░░░` 4/6 (67 %) |
 | **Actions de rétro** | `████████████████░░░░` 12/15 (80 %) |
 
 **En cours :** aucune story  
-**Prochaine story :** 3.4 Une révélation qui se voit  
+**Prochaine story :** 3.5 Un outil accessible à tous  
 **Actions ouvertes :** 3
 
 ## Stories
@@ -48,14 +48,14 @@
 
 ### Epic 3 — Des séances souples et soignées
 
-🟡 in-progress · 3/6 stories · rétrospective : ➖ optional
+🟡 in-progress · 4/6 stories · rétrospective : ➖ optional
 
 | Story | Titre | Statut | Spec |
 | --- | --- | --- | --- |
 | 3.1 | Changer de rôle en pleine séance | ✅ done | [spec](spec-3-1-changer-de-role-en-pleine-seance.md) |
 | 3.2 | Masquer pour revoter | ✅ done | [spec](spec-3-2-masquer-pour-revoter.md) |
 | 3.3 | Choisir son thème | ✅ done | [spec](spec-3-3-choisir-son-theme.md) |
-| 3.4 | Une révélation qui se voit | ⚪ backlog | — |
+| 3.4 | Une révélation qui se voit | ✅ done | [spec](spec-3-4-une-revelation-qui-se-voit.md) |
 | 3.5 | Un outil accessible à tous | ⚪ backlog | — |
 | 3.6 | Les trois parcours garantis de bout en bout | ⚪ backlog | — |
 

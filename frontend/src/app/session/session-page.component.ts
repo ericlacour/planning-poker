@@ -9,6 +9,14 @@ import { ParticipantTableComponent } from './participant-table.component';
 import { announcementFor } from './result';
 import { SessionService } from './session.service';
 
+/** Durée totale du retournement des cartes à la révélation : départs étalés sur 200 ms, 200 ms par carte. */
+export const REVEAL_FLIP_MS = 400;
+
+/** Vrai si l'utilisateur demande moins de mouvement (`prefers-reduced-motion: reduce`). */
+function prefersReducedMotion(): boolean {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 /** Lien de session partagé : `origine/s/{sessionId}`. */
 export function sessionLink(origin: string, sessionId: string): string {
   return `${origin}/s/${encodeURIComponent(sessionId)}`;
@@ -23,12 +31,15 @@ export function sessionLink(origin: string, sessionId: string): string {
  * Coupure de plus de 2 s : bandeau ambre « Reconnexion… » sous la barre du haut, la table restant visible.
  * Mise en page (`styles/session-layout.css`) : l'écran tient dans la hauteur de la fenêtre, seule la zone de la table
  * (`session-scroll`) défile ; sur téléphone, la main devient un tiroir qui se replie quand le tour est révélé.
+ * Révélation (instantané `REVEALED` après un `HIDDEN`) : classe `session-flipping` pendant {@link REVEAL_FLIP_MS},
+ * qui retourne les cartes des autres et cache la synthèse (`styles/reveal.css`) ; l'état, lui, est déjà à jour. Rien
+ * sous `prefers-reduced-motion`, et tout `HIDDEN` coupe le retournement.
  */
 @Component({
   selector: 'app-session-page',
   imports: [ActionBarComponent, CopyLinkComponent, HandComponent, ParticipantTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { '[class.session-revealed]': 'revealed()' },
+  host: { '[class.session-revealed]': 'revealed()', '[class.session-flipping]': 'flipping()' },
   template: `
     <main class="session-page">
       <!-- Région toujours présente : seul son contenu change, pour que « Reconnexion… » soit annoncé. -->
@@ -70,6 +81,8 @@ export class SessionPageComponent {
   protected readonly alone = computed(() => this.session.state()?.participants.length === 1);
   /** Tour révélé : classe `session-revealed` sur l'hôte, qui replie le tiroir de la main sur téléphone. */
   protected readonly revealed = computed(() => this.session.state()?.round.status === 'REVEALED');
+  /** Retournement en cours : point unique qui anime la table et cache la synthèse, sans retarder l'état. */
+  protected readonly flipping = signal(false);
   /**
    * Dernière annonce, rendue dans un nouvel élément à chaque fois (clé `id`) pour qu'une même phrase, comme deux
    * « Nouveau tour » de suite, soit annoncée de nouveau.
@@ -80,10 +93,24 @@ export class SessionPageComponent {
     const locale = inject(LOCALE_ID);
     let previous = this.session.state();
     let nextId = 0;
+    let flipTimer: ReturnType<typeof setTimeout> | undefined;
+    const stopFlip = () => {
+      clearTimeout(flipTimer);
+      flipTimer = undefined;
+      this.flipping.set(false);
+    };
     effect(() => {
       const state = this.session.state();
       if (state === previous) return;
       const text = state ? announcementFor(previous, state, locale) : null;
+      const status = state?.round.status;
+      if (status === 'HIDDEN') {
+        stopFlip();
+      } else if (status === 'REVEALED' && previous?.round.status === 'HIDDEN' && !prefersReducedMotion()) {
+        stopFlip();
+        this.flipping.set(true);
+        flipTimer = setTimeout(stopFlip, REVEAL_FLIP_MS);
+      }
       previous = state;
       if (text) this.announcements.set([{ id: nextId++, text }]);
     });
@@ -93,6 +120,7 @@ export class SessionPageComponent {
     topBar.session.set(this.session);
     this.session.connect(this.sessionId);
     inject(DestroyRef).onDestroy(() => {
+      stopFlip();
       topBar.shareUrl.set(null);
       topBar.session.set(null);
       this.session.disconnect();

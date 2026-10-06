@@ -1,14 +1,14 @@
 import { LOCALE_ID, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { SessionState } from '../api/contract';
 import { TopBarState } from '../top-bar/top-bar-state';
-import { SessionPageComponent, sessionLink } from './session-page.component';
+import { REVEAL_FLIP_MS, SessionPageComponent, sessionLink } from './session-page.component';
 import { ConnectionStatus, SessionService } from './session.service';
 
 const SESSION_ID = 'k3Jx9QvT2mLpZ8wR4nYb7A';
@@ -197,5 +197,107 @@ describe('SessionPageComponent', () => {
     fixture.detectChanges();
     expect(element.querySelector('.status-banner')).toBeNull();
     expect(element.querySelector('main')?.firstElementChild).toBe(region);
+  });
+
+  describe('reveal flip', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    /** `prefers-reduced-motion` simulé. */
+    const motion = (reduced: boolean) =>
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: reduced && query === '(prefers-reduced-motion: reduce)' }));
+    const hidden = { ...revealedTie, round: { ...revealedTie.round, status: 'HIDDEN' }, summary: null, version: 8 };
+    const hiddenAgain = { ...hidden, version: 10, lastChange: { action: 'HIDE', byParticipantId: revealedTie.selfParticipantId } };
+    const flipping = (element: HTMLElement) => element.classList.contains('session-flipping');
+
+    function revealAfterHidden(reduced = false) {
+      vi.useFakeTimers();
+      motion(reduced);
+      const page = render();
+      page.show(hidden);
+      page.show(revealedTie);
+      return page;
+    }
+
+    it('flips for 400 ms when a hidden round is revealed, the state (faces, announcement) being up to date at once', () => {
+      const { fixture, element } = revealAfterHidden();
+      expect(flipping(element)).toBe(true);
+      expect(element.querySelectorAll('.seat-card-flip')).toHaveLength(4);
+      expect(element.querySelector('.seat-card-flip')?.getAttribute('aria-label')).toBe('Carte 8');
+      expect(element.querySelector('[aria-live="polite"]')?.textContent).toContain('Votes révélés.');
+      expect(element.querySelector('.result-panel')).not.toBeNull();
+      vi.advanceTimersByTime(REVEAL_FLIP_MS - 1);
+      fixture.detectChanges();
+      expect(flipping(element)).toBe(true);
+      vi.advanceTimersByTime(1);
+      fixture.detectChanges();
+      expect(flipping(element)).toBe(false);
+    });
+
+    it('does not flip under prefers-reduced-motion', () => {
+      const { element } = revealAfterHidden(true);
+      expect(flipping(element)).toBe(false);
+      expect(element.querySelector('.result-panel')).not.toBeNull();
+    });
+
+    it('does not flip when arriving in a revealed round, nor on a later revealed snapshot', () => {
+      vi.useFakeTimers();
+      motion(false);
+      const { element, show } = render();
+      show(revealedTie);
+      expect(flipping(element)).toBe(false);
+      show({ ...revealedTie, version: 10, lastChange: { action: 'PRESENCE', byParticipantId: null } });
+      expect(flipping(element)).toBe(false);
+    });
+
+    it('a hidden snapshot during the flip stops it at once, leaving nothing hidden', () => {
+      const { fixture, element, show } = revealAfterHidden();
+      vi.advanceTimersByTime(100);
+      show(hiddenAgain);
+      expect(flipping(element)).toBe(false);
+      expect(element.querySelector('.result-panel')).toBeNull();
+      expect(element.querySelectorAll('.seat-card-back').length).toBeGreaterThan(0);
+      vi.advanceTimersByTime(REVEAL_FLIP_MS);
+      fixture.detectChanges();
+      expect(flipping(element)).toBe(false);
+    });
+
+    it('flips again when the round is revealed after a « Masquer »', () => {
+      const { fixture, element, show } = revealAfterHidden();
+      vi.advanceTimersByTime(REVEAL_FLIP_MS);
+      fixture.detectChanges();
+      show(hiddenAgain);
+      show({ ...revealedTie, version: 11 });
+      expect(flipping(element)).toBe(true);
+      vi.advanceTimersByTime(REVEAL_FLIP_MS);
+      fixture.detectChanges();
+      expect(flipping(element)).toBe(false);
+    });
+
+    it('does not move the focus (a card of my hand keeps it through the flip)', () => {
+      vi.useFakeTimers();
+      motion(false);
+      const { fixture, element, show } = render();
+      document.body.appendChild(element);
+      show(hidden);
+      const card = element.querySelector<HTMLButtonElement>('.hand .poker-card');
+      card?.focus();
+      const focused = document.activeElement;
+      expect(focused).toBe(card);
+      show(revealedTie);
+      vi.advanceTimersByTime(REVEAL_FLIP_MS);
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(focused);
+      element.remove();
+    });
+
+    it('stops the flip timer when the page goes away', () => {
+      const { fixture } = revealAfterHidden();
+      expect(vi.getTimerCount()).toBeGreaterThan(0);
+      fixture.destroy();
+      expect(vi.getTimerCount()).toBe(0);
+    });
   });
 });

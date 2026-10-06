@@ -58,6 +58,21 @@ export function seatsOf(state: SessionState): Seat[] {
   return seats;
 }
 
+/** Étalement des départs du retournement : la première carte part à 0 ms, la dernière à 200 ms. */
+export const FLIP_SPREAD_MS = 200;
+
+/**
+ * Délai de départ du retournement (ms) de chaque face des autres places, dans l'ordre de la table, étalés
+ * régulièrement de 0 à {@link FLIP_SPREAD_MS} : chaque carte se retourne en 200 ms. La fenêtre du retournement dure
+ * toujours 400 ms (la synthèse attend `REVEAL_FLIP_MS`) ; la dernière carte finit à 400 ms dès que deux cartes au
+ * moins se retournent (une carte seule finit à 200 ms). Ma face (déjà visible pendant le tour caché) et les places sans face n'en ont pas.
+ */
+export function flipDelays(seats: readonly Seat[]): ReadonlyMap<string, number> {
+  const flipping = seats.filter((seat) => !seat.isSelf && typeof seat.card === 'object');
+  const step = flipping.length > 1 ? FLIP_SPREAD_MS / (flipping.length - 1) : 0;
+  return new Map(flipping.map((seat, i) => [seat.participant.participantId, Math.round(i * step)]));
+}
+
 /** Nombre de places vides montrées en attendant le premier instantané. */
 export const PENDING_SEATS = 3;
 
@@ -69,7 +84,8 @@ export const PENDING_SEATS = 3;
  * sans vote, « votera au prochain tour » pour un votant arrivé pendant la révélation. Un observateur a la mention
  * « observe » à la place de la carte ; s'il garde le vote d'un tour révélé, sa face s'affiche avec « observe »
  * dessous (« déconnecté · observe » hors connexion). Avant le premier instantané, des places vides en attente, sans
- * pseudo.
+ * pseudo. Les faces des autres portent `seat-card-flip` et leur délai `--flip-delay` ({@link flipDelays}) : la
+ * feuille `reveal.css` les retourne quand l'écran Session est en `session-flipping`.
  */
 @Component({
   selector: 'app-participant-table',
@@ -91,6 +107,8 @@ export const PENDING_SEATS = 3;
                 @default {
                   <span
                     class="seat-card seat-card-face"
+                    [class.seat-card-flip]="delays().has(seat.participant.participantId)"
+                    [style.--flip-delay.ms]="delays().get(seat.participant.participantId)"
                     role="img"
                     [appCardFace]="faceOf(seat)"
                     [attr.aria-label]="cardName(faceOf(seat))"
@@ -138,6 +156,8 @@ export class ParticipantTableComponent {
     const state = this.state();
     return state ? seatsOf(state) : null;
   });
+  /** Départs du retournement des faces des autres ; l'animation ne joue que sous `.session-flipping`. */
+  protected readonly delays = computed(() => flipDelays(this.seats() ?? []));
   protected readonly pending = Array.from({ length: PENDING_SEATS }, (_, i) => i);
 
   /**

@@ -2,7 +2,8 @@
 title: 'Story 3.6 : les trois parcours garantis de bout en bout'
 type: 'feature'
 created: '2026-10-06'
-status: 'draft'
+baseline_commit: '27ea02b0a950ee180d84d90c9b1f17f1bf1bc2ee'
+status: 'in-progress'
 route: 'dispatch'
 review_loop_iteration: 0
 context:

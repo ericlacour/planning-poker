@@ -3,6 +3,7 @@
  * Les composants Angular ne déclarent donc ni `styles` ni `styleUrl`.
  */
 @import './styles/tokens.css';
+@import './styles/elevation.css';
 @import './styles/base.css';
 @import './styles/card-back.css';
 @import './styles/top-bar.css';

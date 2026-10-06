@@ -43,3 +43,20 @@ test('le thème sombre redéfinit les mêmes propriétés, automatiquement et su
   assert.match(css, /@media \(prefers-color-scheme: dark\)/);
   assert.doesNotMatch(css, /--[a-z-]+-dark:/, 'aucune propriété --*-dark (AD-10)');
 });
+
+test('elevation.css : le sombre automatique et le sombre forcé déclarent exactement la même chose', () => {
+  const elevation = read('../src/styles/elevation.css').replaceAll("'", '"');
+  const declarations = (selector) => {
+    const start = elevation.indexOf(`${selector} {`);
+    assert.ok(start >= 0, `bloc ${selector} absent de elevation.css`);
+    return elevation
+      .slice(start, elevation.indexOf('}', start))
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('--'))
+      .sort();
+  };
+  const auto = declarations(':root:not([data-theme="light"])');
+  assert.ok(auto.length > 0);
+  assert.deepEqual(declarations(':root[data-theme="dark"]'), auto);
+});

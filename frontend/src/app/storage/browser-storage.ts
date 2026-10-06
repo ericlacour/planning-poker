@@ -16,12 +16,14 @@ export const LOCAL_STORAGE = new InjectionToken<() => Storage | null>('LOCAL_STO
 });
 
 const PSEUDO_KEY = 'pp.pseudo';
+/** Clé du thème choisi, lue aussi par `main.ts` avant le démarrage d'Angular. */
+export const THEME_KEY = 'pp.theme';
 const tokenKey = (sessionId: string) => `pp.token.${sessionId}`;
 
 /**
- * Jeton par session (`pp.token.{sessionId}`) et dernier pseudo (`pp.pseudo`). Aucune méthode ne lève. Quand le
- * `localStorage` est indisponible ou refuse l'écriture, les valeurs sont gardées en mémoire pour la durée de la
- * page : le jeton obtenu en rejoignant reste ainsi utilisable par la connexion de session.
+ * Jeton par session (`pp.token.{sessionId}`), dernier pseudo (`pp.pseudo`) et thème choisi (`pp.theme`). Aucune
+ * méthode ne lève. Quand le `localStorage` est indisponible ou refuse l'écriture, les valeurs sont gardées en mémoire
+ * pour la durée de la page : le jeton obtenu en rejoignant reste ainsi utilisable par la connexion de session.
  */
 @Injectable({ providedIn: 'root' })
 export class BrowserStorage {
@@ -34,6 +36,15 @@ export class BrowserStorage {
 
   savePseudo(pseudo: string): void {
     this.write(PSEUDO_KEY, pseudo);
+  }
+
+  /** Valeur brute de `pp.theme`, à interpréter par `parseTheme`. */
+  readTheme(): string | null {
+    return this.read(THEME_KEY);
+  }
+
+  saveTheme(theme: string): void {
+    this.write(THEME_KEY, theme);
   }
 
   readToken(sessionId: string): string | null {

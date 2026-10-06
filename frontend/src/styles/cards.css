@@ -116,18 +116,24 @@
   gap: var(--spacing-3);
 }
 
-/* Lien « Je veux voter » : un bouton à l'aspect de lien, avec une zone tactile de 44 px. */
+/*
+ * Lien « Je veux voter » : un bouton à l'aspect de lien, avec une zone tactile de 44 px. Texte en foreground (primary
+ * sur surface-muted n'atteint pas 4,5:1 en clair), souligné en primary (élément graphique, au moins 3:1).
+ */
 .link-button {
   min-height: var(--spacing-touch-min);
   padding: 0 var(--spacing-2);
   border: 0;
   background: none;
-  color: var(--primary);
+  color: var(--foreground);
   font-family: var(--typography-label-font-family);
   font-size: var(--typography-label-font-size);
   font-weight: var(--typography-label-font-weight);
   line-height: var(--typography-label-line-height);
   text-decoration: underline;
+  text-decoration-color: var(--primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
   cursor: pointer;
 }
 
@@ -167,9 +173,9 @@
 /* Carte choisie : face blanche, contour épais, soulevée de 12 px en 150 ms. */
 .poker-card-selected,
 .poker-card-selected:not([aria-disabled="true"]):hover {
-  border: 3px solid var(--poker-card-selected-border, var(--primary));
+  border: 3px solid var(--poker-card-selected-border);
   transform: translateY(-12px);
-  box-shadow: 0 10px 18px rgb(207 63 74 / 30%);
+  box-shadow: var(--elevation-card-selected);
 }
 
 /* Main grisée (tour révélé) : les cartes gardent le focus mais ne réagissent plus. */
@@ -177,17 +183,6 @@
   cursor: default;
   opacity: 0.45;
   filter: grayscale(0.6);
-}
-
-/* Thème sombre : contour en card-ink (contraste d'au moins 3:1 sur la face claire). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --poker-card-selected-border: var(--card-ink);
-  }
-}
-
-:root[data-theme="dark"] {
-  --poker-card-selected-border: var(--card-ink);
 }
 
 @media (prefers-reduced-motion: reduce) {

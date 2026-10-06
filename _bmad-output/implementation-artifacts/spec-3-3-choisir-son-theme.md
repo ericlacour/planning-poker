@@ -2,7 +2,7 @@
 title: 'Story 3.3 : choisir son thème'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-review'
+status: 'done'
 baseline_commit: '6183cf483ff8b57a9589b045e316124430689c8b'
 route: 'dispatch'
 review_loop_iteration: 0

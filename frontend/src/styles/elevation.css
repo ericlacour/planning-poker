@@ -1,0 +1,39 @@
+/*
+ * Élévation selon le thème (UX-DR2). En clair, les panneaux, la liste du menu, la carte choisie et le tiroir portent
+ * une ombre ; en sombre (automatique ou forcé), aucune ombre d'élévation : les surfaces plus claires détachent les
+ * éléments. Seule paire de sélecteurs sombres hors de tokens.css, qui reste le reflet de DESIGN.md.
+ * Les `box-shadow: inset` qui dessinent la marge des dos de cartes ne sont pas des élévations et restent.
+ */
+:root {
+  --elevation-panel: 0 1px 3px rgb(31 35 48 / 6%);
+  --elevation-menu: 0 4px 12px rgb(31 35 48 / 12%);
+  --elevation-card-selected: 0 10px 18px rgb(207 63 74 / 30%);
+  --elevation-dock: 0 -4px 12px rgb(31 35 48 / 10%);
+  /* Ombre ajoutée à la marge `inset` d'un dos de carte : une liste d'ombres n'accepte pas `none`. */
+  --elevation-card-back: 0 2px 6px rgb(31 35 48 / 12%);
+  --menu-background: var(--surface);
+  --poker-card-selected-border: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --elevation-panel: none;
+    --elevation-menu: none;
+    --elevation-card-selected: none;
+    --elevation-dock: none;
+    --elevation-card-back: 0 0 transparent;
+    --menu-background: var(--surface-muted);
+    /* Contour en card-ink : contraste d'au moins 3:1 sur la face claire. */
+    --poker-card-selected-border: var(--card-ink);
+  }
+}
+
+:root[data-theme='dark'] {
+  --elevation-panel: none;
+  --elevation-menu: none;
+  --elevation-card-selected: none;
+  --elevation-dock: none;
+  --elevation-card-back: 0 0 transparent;
+  --menu-background: var(--surface-muted);
+  --poker-card-selected-border: var(--card-ink);
+}

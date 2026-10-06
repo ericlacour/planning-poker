@@ -46,6 +46,27 @@ describe('BrowserStorage', () => {
     expect(storage.readToken('b')).toBe('token-b');
   });
 
+  it('stores the theme under pp.theme and returns it raw', () => {
+    const backing = memoryStorage();
+    const storage = storageWith(() => backing);
+    expect(storage.readTheme()).toBeNull();
+    storage.saveTheme('dark');
+    expect(backing.getItem('pp.theme')).toBe('dark');
+    expect(storage.readTheme()).toBe('dark');
+  });
+
+  it('keeps the theme in memory for the page when every access throws', () => {
+    const throwing = new Proxy({} as Storage, {
+      get: () => () => {
+        throw new DOMException('denied', 'SecurityError');
+      },
+    });
+    const storage = storageWith(() => throwing);
+    expect(storage.readTheme()).toBeNull();
+    expect(() => storage.saveTheme('light')).not.toThrow();
+    expect(storage.readTheme()).toBe('light');
+  });
+
   it('returns null when nothing is stored', () => {
     expect(storageWith(() => memoryStorage()).readPseudo()).toBeNull();
   });

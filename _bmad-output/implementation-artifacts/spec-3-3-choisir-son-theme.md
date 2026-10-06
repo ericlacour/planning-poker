@@ -27,6 +27,7 @@ context:
 - Menu : un seul `role="menu"`, deux `role="group"` (« Ton rôle », puis « Thème »), avec un séparateur entre les deux. Le choix actuel est coché (`menuitemradio`). Les flèches parcourent les cinq choix d'un groupe à l'autre ; Home et End vont au premier et au dernier. Choisir un thème ferme le menu et rend le focus au bouton, comme pour un rôle. À l'ouverture, le focus va au rôle coché.
 - En sombre (automatique ou forcé), aucune `box-shadow` d'élévation (panneaux, liste du menu, carte choisie, tiroir, ligne de résultat). Les surfaces plus claires détachent les éléments. La liste du menu prend le fond `surface-muted`. Les `box-shadow: inset` qui dessinent la marge des dos de cartes restent.
 - Libellés exacts : « Thème », « Automatique », « Clair », « Sombre ».
+- **Lien « Je veux voter »** (décision d'Eric, 2026-10-06, option A) : en thème clair, le texte `primary` sur `surface-muted` n'atteint que 3,99:1. Le lien passe en texte `foreground`, souligné en `primary` (graphique ≥ 3:1), dans les deux thèmes. Seul le CSS de `.link-button` change.
 
 **Never:**
 - Aucun passage par le serveur, le contrat ou `SessionService`. Aucune nouvelle clé de stockage.
@@ -49,13 +50,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. **Lien « Je veux voter » en thème clair.** Le texte `primary` (#CF3F4A) sur la main `surface-muted` (#EFECE6) n'a qu'un contraste de 3,99:1, sous le seuil de 4,5:1 pour le texte. C'est le seul couple de texte en échec (calculé sur les jetons ; le sombre passe). Options :
-   - **A (recommandée)** : texte en `foreground`, souligné en `primary`. Le contraste passe à environ 13:1 ; on garde l'air d'un lien rouge par le soulignement (3,99:1 suffit pour un élément graphique). Seul le CSS du lien change.
-   - **B** : poser « Tu observes » et le lien sur un fond `surface` dans la main. 4,7:1 en gardant le texte rouge ; la main observateur change d'aspect.
-   - **C** : foncer `primary` dans `DESIGN.md`. La marque change partout, et DESIGN doit être révisé d'abord.
-
 ## Code Map
 
 - `frontend/src/styles/tokens.css` -- jetons clairs et sombres déjà complets (blocs `@media` + `:not([data-theme="light"])` et `[data-theme="dark"]`). À ne pas toucher.
@@ -66,7 +60,7 @@ context:
 - `frontend/src/main.ts` -- démarrage avant `loadAppConfig` : y appliquer le thème mémorisé.
 - Ombres d'élévation : `table.css:13`, `action-bar.css:12`, `entry-form.css:16`, `session-layout.css:128,178`, `cards.css:172` (carte choisie), `top-bar.css:65`, `state-screen.css:57` (partie externe seulement).
 - Surcharges sombres existantes à regrouper : `cards.css:182-191` (`--poker-card-selected-border`), `session-layout.css:208-219` (tiroir).
-- `frontend/src/styles/cards.css:120` -- `.link-button` (« Je veux voter »), concerné par la question ouverte.
+- `frontend/src/styles/cards.css:120` -- `.link-button` (« Je veux voter ») : texte `foreground`, soulignement `primary` (`text-decoration-color`).
 - `frontend/e2e/role.spec.ts` -- modèle e2e (faux webservice, `fakeSessionSocket`, `addInitScript`).
 
 ## Tasks & Acceptance
@@ -77,7 +71,8 @@ context:
 - [ ] `frontend/src/main.ts` -- appliquer le thème mémorisé avant `loadAppConfig` (lecture directe et protégée du `localStorage`) -- pas de flash au chargement.
 - [ ] `frontend/src/app/top-bar/participant-menu.component.ts` + `top-bar.css` -- groupe « Thème », séparateur, navigation au clavier sur les cinq choix -- UX-DR2.
 - [ ] `frontend/src/styles/elevation.css` (importé dans `styles.css`) -- propriétés `--elevation-panel`, `--elevation-menu`, `--elevation-card-selected`, `--elevation-dock`, toutes à `none` sous les deux sélecteurs sombres ; les fichiers listés s'y réfèrent. Y regrouper `--poker-card-selected-border` ; supprimer les blocs sombres de `cards.css` et `session-layout.css` -- une seule paire de sélecteurs sombres hors des jetons.
-- [ ] `frontend/scripts/contrast.test.mjs` -- calcul WCAG sur les valeurs de `tokens.css`, pour les deux thèmes : texte ≥ 4,5 (`foreground` et `muted-foreground` sur `background`/`surface`/`surface-muted`, `foreground` sur `primary-soft`, `primary-foreground` sur `primary`, `card-ink` sur `card-face`, `success`/`warning` sur leur `-soft`, `danger` sur `background`/`surface`, couple du lien « Je veux voter ») ; graphique ≥ 3 (`primary` sur `surface`/`surface-muted`/`primary-soft`, `card-ink` sur `card-face`, `presence-*` sur `surface`).
+- [ ] `frontend/src/styles/cards.css` -- `.link-button` : `color: var(--foreground)`, soulignement `primary` -- décision 1A, contraste AA.
+- [ ] `frontend/scripts/contrast.test.mjs` -- calcul WCAG sur les valeurs de `tokens.css`, pour les deux thèmes : texte ≥ 4,5 (`foreground` et `muted-foreground` sur `background`/`surface`/`surface-muted`, `foreground` sur `primary-soft`, `primary-foreground` sur `primary`, `card-ink` sur `card-face`, `success`/`warning` sur leur `-soft`, `danger` sur `background`/`surface`, `foreground` du lien sur `surface-muted`) ; graphique ≥ 3 (`primary` sur `surface`/`surface-muted`/`primary-soft`, `card-ink` sur `card-face`, `presence-*` sur `surface`).
 - [ ] `frontend/src/app/theme/theme.spec.ts`, `participant-menu.component.spec.ts`, `browser-storage.spec.ts` -- matrice I/O et clavier.
 - [ ] `frontend/e2e/theme.spec.ts` -- `emulateMedia` sombre, choix « Clair » : fond calculé clair, `pp.theme`, persistance au rechargement.
 

@@ -2,7 +2,7 @@
 title: 'Story 3.3 : choisir son thème'
 type: 'feature'
 created: '2026-10-06'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '6183cf483ff8b57a9589b045e316124430689c8b'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -66,15 +66,15 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/src/app/theme/theme.ts` -- type `Theme`, `parseTheme` (inconnu → `auto`), `applyTheme(doc, theme)`, `ThemeService` (signal en lecture seule `theme`, `choose(theme)` qui applique et mémorise) -- point unique du thème, hors session.
-- [ ] `frontend/src/app/storage/browser-storage.ts` -- `readTheme()`/`saveTheme()` -- clé `pp.theme` avec le même repli.
-- [ ] `frontend/src/main.ts` -- appliquer le thème mémorisé avant `loadAppConfig` (lecture directe et protégée du `localStorage`) -- pas de flash au chargement.
-- [ ] `frontend/src/app/top-bar/participant-menu.component.ts` + `top-bar.css` -- groupe « Thème », séparateur, navigation au clavier sur les cinq choix -- UX-DR2.
-- [ ] `frontend/src/styles/elevation.css` (importé dans `styles.css`) -- propriétés `--elevation-panel`, `--elevation-menu`, `--elevation-card-selected`, `--elevation-dock`, toutes à `none` sous les deux sélecteurs sombres ; les fichiers listés s'y réfèrent. Y regrouper `--poker-card-selected-border` ; supprimer les blocs sombres de `cards.css` et `session-layout.css` -- une seule paire de sélecteurs sombres hors des jetons.
-- [ ] `frontend/src/styles/cards.css` -- `.link-button` : `color: var(--foreground)`, soulignement `primary` -- décision 1A, contraste AA.
-- [ ] `frontend/scripts/contrast.test.mjs` -- calcul WCAG sur les valeurs de `tokens.css`, pour les deux thèmes : texte ≥ 4,5 (`foreground` et `muted-foreground` sur `background`/`surface`/`surface-muted`, `foreground` sur `primary-soft`, `primary-foreground` sur `primary`, `card-ink` sur `card-face`, `success`/`warning` sur leur `-soft`, `danger` sur `background`/`surface`, `foreground` du lien sur `surface-muted`) ; graphique ≥ 3 (`primary` sur `surface`/`surface-muted`/`primary-soft`, `card-ink` sur `card-face`, `presence-*` sur `surface`).
-- [ ] `frontend/src/app/theme/theme.spec.ts`, `participant-menu.component.spec.ts`, `browser-storage.spec.ts` -- matrice I/O et clavier.
-- [ ] `frontend/e2e/theme.spec.ts` -- `emulateMedia` sombre, choix « Clair » : fond calculé clair, `pp.theme`, persistance au rechargement.
+- [x] `frontend/src/app/theme/theme.ts` -- type `Theme`, `parseTheme` (inconnu → `auto`), `applyTheme(doc, theme)`, `ThemeService` (signal en lecture seule `theme`, `choose(theme)` qui applique et mémorise) -- point unique du thème, hors session.
+- [x] `frontend/src/app/storage/browser-storage.ts` -- `readTheme()`/`saveTheme()` -- clé `pp.theme` avec le même repli.
+- [x] `frontend/src/main.ts` -- appliquer le thème mémorisé avant `loadAppConfig` (lecture directe et protégée du `localStorage`) -- pas de flash au chargement.
+- [x] `frontend/src/app/top-bar/participant-menu.component.ts` + `top-bar.css` -- groupe « Thème », séparateur, navigation au clavier sur les cinq choix -- UX-DR2.
+- [x] `frontend/src/styles/elevation.css` (importé dans `styles.css`) -- propriétés `--elevation-panel`, `--elevation-menu`, `--elevation-card-selected`, `--elevation-dock`, toutes à `none` sous les deux sélecteurs sombres ; les fichiers listés s'y réfèrent. Y regrouper `--poker-card-selected-border` ; supprimer les blocs sombres de `cards.css` et `session-layout.css` -- une seule paire de sélecteurs sombres hors des jetons.
+- [x] `frontend/src/styles/cards.css` -- `.link-button` : `color: var(--foreground)`, soulignement `primary` -- décision 1A, contraste AA.
+- [x] `frontend/scripts/contrast.test.mjs` -- calcul WCAG sur les valeurs de `tokens.css`, pour les deux thèmes : texte ≥ 4,5 (`foreground` et `muted-foreground` sur `background`/`surface`/`surface-muted`, `foreground` sur `primary-soft`, `primary-foreground` sur `primary`, `card-ink` sur `card-face`, `success`/`warning` sur leur `-soft`, `danger` sur `background`/`surface`, `foreground` du lien sur `surface-muted`) ; graphique ≥ 3 (`primary` sur `surface`/`surface-muted`/`primary-soft`, `card-ink` sur `card-face`, `presence-*` sur `surface`).
+- [x] `frontend/src/app/theme/theme.spec.ts`, `participant-menu.component.spec.ts`, `browser-storage.spec.ts` -- matrice I/O et clavier.
+- [x] `frontend/e2e/theme.spec.ts` -- `emulateMedia` sombre, choix « Clair » : fond calculé clair, `pp.theme`, persistance au rechargement.
 
 **Acceptance Criteria:**
 - Given le menu ouvert, when je choisis un thème, then il s'applique sans rechargement, le choix est coché à la réouverture et rien n'est envoyé sur le WebSocket.
@@ -83,9 +83,32 @@ context:
 
 ## Implementation Notes
 
+- `--elevation-card-back` ajoutée pour l'ombre externe des dos de cartes de l'écran de réveil (`state-screen.css`) : elle suit la marge `inset` dans une liste d'ombres, qui n'accepte pas `none`, d'où `0 0 transparent` en sombre.
+- `--menu-background` (`surface` en clair, `surface-muted` en sombre) dans `elevation.css`, qui regroupe aussi `--poker-card-selected-border` : seule paire de sélecteurs sombres hors de `tokens.css`.
+- `BrowserStorage.readTheme()` rend la valeur brute ; `parseTheme` l'interprète, ce qui évite une dépendance du stockage vers le thème. `main.ts` lit `localStorage` directement, sous `try/catch`.
+- Lien « Je veux voter » : soulignement `primary` de 2 px, décalé de 3 px.
+- Vérifié sous Node 24 (Angular refuse Node 22) : 277 tests unitaires, 12 tests de scripts, 52 parcours e2e sur Chromium (`API_BASE_URL=http://127.0.0.1:4310` pour `build:e2e`). WebKit tourne en CI seulement.
+- `prettier --check` échouait déjà sur 47 fichiers avant cette story (`.prettierrc` à 100 colonnes, code à 120) : seuls les nouveaux fichiers ont été formatés.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Couche | Constat | Verdict | Preuve | Suite |
+|---|--------|---------|---------|--------|-------|
+| 1 | verification-gap | Liste du menu, tiroir téléphone et dos de cartes en sombre : aucune vérification | medium | `theme.spec.ts` ne vérifie que la table, la barre d'action et la carte choisie ; `layout.spec.ts:363` ne tourne qu'en clair | patch : assertions e2e menu et tiroir en sombre |
+| 2 | verification-gap | Le test de contraste prétend couvrir le lien « Je veux voter » | low | Il ne lit que `tokens.css`, pas `cards.css` | patch : reformuler le commentaire |
+| 3 | verification-gap, edge-case, blind | Blocs sombres dupliqués sans contrôle de concordance | low | `tokens.css` : faux, `tokens.test.mjs` vérifie déjà les deux blocs contre DESIGN.md ; `elevation.css` : vrai, nouveau doublon non vérifié | patch : test de concordance des deux blocs d'`elevation.css` |
+| 4 | blind | `main.ts` code en dur `'pp.theme'` | low | Clé répétée hors de `BrowserStorage` | patch : exporter la constante |
+| 5 | edge-case, blind | Pas de synchronisation du thème entre onglets (`storage`) | low | Réel, mais hors de l'intention et rare (deux onglets de la même séance) ; ajouterait un écouteur | rejeté |
+| 6 | blind | `elevation.css` porte des couleurs (`--menu-background`, bordure de carte) | low | Aucun tort nommé : les couples concernés (`card-ink`/`card-face`, `foreground`/`surface-muted`) sont dans le test de contraste | rejeté |
+| 7 | blind | Le menu sombre se détache mal (bordure `border` peu contrastée) | false | Les choix portent du texte contrasté ; WCAG 1.4.11 n'exige pas 3:1 pour la bordure d'un conteneur ; choix voulu par DESIGN (surfaces plus claires) | rejeté |
+| 8 | blind | Pas d'intitulé visible « Thème » | low | Le bloc gelé fixe deux groupes séparés par un filet ; « Automatique / Clair / Sombre » se comprend seul | rejeté (signalé à Eric) |
+| 9 | blind | Absence de flash non testée | false | Après rechargement, `data-theme="light"` ne peut venir que de `main.ts` : `ThemeService` ne l'applique pas à sa construction | rejeté |
+| 10 | blind | Aide `memoryStorage` copiée dans trois specs | low | Motif déjà présent avant la story, sans effet sur l'usage | rejeté |
+| 11 | blind | Regex de `contrast.test.mjs` limitée aux hex à 6 chiffres | low | `tokens.css` n'a que ce format, vérifié par `tokens.test.mjs` | rejeté |
+| 12 | blind | Le 2e test e2e vérifie moins que le 1er | low | Fermeture, focus et silence réseau déjà couverts par le 1er test et les tests unitaires | rejeté |
+| 13 | blind | `choose('auto')` écrit `auto` au lieu d'effacer la clé | false | Le bloc gelé fixe les valeurs `auto`, `light`, `dark` et la matrice attend `pp.theme=auto` | rejeté |
 
 ## Verification
 

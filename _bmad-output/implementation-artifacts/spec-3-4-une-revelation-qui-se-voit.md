@@ -2,7 +2,7 @@
 title: 'Story 3.4 : une révélation qui se voit'
 type: 'feature'
 created: '2026-10-06'
-status: 'draft'
+status: 'in-progress'
 baseline_commit: '6804e26c4bd47ebaf697c6ff53cb963ad22a3025'
 route: 'dispatch'
 review_loop_iteration: 0

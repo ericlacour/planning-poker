@@ -1,19 +1,19 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 21:00). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 22:07). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
 | | Avancement |
 | --- | --- |
-| **Stories** | `███████████████████░` 19/20 (95 %) |
+| **Stories** | `████████████████████` 20/20 (100 %) |
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
-| Epic 3 — Des séances souples et soignées 🟡 | `█████████████████░░░` 5/6 (83 %) |
-| **Actions de rétro** | `████████████████░░░░` 12/15 (80 %) |
+| Epic 3 — Des séances souples et soignées 🟡 | `████████████████████` 6/6 (100 %) |
+| **Actions de rétro** | `████████████████░░░░` 13/16 (81 %) |
 
 **En cours :** aucune story  
-**Prochaine story :** 3.6 Les trois parcours garantis de bout en bout  
+**Prochaine story :** —  
 **Actions ouvertes :** 3
 
 ## Stories
@@ -48,7 +48,7 @@
 
 ### Epic 3 — Des séances souples et soignées
 
-🟡 in-progress · 5/6 stories · rétrospective : ➖ optional
+🟡 in-progress · 6/6 stories · rétrospective : ➖ optional
 
 | Story | Titre | Statut | Spec |
 | --- | --- | --- | --- |
@@ -57,7 +57,7 @@
 | 3.3 | Choisir son thème | ✅ done | [spec](spec-3-3-choisir-son-theme.md) |
 | 3.4 | Une révélation qui se voit | ✅ done | [spec](spec-3-4-une-revelation-qui-se-voit.md) |
 | 3.5 | Un outil accessible à tous | ✅ done | [spec](spec-3-5-un-outil-accessible-a-tous.md) |
-| 3.6 | Les trois parcours garantis de bout en bout | ⚪ backlog | — |
+| 3.6 | Les trois parcours garantis de bout en bout | ✅ done | [spec](spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md) |
 
 ## Actions de rétrospective
 
@@ -66,10 +66,10 @@
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 8 | Story 3.6 contre le vrai webservice en CI, ou test de fumée qui fait tourner le front et le webservice ensemble plus tôt (V1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
+|  | Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur main (job journeys compris) ; l'agent ne pose aucune étiquette | Eric | 3 | [rétro](spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md) |
 
-### ✅ Faites (12)
+### ✅ Faites (13)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
@@ -79,6 +79,7 @@
 | 5 | Spec 2.2 : couvrir toute coupure autre que 4401 et 4404 (y compris 4500 et 1008), avec un retour visible et sans clic perdu (F1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 6 | Ajouter les limites de ressources (taille des corps, nombre de sessions et de participants, débit) à l'epic 2, avec la story 2.5, avant v1.0 (F2) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 7 | N'autoriser le déploiement d'une étiquette v* que si la CI est verte sur ce commit, avant v1.0 (V3)<br>↳ _Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte de main avant de poser l'étiquette (deploy/README.md)._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 8 | Story 3.6 contre le vrai webservice en CI, ou test de fumée qui fait tourner le front et le webservice ensemble plus tôt (V1)<br>↳ _Fait dans la story 3.6 (décision d'Eric du 2026-10-06) : UJ-1 à UJ-3 joués sur Chromium et WebKit contre le vrai webservice (jar lancé par Playwright), suite frontend/e2e-journeys, job journeys de la CI à chaque PR et push sur main._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 9 | Faire passer la CI sur les branches de story : déclencheur claude/** ou PR en brouillon dès la première story (V2) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 10 | Avant chaque PR, comparer le suivi de sprint aux en-têtes des specs (L1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 11 | Garder l'historique par story : conserver les branches de travail, ou fusionner par commit de fusion (L2) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |

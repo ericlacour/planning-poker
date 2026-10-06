@@ -27,6 +27,7 @@ context:
 - Main : `<app-hand>` porte `role="region"` et `aria-label="Ta main"`.
 - Présence : la mention « déconnecté » (story 2.1) solde le report de la story 1.5. La pastille reste décorative.
 - Audit axe sur l'accueil, Rejoindre (avec et sans erreur), le réveil, « Le serveur ne répond pas », « Session introuvable », « Injoignable », et la session seul, cachée, révélée et en observateur, en clair et en sombre : zéro violation pour les tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` et `wcag22aa`.
+- Téléphone (< 600 px) : le tiroir de la main se replie toujours à la révélation (story 1.8). Le focus conservé ne vaut que là où la main reste visible (PC, tablette dès 600 px) : exception assumée, sans code (décision d'Eric du 2026-10-06).
 - Zoom 200 % (fenêtre de 640 × 400) et 360 px : aucun défilement horizontal, et cibles d'au moins 44 × 44 px, sur ces mêmes écrans.
 
 **Never:**
@@ -47,13 +48,6 @@ context:
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. **Téléphone : le focus dans le tiroir de la main au moment d'une révélation.** Le tiroir se replie (`visibility: hidden`, story 1.8), donc le focus et le curseur VoiceOver tombent. Options :
-   - (a) Ne pas replier le tiroir tant que le focus est dedans. Le focus est conservé, mais le résultat reste en partie caché derrière le tiroir pour cet utilisateur.
-   - (b) Exception assumée sur téléphone : le critère « le focus reste » ne vaut que là où la main reste visible (PC, tablette dès 600 px). Pas de code de plus.
-   - (c) Replier le tiroir sans `visibility: hidden` (hauteur 0, cartes toujours focalisables mais hors écran). Le focus est conservé mais invisible, ce qui contredit « focus toujours visible ».
-
 ## Code Map
 
 - `frontend/src/app/session/action-bar.component.ts` -- `@if (revealed())` qui crée deux paires de boutons, ce qui fait perdre le focus ; `[disabled]="inactive()"` ; `guarded` et `blocksActions` sont à garder.
@@ -63,7 +57,7 @@ context:
 - `frontend/src/app/session/cards.ts:23` -- `voteCounter` : texte du compteur, à réutiliser tel quel.
 - `frontend/src/app/session/participant-table.component.ts` -- `@case ('empty')` en `aria-hidden` ; `noteOf` donne déjà « n'a pas voté » en tour révélé.
 - `frontend/src/app/session/hand.component.ts` -- focus itinérant et `aria-disabled` déjà conformes ; n'ajouter que le `host`.
-- `frontend/src/styles/session-layout.css:195` -- `.session-revealed .hand-dock { visibility: hidden }` (Open Question).
+- `frontend/src/styles/session-layout.css:195` -- `.session-revealed .hand-dock { visibility: hidden }` : à ne pas toucher (exception téléphone).
 - Écrans d'état : `session-entry.component.ts` (`notFound`, `unreachable`, `join`) et `wake/wake-screen.component.ts`.
 - E2E modèles : `e2e/reveal.spec.ts` (`openWithToken`, `watchPage`, instantanés construits), `e2e/fake-session-socket.ts` (`routes[0].send`), `e2e/layout.spec.ts` (mesures 44 px et `scrollWidth`), `e2e/wake.spec.ts` et `e2e/join-session.spec.ts` (écrans d'état). Exemples : `contract/examples/session-state/*.json`.
 - Environnement local : Node 24 (`/opt/nvm/versions/node/v24.21.0/bin`), `PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium`.

@@ -122,7 +122,10 @@ action_items:
     action: "Story 3.6 contre le vrai webservice en CI, ou test de fumée qui fait
       tourner le front et le webservice ensemble plus tôt (V1)"
     owner: "agent dev"
-    status: open
+    status: done
+    resolution: "Fait dans la story 3.6 (décision d'Eric du 2026-10-06) : UJ-1 à UJ-3
+      joués sur Chromium et WebKit contre le vrai webservice (jar lancé par Playwright),
+      suite frontend/e2e-journeys, job journeys de la CI à chaque PR et push sur main."
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-10-03.md"
   - id: "epic-1-retro-item-9-faire-passer-la-ci-sur-les-branches-de-s"
     epic: 1
@@ -178,3 +181,10 @@ action_items:
     owner: "agent dev"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-05.md"
+  - id: "story-3-6-poser-v1-0-hors-atelier-après-fusion-et-ci-verte"
+    epic: 3
+    action: "Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur main
+      (job journeys compris) ; l'agent ne pose aucune étiquette"
+    owner: "Eric"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md"

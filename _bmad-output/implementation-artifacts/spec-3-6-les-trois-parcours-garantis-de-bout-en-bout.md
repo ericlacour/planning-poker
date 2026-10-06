@@ -3,7 +3,7 @@ title: 'Story 3.6 : les trois parcours garantis de bout en bout'
 type: 'feature'
 created: '2026-10-06'
 baseline_commit: '27ea02b0a950ee180d84d90c9b1f17f1bf1bc2ee'
-status: 'in-progress'
+status: 'in-review'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -64,15 +64,15 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `frontend/playwright.journeys.config.ts` -- `testDir: 'e2e-journeys'`, projets Chromium et WebKit (même règle que la config existante), `webServer` en tableau : jar sur 4310 (santé, 120 s) puis `serve-dist` -- vrai couple front–webservice.
-- [ ] `frontend/package.json` -- script `e2e:journeys` -- lancement local et CI.
-- [ ] `frontend/e2e-journeys/journey-helpers.ts` -- `join(context, sessionUrl, pseudo, role)`, `cuttableSocket(page)` (mandataire avec `cut()` / `restore()`, nouvelles connexions fermées pendant la coupure) -- réutilisés par les trois parcours.
-- [ ] `frontend/e2e-journeys/uj1-affinage.spec.ts` -- UJ-1 (8 contextes).
-- [ ] `frontend/e2e-journeys/uj2-telephone.spec.ts` -- UJ-2, reprise, et onglet caché > 15 s.
-- [ ] `frontend/e2e-journeys/uj3-sessions-paralleles.spec.ts` -- UJ-3.
-- [ ] `.github/workflows/ci.yml` -- job `journeys` : Java 25 + jar, Node 24 + `build:e2e`, Playwright Chromium et WebKit, `npm run e2e:journeys` -- à chaque PR et push sur `main`.
-- [ ] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- action `epic-1-retro-item-8` passée à `done` avec sa résolution ; nouvelle action ouverte « Poser `v1.0` hors atelier après fusion et CI verte » (owner Eric).
-- [ ] `deploy/README.md` -- rappeler que la CI verte inclut le job `journeys`.
+- [x] `frontend/playwright.journeys.config.ts` -- `testDir: 'e2e-journeys'`, projets Chromium et WebKit (même règle que la config existante), `webServer` en tableau : jar sur 4310 (santé, 120 s) puis `serve-dist` -- vrai couple front–webservice.
+- [x] `frontend/package.json` -- script `e2e:journeys` -- lancement local et CI.
+- [x] `frontend/e2e-journeys/journey-helpers.ts` -- `join(context, sessionUrl, pseudo, role)`, `cuttableSocket(page)` (mandataire avec `cut()` / `restore()`, nouvelles connexions fermées pendant la coupure) -- réutilisés par les trois parcours.
+- [x] `frontend/e2e-journeys/uj1-affinage.spec.ts` -- UJ-1 (8 contextes).
+- [x] `frontend/e2e-journeys/uj2-telephone.spec.ts` -- UJ-2, reprise, et onglet caché > 15 s.
+- [x] `frontend/e2e-journeys/uj3-sessions-paralleles.spec.ts` -- UJ-3.
+- [x] `.github/workflows/ci.yml` -- job `journeys` : Java 25 + jar, Node 24 + `build:e2e`, Playwright Chromium et WebKit, `npm run e2e:journeys` -- à chaque PR et push sur `main`.
+- [x] `_bmad-output/implementation-artifacts/sprint-status.yaml` -- action `epic-1-retro-item-8` passée à `done` avec sa résolution ; nouvelle action ouverte « Poser `v1.0` hors atelier après fusion et CI verte » (owner Eric).
+- [x] `deploy/README.md` -- rappeler que la CI verte inclut le job `journeys`.
 
 **Acceptance Criteria:**
 - Given la CI GitHub Actions, when un commit est poussé sur une PR ou sur `main`, then UJ-1, UJ-2 et UJ-3 passent sur Chromium et WebKit contre le vrai webservice.
@@ -80,6 +80,13 @@ context:
 - Given `npm run e2e`, when il tourne, then la suite simulée existante est inchangée et verte.
 
 ## Implementation Notes
+
+- Mandataire WebSocket : les fermetures sont relayées avec leur code (sinon le `4401` de la reprise arrivait en `1000` et le premier appareil restait sur « Reconnexion… ») ; un code réservé (1005, 1006) part sans code.
+- `journey-helpers.ts` fournit aussi un `test` étendu (fixture `contexts`, fermés en fin de test), `create`, et des sélecteurs communs (`seat`, `hand`, `card`, `vote`, `action`, `counter`, `reconnecting`).
+- La config lance `java` de `JAVA_HOME` s'il est défini (setup-java en CI), sinon celui du `PATH`.
+- UJ-3 ajoute Nadia à la session A pour que son compteur soit visible (seul, Karim n'a pas de barre d'action).
+- UJ-2 vérifie aussi le refus du pseudo « Sofia » (« Ce pseudo est déjà pris dans cette session. ») tant que le premier téléphone est connecté : colonne Erreurs de la matrice.
+- Vérifié en local sur Chromium seulement : WebKit ne se télécharge pas dans le bac à sable ; il tournera en CI.
 
 ## Spec Change Log
 

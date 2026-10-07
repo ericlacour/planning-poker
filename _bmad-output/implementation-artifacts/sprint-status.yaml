@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-07-2026 10:59
+last_updated: 10-07-2026 11:09
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -195,7 +195,9 @@ action_items:
       → Nouveau tour) ; règle à arbitrer par Eric, avec un test unitaire et un e2e
       (F1)"
     owner: "Eric (arbitrage), agent dev"
-    status: open
+    status: done
+    resolution: "Garde au clic (option A, décision d'Eric du 2026-10-07) : tout clic accepté
+      sur la barre d'action la rend inactive 1 s ; spec-retro-3-f1-double-clic-barre-action.md."
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-07.md"
   - id: "epic-3-retro-item-18-rendre-reveal-motion-spec-ts-déterminist"
     epic: 3

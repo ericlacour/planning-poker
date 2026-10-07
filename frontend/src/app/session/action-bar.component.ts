@@ -5,7 +5,10 @@ import { voteCounter } from './cards';
 import { ResultLineComponent, ResultPanelComponent } from './result';
 import { SessionService } from './session.service';
 
-/** Durée pendant laquelle les boutons restent inactifs après un changement d'état venu d'un autre (FR-17). */
+/**
+ * Durée pendant laquelle les boutons restent inactifs après un changement d'état venu d'un autre (FR-17), et après
+ * mon propre clic sur l'un d'eux (double-clic).
+ */
 export const CROSS_CLICK_GUARD_MS = 1_000;
 
 /** Changements d'état du tour qui bloquent les boutons quand ils viennent d'un autre participant. */
@@ -25,7 +28,9 @@ export function blocksActions(state: SessionState): boolean {
  * son intention avec le `roundId` courant, sans confirmation. Sur téléphone (< 600 px), le panneau intégré laisse
  * la place au résultat condensé, posé juste au-dessus de la barre (la feuille de style choisit l'un ou l'autre).
  * Après un REVEAL, HIDE ou CLEAR fait par un autre, les boutons restent inactifs pendant 1 s, pour qu'un clic parti
- * trop tôt ne tombe pas sur le nouveau bouton. Connexion perdue : boutons inactifs jusqu'à son rétablissement.
+ * trop tôt ne tombe pas sur le nouveau bouton. Même garde de 1 s dès mon propre clic : le second clic d'un double-clic
+ * (ou une seconde Entrée) ne déclenche pas l'action suivante (« Masquer » puis « Effacer les votes »). Connexion
+ * perdue : boutons inactifs jusqu'à son rétablissement.
  * Les deux boutons restent les mêmes éléments d'un état du tour à l'autre (seul le libellé change) et un bouton
  * inactif porte `aria-disabled` plutôt que `disabled` : le focus reste posé quand un autre révèle ou efface.
  */
@@ -72,7 +77,7 @@ export class ActionBarComponent {
 
   protected readonly counter = computed(() => voteCounter(this.state().progress));
   protected readonly revealed = computed(() => this.state().round.status === 'REVEALED');
-  /** Boutons inactifs pendant 1 s après un changement d'état fait par un autre. */
+  /** Boutons inactifs pendant 1 s après un changement d'état fait par un autre, ou après mon propre clic. */
   protected readonly guarded = signal(false);
   /** Boutons inactifs : garde de 1 s, ou connexion pas (encore) rétablie. */
   protected readonly inactive = computed(() => this.guarded() || this.session.connection() !== 'open');
@@ -90,6 +95,7 @@ export class ActionBarComponent {
     if (this.inactive()) return;
     if (this.revealed()) this.session.hide();
     else this.session.clear();
+    this.guard();
   }
 
   /** Bouton principal : « Nouveau tour » (tour révélé) ou « Révéler les votes » (tour caché) ; sans effet si inactif. */
@@ -97,10 +103,18 @@ export class ActionBarComponent {
     if (this.inactive()) return;
     if (this.revealed()) this.session.clear();
     else this.session.reveal();
+    this.guard();
   }
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private lastSeen: SessionState | null = null;
+
+  /** Rend les deux boutons inactifs pendant {@link CROSS_CLICK_GUARD_MS} ; une garde en cours repart de zéro. */
+  private guard(): void {
+    clearTimeout(this.timer);
+    this.guarded.set(true);
+    this.timer = setTimeout(() => this.guarded.set(false), CROSS_CLICK_GUARD_MS);
+  }
 
   constructor() {
     effect(() => {
@@ -109,9 +123,7 @@ export class ActionBarComponent {
       this.lastSeen = state;
       // Seul un changement nouveau bloque : ni le premier instantané, ni un instantané renvoyé à la reconnexion.
       if (!previous || state.version <= previous.version || !blocksActions(state)) return;
-      clearTimeout(this.timer);
-      this.guarded.set(true);
-      this.timer = setTimeout(() => this.guarded.set(false), CROSS_CLICK_GUARD_MS);
+      this.guard();
     });
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
   }

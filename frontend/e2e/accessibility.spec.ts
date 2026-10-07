@@ -390,7 +390,14 @@ test('une séance complète au clavier seul, avec un contour primary visible', a
   await expect(page.locator('.result-average .result-value')).toHaveText('6,5');
   await expectPrimaryOutline(page);
 
-  // Effacer à l'Entrée : le focus reste, le bouton redevient « Révéler les votes ».
+  // Seconde Entrée pendant la garde de 1 s après mon propre clic : rien n'est effacé (intentions vérifiées en fin de test).
+  await expect(actions.getByRole('button', { name: 'Nouveau tour' })).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.result-average .result-value')).toHaveText('6,5');
+  await expect(actions.getByRole('button', { name: 'Nouveau tour' })).toBeFocused();
+
+  // Effacer à l'Entrée, une fois la garde passée : le focus reste, le bouton redevient « Révéler les votes ».
+  await expect(actions.getByRole('button', { name: 'Nouveau tour' })).toBeEnabled();
   await page.keyboard.press('Enter');
   await expect(actions.getByRole('button', { name: 'Révéler les votes' })).toBeFocused();
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 2');

@@ -164,6 +164,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - Un seul bouton principal selon l'état : « Révéler les votes » ou « Nouveau tour ».
   - Un bouton secondaire : « Effacer les votes » ou « Masquer ».
   - Les boutons sont désactivés pendant 1 s après un REVEAL, un HIDE ou un CLEAR fait par un autre participant.
+  - Ils le sont aussi pendant 1 s après mon propre clic sur l'un d'eux, pour qu'un double-clic ne déclenche pas l'action suivante.
   - Aucune confirmation n'est demandée.
   - Pas de raccourci clavier pour ces actions.
 - **UX-DR9 :** **panneau de résultat** :

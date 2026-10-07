@@ -1,6 +1,6 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-06-2026 22:07). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-07-2026 11:22). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
@@ -10,7 +10,7 @@
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
 | Epic 3 — Des séances souples et soignées 🟡 | `████████████████████` 6/6 (100 %) |
-| **Actions de rétro** | `████████████████░░░░` 13/16 (81 %) |
+| **Actions de rétro** | `█████████████████░░░` 15/18 (83 %) |
 
 **En cours :** aucune story  
 **Prochaine story :** —  
@@ -48,7 +48,7 @@
 
 ### Epic 3 — Des séances souples et soignées
 
-🟡 in-progress · 6/6 stories · rétrospective : ➖ optional
+🟡 in-progress · 6/6 stories · rétrospective : ✅ done
 
 | Story | Titre | Statut | Spec |
 | --- | --- | --- | --- |
@@ -61,15 +61,20 @@
 
 ## Actions de rétrospective
 
-### 🔴 À faire (3)
+### 🔴 À faire (1)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-| 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
-|  | Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur main (job journeys compris) ; l'agent ne pose aucune étiquette | Eric | 3 | [rétro](spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md) |
 
-### ✅ Faites (13)
+### 🟡 En cours (2)
+
+| # | Action | Porteur | Epic | Source |
+| --- | --- | --- | --- | --- |
+| 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
+| 18 | Rendre reveal-motion.spec.ts déterministe sur WebKit, retirer le report observeReveal de deferred-work.md et obtenir une CI verte sur main (V1, P1)<br>↳ _En cours : relevé du dos rendu indépendant des images (spec-retro-3-v1-reveal-motion-webkit.md) ; reste la CI WebKit de la PR en brouillon, puis main vert après fusion._ | agent dev | 3 | [rétro](epic-3-retro-2026-10-07.md) |
+
+### ✅ Faites (15)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
@@ -86,6 +91,8 @@
 | 12 | Avant de fusionner une série de stories, relecture humaine explicite des décisions de l'agent et des constats rejetés, avec bmad-walkthrough (L5) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 13 | Au début de l'epic 2, extraire le squelette commun des cas d'usage et enregistrer le délai du hello avant de le programmer (D1, F3)<br>↳ _Fait dans la story 3.1 (tâches D1 et F2 de la spec 3.1) : squelette commun des cas d'usage extrait, délai du hello enregistré avant d'être programmé._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 14 | Inscrire comme tâches de la spec 3.1 : extraire le squelette commun des cas d usage, corriger le délai du hello, décider du découpage de Session.java avant hide et changeRole (D1, F2, T1, L1)<br>↳ _Fait dans la story 3.1 (tâches D1, F2 et T1 de la spec 3.1) : squelette commun, délai du hello, état du tour sorti dans domain/Round (option B, décision d'Eric du 2026-10-05)._ | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
+|  | Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur main (job journeys compris) ; l'agent ne pose aucune étiquette | Eric | 3 | [rétro](spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md) |
+| 17 | Empêcher qu un second clic rapide sur un bouton de la barre d action déclenche l action suivante (Masquer → Effacer les votes, Révéler les votes → Nouveau tour) ; règle à arbitrer par Eric, avec un test unitaire et un e2e (F1)<br>↳ _Garde au clic (option A, décision d'Eric du 2026-10-07) : tout clic accepté sur la barre d'action la rend inactive 1 s ; spec-retro-3-f1-double-clic-barre-action.md._ | Eric (arbitrage), agent dev | 3 | [rétro](epic-3-retro-2026-10-07.md) |
 
 ---
 

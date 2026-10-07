@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-29-2026 18:00
-last_updated: 10-06-2026 22:07
+last_updated: 10-07-2026 10:59
 project: planning-poker
 project_key: NOKEY
 tracking_system: file-system
@@ -62,7 +62,7 @@ development_status:
   3-4-une-révélation-qui-se-voit: done
   3-5-un-outil-accessible-à-tous: done
   3-6-les-trois-parcours-garantis-de-bout-en-bout: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-exécuter-le-test-de-charge-de-10-min-5-1"
     epic: 1
@@ -179,12 +179,28 @@ action_items:
     action: "En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui
       la visent et les solder ou les refuser explicitement (L2, F1)"
     owner: "agent dev"
-    status: open
+    status: in-progress
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-10-05.md"
   - id: "story-3-6-poser-v1-0-hors-atelier-après-fusion-et-ci-verte"
     epic: 3
-    action: "Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur main
-      (job journeys compris) ; l'agent ne pose aucune étiquette"
+    action: "Poser v1.0 hors atelier après fusion de la story 3.6 et CI verte sur
+      main (job journeys compris) ; l'agent ne pose aucune étiquette"
     owner: "Eric"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/spec-3-6-les-trois-parcours-garantis-de-bout-en-bout.md"
+  - id: "epic-3-retro-item-17-empêcher-qu-un-second-clic-rapide-sur-un"
+    epic: 3
+    action: "Empêcher qu un second clic rapide sur un bouton de la barre d action
+      déclenche l action suivante (Masquer → Effacer les votes, Révéler les votes
+      → Nouveau tour) ; règle à arbitrer par Eric, avec un test unitaire et un e2e
+      (F1)"
+    owner: "Eric (arbitrage), agent dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-07.md"
+  - id: "epic-3-retro-item-18-rendre-reveal-motion-spec-ts-déterminist"
+    epic: 3
+    action: "Rendre reveal-motion.spec.ts déterministe sur WebKit, retirer le report
+      observeReveal de deferred-work.md et obtenir une CI verte sur main (V1, P1)"
+    owner: "agent dev"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-10-07.md"

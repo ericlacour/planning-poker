@@ -1,4 +1,5 @@
-import { expect, Page, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+import { expect, Locator, Page, test } from '@playwright/test';
 
 import { aloneSnapshot, fakeSessionSocket } from './fake-session-socket';
 
@@ -126,7 +127,7 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
   await expect(inTopBar).toBeVisible();
 
   // Le nom accessible du bouton change avec son libellé : on le désigne par sa place.
-  const primary = page.locator('.invite button');
+  const primary = page.locator('.invite .copy-link');
   await expect(primary).toHaveText('Copier le lien');
   if (clipboard) {
     await primary.click();
@@ -136,6 +137,122 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
   }
 
   expect(page.url()).not.toContain(CREATED.participantToken);
+  await check();
+});
+
+/** Crée une session (thème forcé) et arrive sur la Session vide. */
+async function openEmptySession(page: Page, theme: 'light' | 'dark' = 'light') {
+  const check = await watchPage(page);
+  await mockApi(page, () => 'created');
+  await page.addInitScript((t) => localStorage.setItem('pp.theme', t), theme);
+  await page.goto('/');
+  await page.getByLabel('Ton pseudo').fill('Eric');
+  await page.getByRole('button', { name: 'Créer une session' }).click();
+  await expect(page).toHaveURL(`${APP}/s/${SESSION_ID}`);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+  return check;
+}
+
+/** Le panneau tient dans la largeur de la fenêtre, et son QR code y est visible en entier. */
+async function expectInViewport(page: Page, panel: Locator) {
+  const box = (await panel.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  // Déplié en entier à l'écran, la zone de la table défilant si besoin.
+  await expect(panel.getByRole('img')).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`« QR code » déplie un panneau non modal et accessible avec le QR code du lien, noir sur blanc (thème ${theme})`, async ({
+    page,
+  }) => {
+    const check = await openEmptySession(page, theme);
+    const link = `${APP}/s/${SESSION_ID}`;
+    // Juste après « Copier le lien », dans la barre du haut comme dans la Session vide, toujours secondaire.
+    await expect(page.locator('header.top-bar app-copy-link + app-qr-code-button')).toHaveCount(1);
+    await expect(page.locator('.invite app-copy-link + app-qr-code-button')).toHaveCount(1);
+    await expect(page.locator('header.top-bar').getByRole('button', { name: 'QR code' })).toBeVisible();
+    const opener = page.locator('.invite').getByRole('button', { name: 'QR code' });
+    await expect(opener).toHaveClass(/btn-secondary/);
+    await expect(opener).toHaveAttribute('aria-expanded', 'false');
+    await opener.click();
+
+    const panel = page.getByRole('group', { name: 'QR code de la session' });
+    await expect(panel).toBeVisible();
+    await expect(opener).toHaveAttribute('aria-expanded', 'true');
+    await expect(opener).toHaveAttribute('aria-controls', (await panel.getAttribute('id'))!);
+    await expect(page.locator('dialog')).toHaveCount(0);
+    const qr = panel.getByRole('img', { name: 'QR code du lien de la session' });
+    await expect(qr).toBeVisible();
+    await expect(qr).toHaveAttribute('viewBox', '0 0 41 41'); // version 4 (33 modules) + 2 × 4 de marge
+    await expect(panel.getByText(link, { exact: true })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Fermer' })).toBeVisible();
+    expect(await qr.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe('rgb(255, 255, 255)');
+    expect(await qr.locator('path').evaluate((e) => getComputedStyle(e).fill)).toBe('rgb(0, 0, 0)');
+    const size = (await qr.boundingBox())!;
+    expect(size.width).toBeLessThanOrEqual(240);
+    expect(size.width).toBeCloseTo(size.height, 0);
+    // Sous le bouton.
+    const openerBox = (await opener.boundingBox())!;
+    expect((await panel.boundingBox())!.y).toBeGreaterThanOrEqual(openerBox.y + openerBox.height);
+    await expectInViewport(page, panel);
+
+    const { violations } = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+      .analyze();
+    expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+
+    // Échap referme et rend le focus au bouton.
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(opener).toBeFocused();
+
+    // « Fermer » aussi.
+    await opener.click();
+    await panel.getByRole('button', { name: 'Fermer' }).click();
+    await expect(panel).toBeHidden();
+    await expect(opener).toBeFocused();
+
+    // Un nouveau clic sur le bouton aussi.
+    await opener.click();
+    await expect(panel).toBeVisible();
+    await opener.click();
+    await expect(panel).toBeHidden();
+
+    // Depuis la barre du haut, un clic ailleurs le referme ; la page reste utilisable pendant ce temps.
+    const inTopBar = page.locator('header.top-bar').getByRole('button', { name: 'QR code' });
+    await inTopBar.click();
+    await expect(panel).toBeVisible();
+    await expectInViewport(page, panel);
+    await page.getByText('Partage le lien pour inviter ton équipe').click();
+    await expect(panel).toBeHidden();
+    await expect(inTopBar).not.toBeFocused();
+    await check();
+  });
+}
+
+test('téléphone 360 px : le panneau QR code reste dans l\'écran, depuis la barre du haut comme depuis la Session vide', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  const check = await openEmptySession(page);
+  const panel = page.getByRole('group', { name: 'QR code de la session' });
+
+  const inTopBar = page.locator('header.top-bar').getByRole('button', { name: 'QR code' });
+  await expect(inTopBar).toBeVisible();
+  expect((await inTopBar.boundingBox())!.width).toBeLessThan(60); // icône seule, libellé accessible conservé
+  await inTopBar.click();
+  await expect(panel).toBeVisible();
+  await expectInViewport(page, panel);
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+
+  await page.locator('.invite').getByRole('button', { name: 'QR code' }).click();
+  await expect(panel).toBeVisible();
+  await expectInViewport(page, panel);
+  await expect(panel.getByRole('img', { name: 'QR code du lien de la session' })).toBeVisible();
   await check();
 });
 

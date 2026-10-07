@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, LOCALE_ID, computed, ef
 import { ActivatedRoute } from '@angular/router';
 
 import { CopyLinkComponent } from '../share/copy-link';
+import { QrCodeButtonComponent } from '../share/qr-code';
 import { TopBarState } from '../top-bar/top-bar-state';
 import { ActionBarComponent } from './action-bar.component';
 import { HandComponent } from './hand.component';
@@ -27,16 +28,15 @@ export function sessionLink(origin: string, sessionId: string): string {
 }
 
 /**
- * Écran Session : ouvre la connexion de la session ({@link SessionService}) et montre la table des participants
- * en direct. Seul dans la session : « Partage le lien pour inviter ton équipe » et « Copier le lien » en bouton
- * principal, sans barre d'action. Avec d'autres : la barre d'action (compteur ou résultat, et ses boutons). En bas,
- * la main « Ta carte » (votant) ou « Tu observes » (observateur). Une région `aria-live="polite"` annonce chaque
- * révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau tour »), quel qu'en soit l'auteur,
- * ainsi que chaque arrivée (« Sofia a rejoint la session »), sauf au premier instantané et au premier instantané
- * qui suit une coupure. Une seconde région polie annonce le compteur « N votes sur M » quand `progress` change
- * pendant un tour caché, au plus une fois toutes les {@link COUNTER_ANNOUNCE_MS} : une annonce trop proche de la
- * précédente est différée à l'échéance, avec la dernière valeur, et abandonnée si le tour est révélé ou effacé
- * entre-temps.
+ * Écran Session : ouvre la connexion de la session ({@link SessionService}) et montre la table des participants en
+ * direct. Seul dans la session : « Partage le lien pour inviter ton équipe » et « Copier le lien » en bouton principal,
+ * suivi de « QR code », sans barre d'action. Avec d'autres : la barre d'action (compteur ou résultat, et ses boutons).
+ * En bas, la main « Ta carte » (votant) ou « Tu observes » (observateur). Une région `aria-live="polite"` annonce
+ * chaque révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau tour »), quel qu'en soit l'auteur,
+ * ainsi que chaque arrivée (« Sofia a rejoint la session »), sauf au premier instantané et au premier instantané qui
+ * suit une coupure. Une seconde région polie annonce le compteur « N votes sur M » quand `progress` change pendant un
+ * tour caché, au plus une fois toutes les {@link COUNTER_ANNOUNCE_MS} : une annonce trop proche de la précédente est
+ * différée à l'échéance, avec la dernière valeur, et abandonnée si le tour est révélé ou effacé entre-temps.
  * Coupure de plus de 2 s : bandeau ambre « Reconnexion… » sous la barre du haut, la table restant visible.
  * Mise en page (`styles/session-layout.css`) : l'écran tient dans la hauteur de la fenêtre, seule la zone de la table
  * (`session-scroll`) défile ; sur téléphone, la main devient un tiroir qui se replie quand le tour est révélé.
@@ -46,7 +46,7 @@ export function sessionLink(origin: string, sessionId: string): string {
  */
 @Component({
   selector: 'app-session-page',
-  imports: [ActionBarComponent, CopyLinkComponent, HandComponent, ParticipantTableComponent],
+  imports: [ActionBarComponent, CopyLinkComponent, QrCodeButtonComponent, HandComponent, ParticipantTableComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.session-revealed]': 'revealed()', '[class.session-flipping]': 'flipping()' },
   template: `
@@ -64,7 +64,10 @@ export function sessionLink(origin: string, sessionId: string): string {
             <div class="invite">
               <p class="invite-text">Partage le lien pour inviter ton équipe</p>
               <p class="invite-url">{{ link }}</p>
-              <app-copy-link [url]="link" variant="primary" />
+              <div class="invite-actions">
+                <app-copy-link [url]="link" variant="primary" />
+                <app-qr-code-button [url]="link" />
+              </div>
             </div>
           }
         </section>

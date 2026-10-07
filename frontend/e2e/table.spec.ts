@@ -116,8 +116,11 @@ test('seul dans la session : « Partage le lien pour inviter ton équipe » et �
 
   await expect(seatNames(page)).toHaveText(['Emma (toi)']);
   await expect(page.getByText('Partage le lien pour inviter ton équipe')).toBeVisible();
-  await expect(page.locator('.invite button')).toHaveText('Copier le lien');
-  await expect(page.locator('.invite button')).toHaveClass(/btn-primary/);
+  await expect(page.locator('.invite .copy-link')).toHaveText('Copier le lien');
+  await expect(page.locator('.invite .copy-link')).toHaveClass(/btn-primary/);
+  // « QR code » le suit, en bouton secondaire : « Copier le lien » reste le seul bouton principal.
+  await expect(page.locator('.invite .qr-code-button')).toHaveText('QR code');
+  await expect(page.locator('.invite .qr-code-button')).toHaveClass(/btn-secondary/);
   await expect(page.locator('main .btn-primary')).toHaveCount(1);
   await check();
 });

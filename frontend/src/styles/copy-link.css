@@ -1,5 +1,7 @@
 /* Bouton « Copier le lien » (copy-link-button). */
 .top-actions {
+  /* Ancre du panneau « QR code » (qr-code.css). */
+  position: relative;
   display: flex;
   gap: var(--spacing-2);
 }

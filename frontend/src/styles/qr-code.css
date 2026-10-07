@@ -1,0 +1,104 @@
+/* Bouton « QR code » et son panneau déroulant non modal (qr-code-button), à côté de « Copier le lien ». */
+
+/* L'hôte s'efface : le bouton et le panneau se placent directement dans la rangée de « Copier le lien ». */
+.qr-code-host {
+  display: contents;
+}
+
+.qr-code-button-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* Session vide : « Copier le lien » puis « QR code », côte à côte ; le panneau se déplie dessous, dans la carte. */
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-2);
+}
+
+.qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+  text-align: center;
+}
+
+/* Barre du haut : sous les boutons, aligné à droite comme le menu du participant, sans sortir de l'écran. */
+.top-bar .qr-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  width: min(288px, calc(100vw - 2 * var(--spacing-margin-mobile)));
+  background: var(--menu-background);
+  box-shadow: var(--elevation-menu);
+}
+
+/* Session vide : sur sa propre ligne, sous les boutons, la carte s'agrandissant d'autant. Base à 100 % pour passer
+   à la ligne, puis marges latérales qui ramènent le panneau à 288 px, centré. */
+.invite .qr-panel {
+  flex: 0 1 100%;
+  margin: var(--spacing-2) max(0px, calc(50% - 144px)) 0;
+}
+
+.qr-panel-title {
+  margin: 0;
+  font-size: var(--typography-title-font-size);
+  font-weight: var(--typography-title-font-weight);
+  line-height: var(--typography-title-line-height);
+}
+
+/* Noir sur blanc quel que soit le thème : un QR code inversé se lit mal au scan. La marge blanche fait partie
+   du `viewBox`. */
+.qr-code {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  aspect-ratio: 1;
+  background: #fff;
+  border-radius: var(--rounded-sm);
+  /* Couleurs forcées (contraste élevé) : le navigateur ne doit pas remplacer le blanc ni le noir. */
+  forced-color-adjust: none;
+}
+
+.qr-code path {
+  fill: #000;
+}
+
+.qr-panel-url {
+  max-width: 100%;
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Téléphone : « QR code » de la barre du haut devient une icône, avec son libellé accessible, comme
+   « Copier le lien ». */
+@media (max-width: 599px) {
+  .top-bar .qr-code-button {
+    padding: 0 var(--spacing-3);
+  }
+
+  .top-bar .qr-code-button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

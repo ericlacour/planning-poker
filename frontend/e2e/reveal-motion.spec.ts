@@ -96,8 +96,11 @@ interface Observed {
   readonly label: string | null;
   readonly animations: string[];
   readonly flipping: boolean;
-  /** Opacité du dos posé sur la face (`::after`), `none` s'il n'y en a pas. */
-  readonly back: string;
+  /**
+   * Opacité du dos posé sur la face (`::after`), relevée animation en pause au premier quart (dos visible) puis au
+   * troisième quart (dos retiré) du retournement, après son délai ; `none` s'il n'y a pas de dos.
+   */
+  readonly back: { readonly early: string; readonly late: string } | 'none';
   readonly synthesis: string;
   readonly live: string;
   /** Délai entre l'apparition de la face et celle de la synthèse (ms). */
@@ -108,7 +111,10 @@ interface Observed {
  * Observe la révélation qui va arriver. Un `MutationObserver`, posé avant l'envoi de l'instantané (`await`), date
  * l'apparition de la face de Bob dès l'écriture du DOM, sans attendre une image : démarrer le chrono à la première
  * image retardait la mesure (jusqu'à 150 ms sur WebKit en CI). À la première image suivante, on relève son nom
- * accessible, ses animations, la synthèse et l'annonce ; puis on attend que la synthèse devienne visible.
+ * accessible, ses animations, la synthèse et l'annonce ; puis on attend que la synthèse devienne visible. Le dos n'est
+ * visible que pendant les 100 premières ms : plutôt que de le lire à l'image où le test se réveille (une image en
+ * retard lisait 0 sur WebKit en CI), on met l'animation en pause, on la place au premier puis au troisième quart, et on la relance. La fenêtre
+ * reste bornée par les 400 ms de `session-flipping` : au-delà, la face n'a plus ni dos ni animation.
  * Renvoie la fonction qui rend ces relevés, à appeler après l'envoi.
  */
 async function observeReveal(
@@ -143,14 +149,36 @@ async function observeReveal(
         const element = document.querySelector(selector);
         return element ? getComputedStyle(element).visibility : 'missing';
       };
+      // Opacité du dos à une fraction de la durée du retournement, après son délai (`--flip-delay`).
+      const backAt = (animation: Animation, fraction: number) => {
+        const timing = animation.effect!.getComputedTiming();
+        animation.currentTime = Number(timing.delay) + Number(timing.duration) * fraction;
+        return getComputedStyle(face, '::after').opacity;
+      };
+      const back = () => {
+        if (getComputedStyle(face, '::after').content === 'none') return 'none' as const;
+        const animation = face
+          .getAnimations()
+          .find((a) => (a as CSSAnimation).animationName === 'seat-card-flip');
+        if (!animation) return { early: 'no-animation', late: 'no-animation' };
+        const wasRunning = animation.playState === 'running';
+        const resumeAt = animation.currentTime;
+        animation.pause();
+        const measured = { early: backAt(animation, 0.25), late: backAt(animation, 0.75) };
+        // Reprendre là où elle était ; une animation déjà finie le reste (play() la rejouerait depuis le début).
+        if (wasRunning && resumeAt !== null) {
+          animation.currentTime = resumeAt;
+          animation.play();
+        } else {
+          animation.finish();
+        }
+        return measured;
+      };
       const observed = {
         label: face.getAttribute('aria-label'),
         animations: face.getAnimations().map((a) => (a as CSSAnimation).animationName),
         flipping: !!document.querySelector('app-session-page.session-flipping'),
-        back:
-          getComputedStyle(face, '::after').content === 'none'
-            ? 'none'
-            : getComputedStyle(face, '::after').opacity,
+        back: back(),
         synthesis: w.synthesisAtFlip!,
         live:
           document.querySelector('div.visually-hidden[aria-live="polite"]')?.textContent?.trim() ??
@@ -183,7 +211,7 @@ test('révélation par un autre : les faces se retournent, puis la synthèse app
   expect(observed.live).toMatch(/^Votes révélés\. Moyenne 6,5\./);
   expect(observed.flipping).toBe(true);
   expect(observed.animations).toEqual(['seat-card-flip']);
-  expect(observed.back).toBe('1');
+  expect(observed.back).toEqual({ early: '1', late: '0' });
   expect(observed.synthesis).toBe('hidden');
   expect(observed.synthesisAfter).toBeGreaterThan(250);
   expect(observed.synthesisAfter).toBeLessThan(1_000);

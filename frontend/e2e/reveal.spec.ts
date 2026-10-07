@@ -234,3 +234,42 @@ test('révéler, masquer, revoter sur le même tour', async ({ page }) => {
     ]);
   await check();
 });
+
+test('double-clic sur « Masquer » : un seul masquage, aucun effacement (rétrospective 3, F1)', async ({ page }) => {
+  const check = await watchPage(page);
+  await openWithToken(page);
+  const intents: unknown[] = [];
+  let version = 8;
+  await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    ws.send(JSON.stringify(hidden(version)));
+    ws.onMessage((message) => {
+      const json = JSON.parse(String(message)) as { type: string; roundId?: string };
+      if (json.type !== 'reveal' && json.type !== 'hide' && json.type !== 'clear') return;
+      intents.push(json);
+      version += 1;
+      if (json.type === 'reveal') ws.send(JSON.stringify(revealed(version, ALICE)));
+      if (json.type === 'hide') ws.send(JSON.stringify(hiddenAgain(version, ALICE)));
+      if (json.type === 'clear') ws.send(JSON.stringify(newRound(version, ALICE)));
+    });
+  });
+  await page.goto(`/s/${SESSION_ID}`);
+  await button(page, 'Révéler les votes').click();
+  await expect(page.locator('.result-average .result-value')).toHaveText('6,5');
+  await expect(button(page, 'Masquer')).toBeEnabled();
+
+  // Deux clics au même endroit, le second dès que l'instantané caché a relibellé le bouton en « Effacer les votes »,
+  // encore inactif (garde de 1 s après mon clic) : sans la garde, ce clic enverrait `clear`.
+  const box = (await button(page, 'Masquer').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(button(page, 'Effacer les votes')).toHaveAttribute('aria-disabled', 'true');
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  // Une fois la garde passée, toujours aucun effacement.
+  await expect(button(page, 'Effacer les votes')).toBeEnabled();
+  await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
+  expect(intents).toEqual([
+    { type: 'reveal', roundId: ROUND },
+    { type: 'hide', roundId: ROUND },
+  ]);
+  await check();
+});

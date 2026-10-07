@@ -66,11 +66,88 @@ describe('ActionBarComponent', () => {
   });
 
   it('« Révéler les votes » sends reveal, « Effacer les votes » sends clear, without confirmation', () => {
-    const { session, buttons } = render(hiddenRound as SessionState);
+    const { session, buttons, tick } = render(hiddenRound as SessionState);
     buttons()[1].click();
     expect(session.reveal).toHaveBeenCalledTimes(1);
+    tick(CROSS_CLICK_GUARD_MS);
     buttons()[0].click();
     expect(session.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('my own click disables both buttons for 1 s, from the click itself', () => {
+    const { session, buttons, tick } = render(hiddenRound as SessionState);
+    buttons()[1].click();
+    tick(0);
+    expect(buttons().every((b) => inactive(b) && !b.disabled)).toBe(true);
+    buttons().forEach((b) => b.click());
+    expect(session.reveal).toHaveBeenCalledTimes(1);
+    expect(session.clear).not.toHaveBeenCalled();
+    tick(CROSS_CLICK_GUARD_MS - 1);
+    expect(buttons().every((b) => inactive(b))).toBe(true);
+    tick(1);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
+  });
+
+  it('double click on « Masquer », my HIDE coming back in between: one hide, no clear, votes kept', () => {
+    const { session, buttons, labels, show, tick } = render(withChange(revealedTie, 'REVEAL', ALICE, 8));
+    const [secondary] = buttons();
+    secondary.click();
+    tick(100);
+    show(withChange(hiddenRound, 'HIDE', ALICE, 9));
+    expect(labels()).toEqual(['Effacer les votes', 'Révéler les votes']);
+    tick(50);
+    secondary.click();
+    expect(session.hide).toHaveBeenCalledTimes(1);
+    expect(session.clear).not.toHaveBeenCalled();
+  });
+
+  it('double click on « Révéler les votes », my REVEAL coming back in between: one reveal, no clear', () => {
+    const { session, buttons, labels, show, tick } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
+    const [, primary] = buttons();
+    primary.click();
+    tick(100);
+    show(withChange(revealedTie, 'REVEAL', ALICE, 8));
+    expect(labels()).toEqual(['Masquer', 'Nouveau tour']);
+    tick(50);
+    primary.click();
+    expect(session.reveal).toHaveBeenCalledTimes(1);
+    expect(session.clear).not.toHaveBeenCalled();
+  });
+
+  it('a click once my guard is over goes through: « Nouveau tour » sends clear', () => {
+    const { session, buttons, show, tick } = render(withChange(hiddenRound, 'VOTE', BOB, 7));
+    const [, primary] = buttons();
+    primary.click();
+    show(withChange(revealedTie, 'REVEAL', ALICE, 8));
+    tick(CROSS_CLICK_GUARD_MS);
+    primary.click();
+    expect(session.reveal).toHaveBeenCalledTimes(1);
+    expect(session.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('an ignored click (inactive button) sends nothing and does not restart the guard', () => {
+    const { session, buttons, tick } = render(hiddenRound as SessionState);
+    buttons()[1].click();
+    tick(600);
+    buttons()[1].click();
+    expect(session.reveal).toHaveBeenCalledTimes(1);
+    tick(400);
+    expect(buttons().every((b) => !inactive(b))).toBe(true);
+  });
+
+  it('double click on « Nouveau tour » or « Effacer les votes »: one clear, nothing after', () => {
+    const { session, buttons, show, tick } = render(withChange(revealedTie, 'REVEAL', ALICE, 8));
+    const [secondary, primary] = buttons();
+    primary.click();
+    show(withChange(hiddenRound, 'CLEAR', ALICE, 9));
+    primary.click();
+    expect(session.clear).toHaveBeenCalledTimes(1);
+    expect(session.reveal).not.toHaveBeenCalled();
+    tick(CROSS_CLICK_GUARD_MS);
+    secondary.click();
+    show(withChange(hiddenRound, 'CLEAR', ALICE, 10));
+    secondary.click();
+    expect(session.clear).toHaveBeenCalledTimes(2);
   });
 
   it('revealed round: the result instead of the counter, « Masquer » (secondary) and « Nouveau tour » (primary)', () => {

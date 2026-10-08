@@ -16,6 +16,7 @@ import {
 } from '../api/contract';
 import { APP_CONFIG } from '../config/app-config';
 import { BrowserStorage } from '../storage/browser-storage';
+import { HEALTH_PROBE } from '../wake/server-wake.service';
 
 /** Ouverture d'un WebSocket, remplaçable dans les tests. */
 export const WEB_SOCKET_FACTORY = new InjectionToken<(url: string) => WebSocket>('WEB_SOCKET_FACTORY', {
@@ -30,6 +31,12 @@ const CLOSED = 3;
 
 /** Le client envoie `heartbeat` toutes les 5 s (AD-8). */
 export const HEARTBEAT_INTERVAL_MS = 5_000;
+
+/**
+ * Pendant une session, le client appelle aussi `/api/health` toutes les 5 min : une requête HTTP entrante garde
+ * Render éveillé (seuil de veille de 15 min) même si les messages WebSocket ne comptaient pas comme trafic.
+ */
+export const KEEP_AWAKE_INTERVAL_MS = 300_000;
 
 /** Sans aucun message du serveur depuis 12 s, la connexion est perdue (AD-8). */
 export const SILENCE_TIMEOUT_MS = 12_000;
@@ -72,6 +79,9 @@ export function sessionSocketUrl(apiBaseUrl: string, sessionId: string): string 
  * aussitôt sur `online` ou au retour au premier plan) en rejouant `hello`. La connexion n'est rétablie qu'au premier
  * `sessionState`, accepté quelle que soit sa `version`. Hors connexion rétablie, aucune intention ne part.
  *
+ * Entre `connect()` et `disconnect()` (ou la fin de la session), même pendant une reconnexion, il appelle aussi `/api/health` toutes les 5 min pour garder
+ * le webservice éveillé.
+ *
  * Fourni par la page du lien de session, il vit et meurt avec elle.
  */
 @Injectable()
@@ -80,6 +90,7 @@ export class SessionService {
   private readonly storage = inject(BrowserStorage);
   private readonly openSocket = inject(WEB_SOCKET_FACTORY);
   private readonly document = inject(DOCUMENT);
+  private readonly probeHealth = inject(HEALTH_PROBE);
 
   private readonly stateSignal = signal<SessionState | null>(null);
   private readonly endSignal = signal<SessionEnd | null>(null);
@@ -98,6 +109,7 @@ export class SessionService {
   private silence: ReturnType<typeof setTimeout> | undefined;
   private retry: ReturnType<typeof setTimeout> | undefined;
   private banner: ReturnType<typeof setTimeout> | undefined;
+  private keepAwake: ReturnType<typeof setInterval> | undefined;
 
   /** Dernier instantané reçu, `null` avant le premier. */
   readonly state: Signal<SessionState | null> = this.stateSignal.asReadonly();
@@ -131,6 +143,7 @@ export class SessionService {
     this.endSignal.set(null);
     this.connectionSignal.set('connecting');
     this.attempts = 0;
+    this.keepAwake = setInterval(() => void this.probeHealth(), KEEP_AWAKE_INTERVAL_MS);
     this.openAttempt();
   }
 
@@ -170,6 +183,8 @@ export class SessionService {
     this.sessionId = null;
     clearTimeout(this.retry);
     this.retry = undefined;
+    clearInterval(this.keepAwake);
+    this.keepAwake = undefined;
     this.stopBanner();
     this.closeSocket();
   }

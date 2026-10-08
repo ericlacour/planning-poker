@@ -133,7 +133,7 @@ Une personne peut rejoindre la session depuis un autre appareil ou navigateur av
 - Rien n'empêche de reprendre le pseudo d'un participant déconnecté qui n'est pas soi. Ce risque est accepté au nom de la confiance d'équipe (§1, NFR-6).
 
 #### FR-9 : Retrait des participants absents
-Un participant déconnecté depuis plus de 5 minutes est retiré de la liste des participants, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient avec le même navigateur alors que son pseudo est encore libre, il est remis à sa place automatiquement (FR-7).
+Un participant déconnecté depuis plus de 10 minutes est retiré de la liste des participants, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient avec le même navigateur alors que son pseudo est encore libre, il est remis à sa place automatiquement (FR-7).
 
 ### 4.3 Vote
 

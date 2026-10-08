@@ -50,7 +50,7 @@ paths:
       tags: [health]
       operationId: getHealth
       summary: Wake-up and health probe
-      description: Answers 200 as soon as the webservice is ready. Polled by the front during the cold start (up to 3 min) and used by Render as health check.
+      description: Answers 200 as soon as the webservice is ready. Polled by the front during the cold start (up to 3 min), called every 5 min by each open session page to keep the service awake, and used by Render as health check.
       responses:
         '200':
           description: The webservice is ready.

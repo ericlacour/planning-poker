@@ -5,9 +5,11 @@ import alone from '../../../../contract/examples/session-state/alone-after-creat
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import { APP_CONFIG } from '../config/app-config';
 import { LOCAL_STORAGE } from '../storage/browser-storage';
+import { HEALTH_PROBE } from '../wake/server-wake.service';
 import {
   BANNER_DELAY_MS,
   HEARTBEAT_INTERVAL_MS,
+  KEEP_AWAKE_INTERVAL_MS,
   SessionService,
   sessionSocketUrl,
   SILENCE_TIMEOUT_MS,
@@ -56,6 +58,7 @@ class FakeSocket {
 describe('SessionService', () => {
   let stored: Map<string, string>;
   let sockets: FakeSocket[];
+  let probe: ReturnType<typeof vi.fn<() => Promise<boolean>>>;
 
   beforeEach(() => {
     stored = new Map([
@@ -63,6 +66,7 @@ describe('SessionService', () => {
       ['pp.pseudo', 'Alice'],
     ]);
     sockets = [];
+    probe = vi.fn(async () => true);
     const storage = {
       getItem: (key: string) => stored.get(key) ?? null,
       setItem: (key: string, value: string) => void stored.set(key, value),
@@ -73,6 +77,7 @@ describe('SessionService', () => {
         SessionService,
         { provide: APP_CONFIG, useValue: { apiBaseUrl: 'https://api.example' } },
         { provide: LOCAL_STORAGE, useValue: () => storage },
+        { provide: HEALTH_PROBE, useValue: probe },
         {
           provide: WEB_SOCKET_FACTORY,
           useValue: (url: string) => {
@@ -121,6 +126,37 @@ describe('SessionService', () => {
     expect(socket.sent).toEqual([{ type: 'hello', participantToken: TOKEN }, { type: 'heartbeat' }]);
     vi.advanceTimersByTime(HEARTBEAT_INTERVAL_MS);
     expect(socket.sent).toHaveLength(3);
+  });
+
+  it('calls /api/health every 5 min while connected, even during a reconnection, and stops on disconnect', () => {
+    vi.useFakeTimers();
+    const { service, socket } = connected();
+    vi.advanceTimersByTime(KEEP_AWAKE_INTERVAL_MS - 1);
+    expect(probe).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(probe).toHaveBeenCalledTimes(1);
+    socket.serverCloses(1006);
+    vi.advanceTimersByTime(KEEP_AWAKE_INTERVAL_MS);
+    expect(probe).toHaveBeenCalledTimes(2);
+    service.disconnect();
+    vi.advanceTimersByTime(KEEP_AWAKE_INTERVAL_MS * 2);
+    expect(probe).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops calling /api/health once the session ends', () => {
+    vi.useFakeTimers();
+    const { socket } = connected();
+    socket.serverCloses(4404);
+    vi.advanceTimersByTime(KEEP_AWAKE_INTERVAL_MS * 2);
+    expect(probe).not.toHaveBeenCalled();
+  });
+
+  it('keeps a single /api/health timer when connecting again', () => {
+    vi.useFakeTimers();
+    const { service } = connected();
+    service.connect(SESSION_ID);
+    vi.advanceTimersByTime(KEEP_AWAKE_INTERVAL_MS);
+    expect(probe).toHaveBeenCalledTimes(1);
   });
 
   it('has no state before the first snapshot, then exposes it as is', () => {

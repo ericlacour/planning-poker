@@ -43,3 +43,6 @@
 ## Deferred from: code review of spec-3-1-changer-de-role-en-pleine-seance.md (2026-10-05)
 
 - **`HelloTimeoutTest` dépend de l'ordonnancement** : avec un délai de 0 ms et 20 connexions, rien ne garantit que le délai expire avant la fin de `afterConnectionEstablished`, donc le test pourrait passer contre l'ancien ordre. Non vérifié (medium si vrai). Pour trancher : rejouer le test contre l'ancien code plusieurs fois, ou injecter un planificateur qui exécute la tâche tout de suite.
+- source_spec: `_bmad-output/implementation-artifacts/spec-garder-le-serveur-eveille-par-http.md`
+  summary: Vérifier sur Render qu'une page de session ouverte plus de 15 min (onglet caché) empêche bien la mise en veille, et le consigner dans `deploy/README.md`.
+  evidence: Les tests simulent le webservice ; seul un essai sur Render prouve que l'appel `/api/health` toutes les 5 min (et le `heartbeat` WebSocket) gardent le service éveillé.

@@ -3,7 +3,10 @@ package com.planningpoker.adapter.in.rest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** {@code GET /api/health} : sonde de réveil du front et sonde de santé de Render (contrat : getHealth). */
+/**
+ * {@code GET /api/health} : sonde de réveil du front, appel de maintien toutes les 5 min depuis chaque page de session
+ * ouverte (garde Render éveillé) et sonde de santé de Render (contrat : getHealth).
+ */
 @RestController
 public class HealthController {
 

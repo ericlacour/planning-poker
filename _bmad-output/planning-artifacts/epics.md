@@ -41,7 +41,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - L'inactivité et un onglet en arrière-plan ne déconnectent jamais. Si le système suspend la page (téléphone verrouillé), le participant peut apparaître déconnecté, mais son retour est transparent, même après un retrait.
   - Si le pseudo a été repris entre-temps, la page affiche l'écran Rejoindre avec le pseudo prérempli.
 - **FR8 :** On peut reprendre le pseudo d'un participant déconnecté depuis un autre appareil, avec son rôle et son vote. Le pseudo d'un participant connecté est refusé, et l'appareil d'origine perd ce participant. Reprendre le pseudo d'un autre est un risque accepté.
-- **FR9 :** Un participant déconnecté depuis plus de 5 min est retiré de la liste, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient et que son pseudo est libre, il est remis à sa place automatiquement.
+- **FR9 :** Un participant déconnecté depuis plus de 10 min est retiré de la liste, et son vote du tour en cours est supprimé. Son pseudo redevient libre. S'il revient et que son pseudo est libre, il est remis à sa place automatiquement.
 - **FR10 :** Un votant choisit une carte parmi `0, 1, 2, 3, 5, 8, 13, 21, ?, ☕` pendant un tour caché. Un observateur devenu votant pendant un tour révélé vote dès que le tour redevient caché (FR5).
   - Il peut la changer ou la retirer à volonté.
   - Sa carte n'est visible que par lui jusqu'à la révélation.
@@ -108,7 +108,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - Le serveur envoie un ping de protocole toutes les 5 s, et une connexion est morte au bout de 15 s sans réponse.
   - Le serveur envoie aussi un `tick` applicatif toutes les 5 s, et le client déclare la perte de connexion après 12 s sans message.
   - Le client envoie un `heartbeat` toutes les 5 s pour que Render reste éveillé.
-  - Un balayeur tourne chaque seconde (retrait après 5 min, expiration à 24 h).
+  - Un balayeur tourne chaque seconde (retrait après 10 min, expiration à 24 h).
   - Le client se reconnecte avec des délais croissants (1, 2, 4, 8 s, puis 10 s), et aussi sur les événements `online` et `visibilitychange`.
   - Toutes les heures passent par `java.time.Clock` en UTC.
 - **AR9 (AD-9) :** le port `SessionStore` offre `find`, `save`, `delete` et `all`, et toute écriture suit la séquence charger → modifier → save. En V1, le stockage est en mémoire, sur une seule instance.
@@ -214,7 +214,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
 - FR6 : Epic 1, liste des participants et « a voté » (la présence en direct est en Epic 2)
 - FR7 : Epic 1 pour le retour après un rafraîchissement ; Epic 2 pour la reconnexion automatique, les onglets multiples et le retour transparent
 - FR8 : Epic 2, reprise du pseudo depuis un autre appareil
-- FR9 : Epic 2, retrait des absents au bout de 5 min
+- FR9 : Epic 2, retrait des absents au bout de 10 min
 - FR10 : Epic 1, choisir ou retirer sa carte
 - FR11 : Epic 1, vote verrouillé après révélation
 - FR12 : Epic 1, révéler
@@ -244,7 +244,7 @@ Une coupure n'a plus de conséquence :
 - reconnexion automatique avec le bandeau « Reconnexion… » ;
 - présence en direct ;
 - l'inactivité ou un onglet en arrière-plan ne déconnectent jamais ;
-- retrait au bout de 5 min, puis retour transparent ;
+- retrait au bout de 10 min, puis retour transparent ;
 - reprise du pseudo depuis un autre appareil ;
 - plusieurs onglets comptent comme un seul participant ;
 - la session expire au bout de 24 h ;
@@ -579,7 +579,7 @@ Une coupure n'a plus de conséquence :
 - reconnexion automatique ;
 - présence en direct ;
 - l'inactivité ou un onglet en arrière-plan ne déconnectent jamais ;
-- retrait au bout de 5 min, puis retour transparent ;
+- retrait au bout de 10 min, puis retour transparent ;
 - reprise du pseudo depuis un autre appareil ;
 - plusieurs onglets comptent comme un seul participant ;
 - la session expire au bout de 24 h ;
@@ -676,7 +676,7 @@ afin de ne pas être sorti de l'atelier (FR7, FR9).
 
 **Critères d'acceptation :**
 
-**Étant donné** un participant sans aucune connexion depuis 5 minutes
+**Étant donné** un participant sans aucune connexion depuis 10 minutes
 **Quand** le balayeur passe
 **Alors** le participant est retiré de la table, son vote du tour en cours est supprimé, et son pseudo redevient libre (FR9).
 **Et** son jeton **reste valable** jusqu'à l'expiration de la session (AD-7).
@@ -693,7 +693,7 @@ afin de ne pas être sorti de l'atelier (FR7, FR9).
 
 **Étant donné** les délais du balayeur
 **Quand** on les teste avec une horloge fixe
-**Alors** un participant est retiré à 5 min, et pas avant.
+**Alors** un participant est retiré à 10 min, et pas avant.
 **Et** un participant resté connecté avec l'onglet en arrière-plan n'est jamais retiré.
 
 ### Story 2.4 : Reprendre sa place depuis un autre appareil
@@ -779,7 +779,7 @@ Plafonds retenus par Eric le 2026-10-03 : de 2 à 4 fois au-dessus des minimums 
 **Quand** quelqu'un tente de la rejoindre
 **Alors** la réponse est un `409` en `application/problem+json`, avec le code `SESSION_FULL`, et rien ne change.
 **Et** le front affiche « Cette session est complète. » sous le champ, et la saisie est conservée.
-**Et** un participant retiré au bout de 5 min (story 2.3) libère sa place.
+**Et** un participant retiré au bout de 10 min (story 2.3) libère sa place.
 
 **Étant donné** le contrat
 **Quand** la story est livrée

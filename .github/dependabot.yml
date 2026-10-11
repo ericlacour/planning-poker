@@ -1,0 +1,74 @@
+# Mises à jour des dépendances pour un projet en maintenance : un passage par mois, des PR groupées
+# pour limiter le bruit, et un délai de 7 jours avant de proposer une version tout juste publiée.
+# Les correctifs de sécurité (Dependabot security updates, à activer dans les réglages du dépôt)
+# ne suivent ni ce calendrier ni ce délai : ils arrivent dès qu'une faille est connue.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Angular impose une plage de versions TypeScript : on les fait évoluer ensemble.
+      angular:
+        patterns: ["@angular/*", "typescript"]
+      frontend-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /contract
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      contrat-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: maven
+    directory: /backend
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      backend-mineures:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /backend
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Les étapes de construction (JDK) et d'exécution (JRE) restent sur la même version de Java.
+      temurin:
+        patterns: ["eclipse-temurin"]
+    ignore:
+      # Rester sur Java 25 (LTS, aligné sur setup-java dans ci.yml) : changer de version majeure est une décision, pas une mise à jour.
+      - dependency-name: eclipse-temurin
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      actions:
+        patterns: ["*"]

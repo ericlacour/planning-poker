@@ -19,6 +19,11 @@ updates:
         patterns: ["@angular/*", "typescript"]
       frontend-mineures:
         update-types: [minor, patch]
+    ignore:
+      # @angular/build n'accepte qu'une version mineure de TypeScript (ex. >=6.0 <6.1) : TypeScript
+      # change avec Angular lors d'un `ng update`, pas tout seul (PR #30 refusée par npm ci).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   - package-ecosystem: npm
     directory: /contract

@@ -90,7 +90,7 @@ function bar(done, total, width = 20) {
 }
 
 const badge = (status) => `${ICONS[status] ?? '❔'} ${status}`;
-const cell = (s) => String(s ?? '').replace(/\|/g, '\\|');
+const cell = (s) => String(s ?? '').replace(/[\\|]/g, '\\$&');
 
 function buildBoard({ meta, development_status, action_items }) {
   const titles = readTitles();

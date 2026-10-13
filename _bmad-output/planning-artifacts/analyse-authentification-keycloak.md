@@ -150,12 +150,12 @@ La suite du document décrit l'option B.
 
 Le JWT est vérifié **au `hello`**, donc à chaque (re)connexion. Une connexion ouverte n'est **pas** fermée quand le jeton expire : c'est cohérent avec AD-8 (« l'inactivité ne déconnecte jamais ») et évite de couper un atelier toutes les 5 min.
 
-**Cas concret (question 5 du § 11) :** pendant un atelier, un administrateur retire dans Keycloak l'accès d'un participant (départ de l'entreprise, erreur d'affectation…). Ce participant est déjà dans la session, connecté. Que se passe-t-il ?
+**Cas concret (décision 5 du § 11) :** pendant un atelier, un administrateur retire dans Keycloak l'accès d'un participant (départ de l'entreprise, erreur d'affectation…). Ce participant est déjà dans la session, connecté. Que se passe-t-il ?
 
-- **Sans développement supplémentaire (recommandé)** : il reste dans la session tant que sa connexion tient. Le retrait ne prend effet qu'à sa **prochaine reconnexion** (coupure réseau, rechargement de la page, téléphone mis en veille), ou au plus tard quand la session disparaît (24 h). Il ne peut plus créer de session ni en rejoindre une autre.
-- **Avec un développement supplémentaire** (environ 1 j) : le navigateur renvoie son nouveau jeton au serveur à chaque rafraîchissement (message `reauth {accessToken}`, toutes les quelques minutes). Quand Keycloak ne lui en délivre plus, le serveur le sort de la session en quelques minutes (fermeture `4440`).
+- **Sans développement supplémentaire (retenu)** : il reste dans la session tant que sa connexion tient. Le retrait ne prend effet qu'à sa **prochaine reconnexion** (coupure réseau, rechargement de la page, téléphone mis en veille), ou au plus tard quand la session disparaît (24 h). Il ne peut plus créer de session ni en rejoindre une autre.
+- **Avec un développement supplémentaire** (environ 1 j, écarté) : le navigateur renvoie son nouveau jeton au serveur à chaque rafraîchissement (message `reauth {accessToken}`, toutes les quelques minutes). Quand Keycloak ne lui en délivre plus, le serveur le sort de la session en quelques minutes (fermeture `4440`).
 
-Pour un outil d'estimation en atelier, la première solution paraît suffisante : les données exposées (noms et votes de la séance) sont peu sensibles.
+**Décidé : option simple, rien à développer.** Pour un outil d'estimation en atelier, les données exposées (noms et votes de la séance) sont peu sensibles.
 
 ### 6.5 Confidentialité (NFR-6)
 
@@ -251,14 +251,21 @@ Mettre à jour `EXPERIENCE.md` (parcours d'entrée) et `DESIGN.md` (bloc « Conn
 | 2 | Création de session | Réservée à l'animateur, c'est-à-dire celui qui ouvre l'URL de départ. Pas de rôle dédié. | § 3 ; aucun changement par rapport au fonctionnement actuel. |
 | 3 | Nom affiché | « Nom Prénom », récupéré de Keycloak. | § 1, § 3, § 6.3, § 7.2. |
 | 4 | Hébergement | Keycloak implique un environnement d'entreprise : plus de Render, pas de mode anonyme. | § 9. |
+| 5 | Retrait d'accès en cours d'atelier | Option simple : la personne reste dans la séance en cours jusqu'à sa prochaine reconnexion. Rien à développer. | § 6.4 ; pas de message `reauth`. |
 
-### Questions restantes
+### Questions à trancher
 
-1. **Forme de l'accès dans le jeton** (suite de la décision 1) : sous quelle forme Keycloak signale-t-il l'accès (rôle client, groupe) ? Le webservice doit pouvoir le lire dans le jeton.
-2. **Nom et prénom disponibles ?** (suite de la décision 3) Les claims `family_name` et `given_name` sont-ils bien présents dans le jeton, alimentés par l'annuaire ? Format attendu : « Martin Julie », « MARTIN Julie » ? Que faire des homonymes (deux « Martin Julie ») : rien, ou ajouter un complément (identifiant, service) ?
-3. **Retrait d'accès en cours d'atelier** (question 5 reformulée, voir le cas concret au § 6.4) : si l'accès d'une personne est retiré dans Keycloak pendant qu'elle participe à une séance, accepte-t-on qu'elle reste jusqu'à sa prochaine reconnexion (rien à développer), ou faut-il l'exclure en quelques minutes (environ 1 j de plus) ?
-4. **Le pseudo reste-t-il possible** en surcharge du nom (surnom d'équipe) ? Le besoin dit « à la place » : l'analyse le supprime.
-5. **Environnement d'entreprise** : version de Keycloak (compatibilité `keycloak-js`), URL des realms de dev / recette / prod, outil de CI (GitHub Actions ou GitLab CI).
+| # | Question | Détail | Qui peut répondre | Impact si la réponse change le plan |
+| --- | --- | --- | --- | --- |
+| Q1 | Forme de l'accès dans le jeton | Sous quelle forme Keycloak signale-t-il que l'utilisateur a accès à l'application (rôle client, rôle de realm, groupe) ? Le webservice doit pouvoir le lire dans le jeton pour revérifier l'accès (décision 1). | Équipe Keycloak / IAM | Configuration du contrôle d'accès du webservice (§ 6.2). |
+| Q2 | Nom et prénom disponibles | Les claims `family_name` et `given_name` sont-ils bien présents dans le jeton, alimentés par l'annuaire ? Sinon, quel champ utiliser ? | Équipe Keycloak / IAM | Construction du nom affiché (§ 6.3). |
+| Q3 | Format du nom | « Martin Julie », « MARTIN Julie », autre ? | Métier (animateurs) | Mise en forme uniquement. |
+| Q4 | Homonymes | Deux personnes « Martin Julie » dans la même séance : on laisse tel quel, ou on ajoute un complément (identifiant, service) ? | Métier | Affichage de la table (§ 7.2). |
+| Q5 | Surnom | Le pseudo reste-t-il possible en plus du nom (surnom d'équipe) ? Le besoin dit « à la place » : l'analyse le supprime. | Métier | Si oui, le champ pseudo reste dans le formulaire et le contrat. |
+| Q6 | Version de Keycloak | Version du serveur Keycloak de l'entreprise, pour choisir une version compatible de `keycloak-js`. | Équipe Keycloak / IAM | Choix de la dépendance du front (§ 7.1). |
+| Q7 | Realms et URL | Realm(s) à utiliser et URL de Keycloak en dev, recette et prod ; qui crée le client `planning-poker`. | Équipe Keycloak / IAM | Configuration (§ 3, § 9). |
+| Q8 | Outil de CI | GitHub Actions ou GitLab CI dans l'environnement d'entreprise ? Un Keycloak de test peut-il y être démarré pour les tests de bout en bout ? | Équipe plateforme | Tests de bout en bout (§ 8, § 9). |
+| Q9 | Données personnelles | Afficher nom et prénom aux autres participants d'une séance nécessite-t-il une validation (DPO, registre des traitements) ? Les noms restent en mémoire 24 h au plus et ne sont jamais journalisés (§ 6.5). | DPO / sécurité | Éventuelle mention d'information aux utilisateurs. |
 
 ---
 

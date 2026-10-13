@@ -19,7 +19,7 @@ class DeckTest {
     void theStandardDeckIsTheWholeFibonacciSuite() {
         assertThat(Deck.standard().type()).isEqualTo(DeckType.FIBONACCI);
         assertThat(Deck.standard().cards().stream().map(Card::value))
-                .containsExactly("0", "0.5", "1", "3", "5", "8", "13", "21", "?", "coffee");
+                .containsExactly("0", "0.5", "1", "2", "3", "5", "8", "13", "21", "?", "coffee");
     }
 
     @Test
@@ -65,8 +65,7 @@ class DeckTest {
 
     @Test
     void refusesACardTheFamilyDoesNotOffer() {
-        // Le « 2 » existe dans le contrat mais n'est dans aucune famille.
-        assertThatThrownBy(() -> of("FIBONACCI", "1", "2")).isInstanceOf(InvalidDeckException.class);
+        assertThatThrownBy(() -> of("FIBONACCI", "1", "4")).isInstanceOf(InvalidDeckException.class);
     }
 
     @Test

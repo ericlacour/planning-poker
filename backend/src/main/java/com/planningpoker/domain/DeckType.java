@@ -5,7 +5,7 @@ import java.util.List;
 /** Famille de jeux proposée à la création d'une session, avec toutes ses cartes dans l'ordre du jeu. */
 public enum DeckType {
     /** Suite de Fibonacci, avec {@code ?} et la pause café. */
-    FIBONACCI(List.of(Card.ZERO, Card.HALF, Card.ONE, Card.THREE, Card.FIVE, Card.EIGHT, Card.THIRTEEN,
+    FIBONACCI(List.of(Card.ZERO, Card.HALF, Card.ONE, Card.TWO, Card.THREE, Card.FIVE, Card.EIGHT, Card.THIRTEEN,
             Card.TWENTY_ONE, Card.UNKNOWN, Card.COFFEE)),
     /** Tailles de tee-shirt. */
     TSHIRT(List.of(Card.XXS, Card.XS, Card.S, Card.M, Card.L, Card.XL, Card.XXL));

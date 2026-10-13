@@ -47,45 +47,45 @@ describe('HandComponent', () => {
     expect(render(null).element.textContent?.trim()).toBe('');
   });
 
-  it('a voter without a vote: a toolbar « Ta carte » of 10 toggle cards, « Choisis ta carte », none pressed', () => {
+  it('a voter without a vote: a toolbar « Ta carte » of 11 toggle cards, « Choisis ta carte », none pressed', () => {
     const { element, cards } = render(withMyVote(null));
     const toolbar = element.querySelector('[role="toolbar"]');
     expect(toolbar?.getAttribute('aria-label')).toBe('Ta carte');
-    expect(cards()).toHaveLength(10);
+    expect(cards()).toHaveLength(11);
     expect(cards().map((c) => c.getAttribute('aria-label'))).toEqual([
-      'Carte 0', 'Carte 0,5', 'Carte 1', 'Carte 3', 'Carte 5', 'Carte 8', 'Carte 13', 'Carte 21',
+      'Carte 0', 'Carte 0,5', 'Carte 1', 'Carte 2', 'Carte 3', 'Carte 5', 'Carte 8', 'Carte 13', 'Carte 21',
       'Carte je ne sais pas', 'Carte pause café',
     ]);
     expect(cards().map((c) => c.querySelector('.card-value')?.textContent)).toEqual([
-      '0', '0,5', '1', '3', '5', '8', '13', '21', '?', '☕︎',
+      '0', '0,5', '1', '2', '3', '5', '8', '13', '21', '?', '☕︎',
     ]);
     expect(cards().every((c) => c.querySelectorAll('.card-index').length === 2)).toBe(true);
     expect(element.querySelector('[aria-pressed="true"]')).toBeNull();
     expect(cards().every((c) => c.getAttribute('aria-pressed') === 'false')).toBe(true);
     expect(element.querySelector('.hand-hint')?.textContent).toBe('Choisis ta carte');
     // Un seul arrêt de tabulation.
-    expect(cards().map((c) => c.tabIndex)).toEqual([0, -1, -1, -1, -1, -1, -1, -1, -1, -1]);
+    expect(cards().map((c) => c.tabIndex)).toEqual([0, ...Array(10).fill(-1)]);
   });
 
   it('a click sends the card, without optimistic update; the snapshot then presses it', () => {
     const { element, session, cards, show } = render(withMyVote(null));
-    cards()[5].click();
+    cards()[6].click();
     expect(session.vote).toHaveBeenCalledWith('8');
     expect(element.querySelector('[aria-pressed="true"]')).toBeNull();
 
     show(withMyVote('8'));
-    expect(cards()[5].getAttribute('aria-pressed')).toBe('true');
-    expect(cards()[5].classList).toContain('poker-card-selected');
+    expect(cards()[6].getAttribute('aria-pressed')).toBe('true');
+    expect(cards()[6].classList).toContain('poker-card-selected');
     expect(element.querySelectorAll('[aria-pressed="true"]')).toHaveLength(1);
     expect(element.querySelector('.hand-hint')).toBeNull();
-    expect(cards()[5].tabIndex).toBe(0);
+    expect(cards()[6].tabIndex).toBe(0);
   });
 
   it('clicking the chosen card withdraws the vote; another card replaces it', () => {
     const { session, cards } = render(withMyVote('8'));
-    cards()[5].click();
+    cards()[6].click();
     expect(session.vote).toHaveBeenLastCalledWith(null);
-    cards()[4].click();
+    cards()[5].click();
     expect(session.vote).toHaveBeenLastCalledWith('5');
   });
 
@@ -160,13 +160,13 @@ describe('HandComponent', () => {
     cards()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(document.activeElement).toBe(cards()[0]);
     cards()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(document.activeElement).toBe(cards()[10]);
+    cards()[10].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(document.activeElement).toBe(cards()[10]);
+    cards()[10].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     expect(document.activeElement).toBe(cards()[9]);
-    cards()[9].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-    expect(document.activeElement).toBe(cards()[9]);
-    cards()[9].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-    expect(document.activeElement).toBe(cards()[8]);
     fixture.detectChanges();
-    expect(cards().filter((c) => c.tabIndex === 0)).toEqual([cards()[8]]);
+    expect(cards().filter((c) => c.tabIndex === 0)).toEqual([cards()[9]]);
   });
 
   it('an observer has no hand but « Tu observes » and « Je veux voter »', () => {
@@ -195,20 +195,20 @@ describe('HandComponent', () => {
     expect(toolbar?.getAttribute('aria-disabled')).toBe('true');
     expect(cards().every((c) => c.getAttribute('aria-disabled') === 'true')).toBe(true);
     expect(cards().every((c) => !c.disabled)).toBe(true);
-    expect(cards()[4].getAttribute('aria-pressed')).toBe('true');
+    expect(cards()[5].getAttribute('aria-pressed')).toBe('true');
     expect(element.querySelector('.hand-hint')).toBeNull();
+    cards()[6].click();
     cards()[5].click();
-    cards()[4].click();
-    cards()[4].focus();
-    cards()[4].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    cards()[5].focus();
+    cards()[5].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(session.vote).not.toHaveBeenCalled();
   });
 
   it('the focus stays on its card when the round is revealed', () => {
     const { cards, show } = render(withMyVote('5'));
-    cards()[4].focus();
+    cards()[5].focus();
     show(revealedTie as SessionState);
-    expect(document.activeElement).toBe(cards()[4]);
+    expect(document.activeElement).toBe(cards()[5]);
   });
 
   it('a voter who arrived during the reveal has a greyed hand until the next round', () => {

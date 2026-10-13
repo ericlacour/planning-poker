@@ -300,7 +300,7 @@ export function heartbeatMessage(): HeartbeatMessage {
 
 /** `common.json#/$defs/deck` : toutes les cartes de chaque famille, dans l'ordre du jeu, parmi lesquelles on choisit. */
 export const DECK_FAMILIES: Readonly<Record<DeckType, readonly Card[]>> = {
-  FIBONACCI: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'],
+  FIBONACCI: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'],
   TSHIRT: ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
 };
 /** Au moins deux cartes dans un jeu (`common.json#/$defs/deck/properties/cards/minItems`). */
@@ -371,7 +371,7 @@ function isDeck(value: unknown): value is Deck {
     isOneOf(value['type'], DECK_TYPES) &&
     Array.isArray(value['cards']) &&
     value['cards'].length >= MIN_DECK_CARDS &&
-    value['cards'].length <= 10 &&
+    value['cards'].length <= 11 &&
     new Set(value['cards']).size === value['cards'].length &&
     value['cards'].every((card) => isOneOf(card, CARDS))
   );

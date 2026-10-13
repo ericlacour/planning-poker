@@ -195,7 +195,7 @@ class SessionControllerTest {
             "{\"type\":\"TSHIRT\",\"cards\":[\"S\"]}",
             "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"S\"]}",
             "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"5\"]}",
-            "{\"type\":\"FIBONACCI\",\"cards\":[\"1\",\"2\"]}",
+            "{\"type\":\"FIBONACCI\",\"cards\":[\"1\",\"4\"]}",
             "{\"type\":\"FIBONACCI\",\"cards\":[\"1\",\"nope\"]}",
             "{\"type\":\"FIBONACCI\",\"cards\":[]}" })
     void refusesAnInvalidDeckWithItsCodeAndStoresNothing(String deck) throws Exception {

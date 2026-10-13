@@ -6,8 +6,7 @@ import java.util.Optional;
 
 /**
  * Une carte ({@code card.json}). Seul le front affiche {@code coffee} en ☕. L'ordre de déclaration est l'ordre du
- * jeu : il départage les égalités et situe le minimum et le maximum d'un tour. Les cartes {@code 2} et ses
- * semblables restent déclarées (le contrat ne change que par ajout) même si aucun {@link DeckType} ne les propose.
+ * jeu : il départage les égalités et situe le minimum et le maximum d'un tour.
  */
 public enum Card {
     ZERO("0"),

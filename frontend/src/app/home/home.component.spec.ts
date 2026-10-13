@@ -72,7 +72,7 @@ describe('HomeComponent', () => {
     expect(api.createSession).toHaveBeenCalledWith({
       pseudo: '  Sofia ',
       role: 'VOTER',
-      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] },
+      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
     });
 
     resolve(created);

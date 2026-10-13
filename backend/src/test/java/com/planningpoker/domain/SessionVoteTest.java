@@ -117,7 +117,7 @@ class SessionVoteTest {
 
     @Test
     void everyCardOfTheDeckIsAccepted() {
-        for (String card : new String[] { "0", "0.5", "1", "3", "5", "8", "13", "21", "?", "coffee" }) {
+        for (String card : new String[] { "0", "0.5", "1", "2", "3", "5", "8", "13", "21", "?", "coffee" }) {
             assertThat(table().vote(ALICE, ROUND, card).voteOf(ALICE).map(Card::value)).contains(card);
         }
     }

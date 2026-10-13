@@ -108,7 +108,7 @@ test('choisir les cartes de la session : tailles de tee-shirt, certaines retiré
 
   await expect(page.getByText('Cartes de la session')).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Fibonacci' })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('.deck-chip')).toHaveCount(10);
+  await expect(page.locator('.deck-chip')).toHaveCount(11);
   await page.getByRole('radio', { name: 'Tailles de tee-shirt' }).click();
   await expect(page.locator('.deck-chip')).toHaveText(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL']);
 
@@ -151,7 +151,7 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
     {
       pseudo: '  Eric ',
       role: 'OBSERVER',
-      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] },
+      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
     },
   ]);
   expect(await page.evaluate((id) => localStorage.getItem(`pp.token.${id}`), SESSION_ID)).toBe(CREATED.participantToken);

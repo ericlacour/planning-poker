@@ -372,7 +372,7 @@ test('une séance complète au clavier seul, avec un contour primary visible', a
   const hand = page.getByRole('toolbar', { name: 'Ta carte' });
   await tabTo(page, hand.getByRole('button', { name: 'Carte 0', exact: true }));
   await expectPrimaryOutline(page);
-  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowRight');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
   await expect(hand.getByRole('button', { name: 'Carte 5', exact: true })).toBeFocused();
   await page.keyboard.press('Space');
   await expect(hand.getByRole('button', { name: 'Carte 5', exact: true })).toHaveAttribute(

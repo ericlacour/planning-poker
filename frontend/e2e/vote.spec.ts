@@ -129,7 +129,7 @@ test('voter à l\'aveugle : choisir, changer, retirer, au clavier aussi, avec le
   });
   await page.goto(`/s/${SESSION_ID}`);
 
-  await expect(hand(page).getByRole('button')).toHaveCount(10);
+  await expect(hand(page).getByRole('button')).toHaveCount(11);
   await expect(page.getByText('Choisis ta carte')).toBeVisible();
   await expect(hand(page).locator('[aria-pressed="true"]')).toHaveCount(0);
   await expect(page.locator('.vote-counter')).toHaveText('0 vote sur 2');

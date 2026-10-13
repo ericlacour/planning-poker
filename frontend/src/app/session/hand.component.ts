@@ -7,7 +7,7 @@ import { SessionService } from './session.service';
 /**
  * Main « Ta carte » (`poker-card`, `poker-card-selected`) pour un votant, ou « Tu observes » et le lien « Je veux
  * voter » (`changeRole VOTER`) pour un observateur.
- * Barre d'outils d'autant de boutons bascule que de cartes du jeu de la session (2 à 10) à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
+ * Barre d'outils d'autant de boutons bascule que de cartes du jeu de la session (2 à 11) à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
  * Tour révélé, ou arrivée pendant la révélation : main grisée, sans effet. L'hôte est un repère (`region`
@@ -29,6 +29,7 @@ import { SessionService } from './session.service';
             class="hand-cards"
             role="toolbar"
             aria-label="Ta carte"
+            [style.--hand-columns]="columns()"
             [attr.aria-disabled]="open() ? null : 'true'"
             (keydown)="onKeydown($event)"
           >
@@ -82,6 +83,11 @@ export class HandComponent {
   });
   /** Les cartes du jeu de la session, dans l'ordre de la main ; aucune avant le premier instantané. */
   protected readonly cards = computed<readonly Card[]>(() => this.state()?.deck.cards ?? []);
+  /** Colonnes du tiroir du téléphone : une seule rangée jusqu'à 5 cartes, sinon deux rangées. */
+  protected readonly columns = computed(() => {
+    const count = this.cards().length;
+    return count <= 5 ? Math.max(count, 1) : Math.ceil(count / 2);
+  });
   protected readonly myVote = computed(() => this.me()?.vote ?? null);
   /**
    * Main active : connexion rétablie, tour caché et vote permis pour ce tour. Sinon elle est grisée

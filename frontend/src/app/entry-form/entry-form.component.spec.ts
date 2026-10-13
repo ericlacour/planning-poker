@@ -152,7 +152,7 @@ describe('EntryFormComponent', () => {
     it('offers Fibonacci, with every card kept at the start', () => {
       expect(deckRadios().map((r) => r.textContent?.trim())).toEqual(['Fibonacci', 'Tailles de tee-shirt']);
       expect(deckRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
-      expect(chipTexts()).toEqual(['0', '0,5', '1', '3', '5', '8', '13', '21', '?', '☕︎']);
+      expect(chipTexts()).toEqual(['0', '0,5', '1', '2', '3', '5', '8', '13', '21', '?', '☕︎']);
       expect(chips().every((c) => c.getAttribute('aria-pressed') === 'true')).toBe(true);
       expect(chips().map((c) => c.getAttribute('aria-label')).slice(-3)).toEqual([
         'Carte 21', 'Carte je ne sais pas', 'Carte pause café',
@@ -166,7 +166,7 @@ describe('EntryFormComponent', () => {
         {
           pseudo: 'Eric',
           role: 'VOTER',
-          deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] },
+          deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
         },
       ]);
     });
@@ -174,13 +174,13 @@ describe('EntryFormComponent', () => {
     it('removes and brings back cards, keeping the order of the suite', () => {
       type('Eric');
       chips()[0].click(); // 0
-      chips()[9].click(); // ☕
+      chips()[10].click(); // ☕
       fixture.detectChanges();
       expect(chips()[0].getAttribute('aria-pressed')).toBe('false');
-      chips()[9].click();
+      chips()[10].click();
       fixture.detectChanges();
       submitForm();
-      expect(submitted[0].deck).toEqual({ type: 'FIBONACCI', cards: ['0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] });
+      expect(submitted[0].deck).toEqual({ type: 'FIBONACCI', cards: ['0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] });
     });
 
     it('switches to T-shirt sizes, each family keeping its own choice', () => {

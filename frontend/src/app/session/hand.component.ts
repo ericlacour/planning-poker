@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, signal, viewChildren } from '@angular/core';
 
-import { Card, CARDS, SessionState } from '../api/contract';
+import { Card, SessionState } from '../api/contract';
 import { CardFaceComponent, cardName } from './cards';
 import { SessionService } from './session.service';
 
 /**
  * Main « Ta carte » (`poker-card`, `poker-card-selected`) pour un votant, ou « Tu observes » et le lien « Je veux
  * voter » (`changeRole VOTER`) pour un observateur.
- * Barre d'outils de 10 boutons bascule à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
+ * Barre d'outils d'autant de boutons bascule que de cartes du jeu de la session (2 à 11) à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
  * Tour révélé, ou arrivée pendant la révélation : main grisée, sans effet. L'hôte est un repère (`region`
@@ -29,10 +29,11 @@ import { SessionService } from './session.service';
             class="hand-cards"
             role="toolbar"
             aria-label="Ta carte"
+            [style.--hand-columns]="columns()"
             [attr.aria-disabled]="open() ? null : 'true'"
             (keydown)="onKeydown($event)"
           >
-            @for (card of cards; track card; let i = $index) {
+            @for (card of cards(); track card; let i = $index) {
               <button
                 #cardButton
                 type="button"
@@ -72,7 +73,6 @@ export class HandComponent {
   /** Dernier instantané, `null` avant le premier. */
   readonly state = input<SessionState | null>(null);
 
-  protected readonly cards = CARDS;
   protected readonly name = cardName;
   /** Carte qui a reçu le focus en dernier, `null` tant que la main ne l'a jamais eu. */
   protected readonly focused = signal<number | null>(null);
@@ -80,6 +80,13 @@ export class HandComponent {
   protected readonly me = computed(() => {
     const state = this.state();
     return state?.participants.find((p) => p.participantId === state.selfParticipantId) ?? null;
+  });
+  /** Les cartes du jeu de la session, dans l'ordre de la main ; aucune avant le premier instantané. */
+  protected readonly cards = computed<readonly Card[]>(() => this.state()?.deck.cards ?? []);
+  /** Colonnes du tiroir du téléphone : une seule rangée jusqu'à 5 cartes, sinon deux rangées. */
+  protected readonly columns = computed(() => {
+    const count = this.cards().length;
+    return count <= 5 ? Math.max(count, 1) : Math.ceil(count / 2);
   });
   protected readonly myVote = computed(() => this.me()?.vote ?? null);
   /**
@@ -100,7 +107,7 @@ export class HandComponent {
     const focused = this.focused();
     if (focused !== null) return focused;
     const vote = this.myVote();
-    return vote === null ? 0 : CARDS.indexOf(vote);
+    return vote === null ? 0 : Math.max(this.cards().indexOf(vote), 0);
   });
 
   protected choose(card: Card): void {
@@ -117,7 +124,7 @@ export class HandComponent {
     if (index < 0) return;
     switch (event.key) {
       case 'ArrowRight':
-        this.move(event, Math.min(index + 1, CARDS.length - 1));
+        this.move(event, Math.min(index + 1, this.cards().length - 1));
         break;
       case 'ArrowLeft':
         this.move(event, Math.max(index - 1, 0));
@@ -126,14 +133,14 @@ export class HandComponent {
         this.move(event, 0);
         break;
       case 'End':
-        this.move(event, CARDS.length - 1);
+        this.move(event, this.cards().length - 1);
         break;
       case 'Enter':
       case ' ':
         // Géré ici (et non par le clic natif) pour un seul envoi, quel que soit le navigateur ; une touche
         // maintenue (répétition) n'envoie rien de plus.
         event.preventDefault();
-        if (!event.repeat) this.choose(CARDS[index]);
+        if (!event.repeat) this.choose(this.cards()[index]);
         break;
     }
   }

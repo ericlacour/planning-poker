@@ -5,7 +5,7 @@ import { fakeSessionSocket } from './fake-session-socket';
 
 /*
  * Story 1.8 : l'écran Session tient sur PC (1280 × 650, 13 participants, sans défilement de page) et sur téléphone
- * (tiroir de 2 × 5 cartes, replié au tour révélé ; aucun défilement horizontal dès 360 px). Faux webservice : la
+ * (tiroir de 2 rangées de cartes, replié au tour révélé ; aucun défilement horizontal dès 360 px). Faux webservice : la
  * CSP du front construit s'applique réellement.
  */
 
@@ -186,7 +186,7 @@ const tableZone = (page: Page) => page.locator('.session-scroll');
 test.describe('PC 1280 × 650, 13 participants', () => {
   test.use({ viewport: PC });
 
-  test('tour caché : aucun défilement, 2 rangées de 7 places au plus, main de 10 cartes sur une ligne', async ({ page }) => {
+  test('tour caché : aucun défilement, 2 rangées de 7 places au plus, main de 11 cartes sur une ligne', async ({ page }) => {
     const { check } = await openSession(page, hidden());
 
     const overflow = await pageOverflow(page);
@@ -204,9 +204,9 @@ test.describe('PC 1280 × 650, 13 participants', () => {
     expect(bar.height).toBeGreaterThanOrEqual(64);
     expect(bar.height).toBeLessThanOrEqual(80);
 
-    await expect(handCards(page)).toHaveCount(10);
-    // Une ligne : la carte 8 choisie, soulevée de 12 px, au-dessus des 9 autres alignées.
-    await expect.poll(() => rows(handCards(page))).toEqual([1, 9]);
+    await expect(handCards(page)).toHaveCount(11);
+    // Une ligne : la carte 8 choisie, soulevée de 12 px, au-dessus des 10 autres alignées.
+    await expect.poll(() => rows(handCards(page))).toEqual([1, 10]);
     const unselected = await box(handCards(page).first());
     expect(unselected.width).toBeCloseTo(60, 0);
     expect(unselected.height).toBeCloseTo(90, 0);
@@ -298,7 +298,7 @@ test.describe('PC bas 1280 × 500', () => {
     for (const locator of [page.locator('header.top-bar'), actionBar(page), page.locator('.hand-dock')]) {
       expect(await inViewport(page, locator)).toBe(true);
     }
-    await expect(handCards(page)).toHaveCount(10);
+    await expect(handCards(page)).toHaveCount(11);
     expect(await inViewport(page, handCards(page).last())).toBe(true);
 
     // La dernière place s'atteint en faisant défiler la table, sans bouger le reste.
@@ -322,9 +322,9 @@ test.describe('fenêtre moyenne 800 × 700', () => {
     const seatRows = await rows(page.locator('.seat'));
     expect(Math.max(...seatRows)).toBe(5);
     expect(seatRows).toEqual([5, 5, 3]);
-    await expect(handCards(page)).toHaveCount(10);
+    await expect(handCards(page)).toHaveCount(11);
     // Une ligne : la carte choisie soulevée de 12 px, les autres sur le même axe.
-    await expect.poll(() => rows(handCards(page))).toEqual([1, 9]);
+    await expect.poll(() => rows(handCards(page))).toEqual([1, 10]);
     for (const card of await handCards(page).all()) {
       expect((await box(card)).width).toBeGreaterThanOrEqual(44);
     }
@@ -340,7 +340,7 @@ test.describe('fenêtre moyenne 800 × 700', () => {
 test.describe('téléphone 390 × 844', () => {
   test.use({ viewport: PHONE, hasTouch: true });
 
-  test('tour caché : tiroir de 2 × 5 cartes en bas, barre d’action juste au-dessus, barre du haut compacte', async ({
+  test('tour caché : tiroir de 2 rangées de cartes en bas, barre d’action juste au-dessus, barre du haut compacte', async ({
     page,
   }) => {
     const { check } = await openSession(page, hidden());
@@ -350,14 +350,14 @@ test.describe('téléphone 390 × 844', () => {
     expect(overflow.vertical).toBeLessThanOrEqual(0);
     expect(await rows(page.locator('.seat'))).toEqual([3, 3, 3, 3, 1]);
 
-    // Tiroir : 2 lignes de 5 (la carte 8 choisie, soulevée, compte à part dans sa ligne), en bas de l'écran.
-    await expect(handCards(page)).toHaveCount(10);
+    // Tiroir : 2 lignes de 6 et 5 (la carte 8 choisie, soulevée, compte à part dans sa ligne), en bas de l'écran.
+    await expect(handCards(page)).toHaveCount(11);
     expect(await lines(handCards(page))).toBe(2);
     const firstLine = await handCards(page).evaluateAll((elements) => {
       const top = elements[0].getBoundingClientRect().bottom;
       return elements.filter((e) => e.getBoundingClientRect().top < top - 2).length;
     });
-    expect(firstLine).toBe(5);
+    expect(firstLine).toBe(6);
     const dock = await box(page.locator('.hand-dock'));
     expect(dock.y + dock.height).toBeCloseTo(PHONE.height, 0);
     expect(await page.locator('.hand').evaluate((e) => getComputedStyle(e).boxShadow)).not.toBe('none');
@@ -423,7 +423,7 @@ test.describe('téléphone 390 × 844', () => {
   test('zones tactiles : chaque carte et chaque bouton mesure au moins 44 × 44 px', async ({ page }) => {
     const { send, check } = await openSession(page, hidden());
     const all = page.getByRole('button');
-    await expect(handCards(page)).toHaveCount(10);
+    await expect(handCards(page)).toHaveCount(11);
     const check44 = async () => {
       for (const button of await all.all()) {
         if (!(await button.isVisible())) continue;
@@ -507,7 +507,7 @@ test.describe('téléphone étroit 360 × 740', () => {
     await check();
   });
 
-  test('tour caché : aucun défilement horizontal, tiroir de 2 × 5 cartes d’au moins 44 px', async ({ page }) => {
+  test('tour caché : aucun défilement horizontal, tiroir de 2 rangées de cartes d’au moins 44 px', async ({ page }) => {
     const { check } = await openSession(page, hidden());
     expect((await pageOverflow(page)).horizontal).toBeLessThanOrEqual(0);
     expect(await lines(handCards(page))).toBe(2);

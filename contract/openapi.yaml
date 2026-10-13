@@ -168,7 +168,7 @@ components:
     Unexpected:
       description: Server error, or a host proxy answer during a cold start. The body is not guaranteed and must not be relied upon.
     BadRequest:
-      description: Invalid pseudo (`INVALID_PSEUDO`), or malformed body (no `code`), including a body that breaks the schema bounds (e.g. a raw pseudo over 200 characters).
+      description: Invalid pseudo (`INVALID_PSEUDO`), invalid deck (`INVALID_DECK`, for an unknown family or card, a card outside its family, a duplicate or fewer than two cards), or malformed body (no `code`), including a body that breaks the schema bounds (e.g. a raw pseudo over 200 characters).
       content:
         application/problem+json:
           schema:
@@ -178,7 +178,7 @@ components:
                   status:
                     const: 400
                   code:
-                    const: INVALID_PSEUDO
+                    enum: [INVALID_PSEUDO, INVALID_DECK]
     SessionNotFound:
       description: Unknown or expired session.
       content:

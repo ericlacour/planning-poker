@@ -8,6 +8,7 @@ import revealedConsensus from '../../../../contract/examples/session-state/revea
 import revealedNoNumeric from '../../../../contract/examples/session-state/revealed-no-numeric-vote.json';
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
+import revealedTshirt from '../../../../contract/examples/session-state/revealed-tshirt-tie.json';
 import { SessionState, Summary } from '../api/contract';
 import {
   announcementFor,
@@ -57,6 +58,12 @@ describe('result formatting', () => {
       'Votes révélés. Moyenne 3. Plus votée 3, 2 votes. Min 3, max 3. Consensus !',
     );
     expect(revealAnnouncement(summaryOf(revealedNoNumeric), 'fr')).toBe('Votes révélés. Pas de résultat chiffré.');
+  });
+
+  it('announces a reveal of sizes without any average', () => {
+    expect(revealAnnouncement(summaryOf(revealedTshirt), 'fr')).toBe(
+      'Votes révélés. Plus votée M et L, 2 votes chacune. Min M, max L.',
+    );
   });
 
   it('announces a reveal and a new round, whoever made them, and nothing else', () => {
@@ -123,6 +130,22 @@ describe('ResultPanelComponent', () => {
     expect(element.querySelector('.result-none')).toBeNull();
   });
 
+  it('sizes: no « Moyenne », a tie of sizes with « chacune »', () => {
+    const { element, text } = render(summaryOf(revealedTshirt));
+    expect(element.querySelector('.result-average')).toBeNull();
+    expect(text('.result-most-voted')).toBe('Plus votée M et L · 2 votes chacune');
+    expect(text('.result-min')).toBe('Min M');
+    expect(text('.result-max')).toBe('Max L');
+    expect(element.querySelector('.result-none')).toBeNull();
+  });
+
+  it('the half point reads « 0,5 » in the numbers', () => {
+    const half: Summary = { average: 0.8, mostVoted: { values: ['0.5', '1'], count: 1 }, min: '0.5', max: '1', consensus: false };
+    const { text } = render(half);
+    expect(text('.result-most-voted')).toBe('Plus votée 0,5 et 1 · 1 vote chacune');
+    expect(text('.result-min')).toBe('Min 0,5');
+  });
+
   it('the mockup: « 5,9 », « Plus votée 5 · 6 votes », « Min 3 », « Max 13 »', () => {
     const { text } = render(mockup);
     expect(text('.result-average .result-value')).toBe('5,9');
@@ -185,6 +208,14 @@ describe('ResultLineComponent (phone)', () => {
     const { element, text } = render(summaryOf(revealedConsensus));
     expect(text('.result-line-average + .result-line-badge .consensus-badge')).toBe('Consensus !');
     expect(element.textContent).not.toContain('☕');
+  });
+
+  it('sizes: no average, but the most voted, min and max', () => {
+    const { element, text } = render(summaryOf(revealedTshirt));
+    expect(element.querySelector('.result-line-average')).toBeNull();
+    expect(text('.result-line-most-voted')).toBe('Plus votée M et L (2)');
+    expect(text('.result-line-min')).toBe('Min M');
+    expect(text('.result-line-max')).toBe('Max L');
   });
 
   it('without a numeric vote: only « Pas de résultat chiffré »', () => {

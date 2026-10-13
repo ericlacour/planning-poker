@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 import com.planningpoker.application.SessionLimitReachedException;
 import com.planningpoker.application.SessionNotFoundException;
+import com.planningpoker.domain.InvalidDeckException;
 import com.planningpoker.domain.InvalidPseudoException;
 import com.planningpoker.domain.PseudoTakenException;
 import com.planningpoker.domain.SessionFullException;
@@ -38,6 +39,13 @@ public class RestErrorHandler extends ResponseEntityExceptionHandler {
     ProblemDetail invalidPseudo() {
         ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Invalid pseudo.");
         problem.setProperty(CODE, "INVALID_PSEUDO");
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidDeckException.class)
+    ProblemDetail invalidDeck() {
+        ProblemDetail problem = problem(HttpStatus.BAD_REQUEST, "Invalid deck.");
+        problem.setProperty(CODE, "INVALID_DECK");
         return problem;
     }
 

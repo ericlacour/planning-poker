@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import observer from '../../../../contract/examples/create-session-request/observer.json';
+import fibonacciSubset from '../../../../contract/examples/create-session-request/fibonacci-subset.json';
+import tshirt from '../../../../contract/examples/create-session-request/tshirt.json';
 import voter from '../../../../contract/examples/create-session-request/voter.json';
 import created from '../../../../contract/examples/create-session-response/created.json';
 import invalidPseudo from '../../../../contract/examples/problem/bad-request-invalid-pseudo.json';
@@ -19,6 +21,7 @@ import {
   parseCreateSessionResponse,
   parseJoinSessionResponse,
   parseProblem,
+  Deck,
   Role,
 } from './contract';
 
@@ -26,6 +29,11 @@ import {
 describe('contract round trip', () => {
   it.each([voter, observer])('create-session-request %j', (example) => {
     const request = createSessionRequest(example.pseudo, example.role as Role);
+    expect(JSON.parse(JSON.stringify(request))).toEqual(example);
+  });
+
+  it.each([tshirt, fibonacciSubset])('create-session-request with a deck %j', (example) => {
+    const request = createSessionRequest(example.pseudo, example.role as Role, example.deck as Deck);
     expect(JSON.parse(JSON.stringify(request))).toEqual(example);
   });
 

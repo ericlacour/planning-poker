@@ -7,6 +7,10 @@
   "required": ["pseudo", "role"],
   "properties": {
     "pseudo": { "$ref": "common.json#/$defs/rawPseudo" },
-    "role": { "$ref": "role.json" }
+    "role": { "$ref": "role.json" },
+    "deck": {
+      "description": "Optional. Without it, the session offers every card of FIBONACCI. A deck that breaks the rules of its family is refused with INVALID_DECK.",
+      "$ref": "common.json#/$defs/deck"
+    }
   }
 }

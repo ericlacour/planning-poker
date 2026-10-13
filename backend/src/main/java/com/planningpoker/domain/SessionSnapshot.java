@@ -12,9 +12,10 @@ import java.util.UUID;
  * synthèse est remplie.
  *
  * @param summary synthèse du tour révélé ; {@code null} pendant un tour caché
+ * @param deck    jeu de cartes de la session, le même pour tous et pour toute la vie de la session
  */
 public record SessionSnapshot(String sessionId, long version, UUID selfParticipantId, Round round,
-        List<Seat> participants, Progress progress, Summary summary, LastChange lastChange) {
+        List<Seat> participants, Progress progress, Summary summary, LastChange lastChange, Deck deck) {
 
     public SessionSnapshot {
         participants = List.copyOf(participants);
@@ -59,6 +60,6 @@ public record SessionSnapshot(String sessionId, long version, UUID selfParticipa
         int voted = (int) voters.stream().filter(p -> session.voteOf(p.id()).isPresent()).count();
         return new SessionSnapshot(session.id(), session.version(), recipientId,
                 new Round(session.roundId(), session.roundStatus()), seats, new Progress(voted, voters.size()),
-                session.summary().orElse(null), session.lastChange());
+                session.summary().orElse(null), session.lastChange(), session.deck());
     }
 }

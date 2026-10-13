@@ -117,7 +117,7 @@ class SessionVoteTest {
 
     @Test
     void everyCardOfTheDeckIsAccepted() {
-        for (String card : new String[] { "0", "1", "2", "3", "5", "8", "13", "21", "?", "coffee" }) {
+        for (String card : new String[] { "0", "0.5", "1", "2", "3", "5", "8", "13", "21", "?", "coffee" }) {
             assertThat(table().vote(ALICE, ROUND, card).voteOf(ALICE).map(Card::value)).contains(card);
         }
     }
@@ -210,5 +210,38 @@ class SessionVoteTest {
         assertThat(seat(forEmma, ALICE).vote()).isEqualTo("8");
         assertThat(seat(forEmma, BOB).vote()).isEqualTo("5");
         assertThat(seat(forEmma, CHLOE).vote()).isNull();
+    }
+
+    private static Session tableWith(Deck deck) {
+        return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
+                ParticipantToken.of("alice"), NOW, deck);
+    }
+
+    @Test
+    void aCardOutsideTheDeckOfTheSessionIsRejected() {
+        Session session = tableWith(new Deck(DeckType.FIBONACCI, java.util.List.of(Card.ONE, Card.THREE, Card.FIVE)));
+        assertThat(rejection(() -> session.vote(ALICE, ROUND, "8"))).isEqualTo(VoteRejectedException.Reason.INVALID_CARD);
+        assertThat(rejection(() -> session.vote(ALICE, ROUND, "M"))).isEqualTo(VoteRejectedException.Reason.INVALID_CARD);
+        assertThat(session.vote(ALICE, ROUND, "3").voteOf(ALICE)).contains(Card.THREE);
+    }
+
+    @Test
+    void aTshirtSessionOnlyAcceptsItsSizes() {
+        Session session = tableWith(new Deck(DeckType.TSHIRT, java.util.List.of(Card.S, Card.M, Card.L)));
+        assertThat(session.vote(ALICE, ROUND, "M").voteOf(ALICE)).contains(Card.M);
+        assertThat(rejection(() -> session.vote(ALICE, ROUND, "XL"))).isEqualTo(VoteRejectedException.Reason.INVALID_CARD);
+        assertThat(rejection(() -> session.vote(ALICE, ROUND, "5"))).isEqualTo(VoteRejectedException.Reason.INVALID_CARD);
+        assertThat(rejection(() -> session.vote(ALICE, ROUND, "coffee"))).isEqualTo(VoteRejectedException.Reason.INVALID_CARD);
+    }
+
+    @Test
+    void theDeckNeverChangesAndEveryoneSeesIt() {
+        Deck deck = new Deck(DeckType.TSHIRT, java.util.List.of(Card.S, Card.M));
+        Session session = tableWith(deck)
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW, 30)
+                .vote(ALICE, ROUND, "S").reveal(ALICE, ROUND);
+        assertThat(session.deck()).isEqualTo(deck);
+        assertThat(SessionSnapshot.forRecipient(session, BOB).deck()).isEqualTo(deck);
+        assertThat(SessionSnapshot.forRecipient(session, ALICE).deck()).isEqualTo(deck);
     }
 }

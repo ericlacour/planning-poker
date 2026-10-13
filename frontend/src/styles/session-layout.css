@@ -181,7 +181,8 @@ app-action-bar,
 
   .hand-dock .hand-cards {
     display: grid;
-    grid-template-columns: repeat(5, minmax(var(--spacing-touch-min), var(--spacing-hand-card-width-pc)));
+    /* Deux rangées au plus : le nombre de colonnes suit le jeu de la session (--hand-columns, posé par la main). */
+    grid-template-columns: repeat(var(--hand-columns, 5), minmax(var(--spacing-touch-min), var(--spacing-hand-card-width-pc)));
     justify-content: center;
     gap: var(--spacing-3) var(--spacing-2);
     width: 100%;

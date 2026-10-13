@@ -23,6 +23,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
 
 /**
  * - `invalidPseudo` : 400 `INVALID_PSEUDO` ;
+ * - `invalidDeck` : 400 `INVALID_DECK` ;
  * - `pseudoTaken` : 409 `PSEUDO_TAKEN` ;
  * - `sessionFull` : 409 `SESSION_FULL` ;
  * - `notFound` : 404 `SESSION_NOT_FOUND` ;
@@ -32,6 +33,7 @@ export const REQUEST_TIMEOUT_MS = 15_000;
  */
 export type SessionApiErrorKind =
   | 'invalidPseudo'
+  | 'invalidDeck'
   | 'pseudoTaken'
   | 'sessionFull'
   | 'notFound'
@@ -49,6 +51,7 @@ export class SessionApiError extends Error {
 /** Réponses d'erreur reconnues : statut et `code` du problème attendus ensemble. */
 const KNOWN_PROBLEMS: readonly { status: number; code: ProblemCode; kind: SessionApiErrorKind }[] = [
   { status: 400, code: 'INVALID_PSEUDO', kind: 'invalidPseudo' },
+  { status: 400, code: 'INVALID_DECK', kind: 'invalidDeck' },
   { status: 404, code: 'SESSION_NOT_FOUND', kind: 'notFound' },
   { status: 409, code: 'PSEUDO_TAKEN', kind: 'pseudoTaken' },
   { status: 409, code: 'SESSION_FULL', kind: 'sessionFull' },
@@ -68,7 +71,7 @@ export class SessionApi {
     if (response.status === 201) {
       return parseOrNetwork(response, parseCreateSessionResponse);
     }
-    throw await errorOf(response, ['invalidPseudo', 'tooManyRequests', 'sessionLimitReached']);
+    throw await errorOf(response, ['invalidPseudo', 'invalidDeck', 'tooManyRequests', 'sessionLimitReached']);
   }
 
   /** `GET /api/sessions/{sessionId}` : résout si la session existe, sinon `notFound` ou `network`. */

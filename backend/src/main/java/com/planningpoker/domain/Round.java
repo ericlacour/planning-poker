@@ -68,15 +68,15 @@ public record Round(String id, RoundStatus status, Map<UUID, Card> votes, Set<UU
      * même instance.
      *
      * @throws VoteRejectedException si le tour est révélé (ou si le participant n'y vote pas encore), ou si la carte
-     *                               est hors du jeu ; rien ne change
+     *                               est hors du jeu de la session ; rien ne change
      */
-    Round vote(UUID participantId, String card) {
+    Round vote(UUID participantId, String card, Deck deck) {
         if (isRevealed() || isLate(participantId)) {
             throw new VoteRejectedException(VoteRejectedException.Reason.ROUND_REVEALED);
         }
         Card chosen = null;
         if (card != null) {
-            chosen = Card.of(card)
+            chosen = Card.of(card).filter(deck::contains)
                     .orElseThrow(() -> new VoteRejectedException(VoteRejectedException.Reason.INVALID_CARD));
         }
         if (Objects.equals(votes.get(participantId), chosen)) {

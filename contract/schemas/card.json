@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "card.json",
   "title": "Card",
-  "description": "A card of the deck. Only the front displays \"coffee\" as ☕.",
+  "description": "A card of a deck. Only the front displays \"coffee\" as ☕. The cards a session offers are given by its deck.",
   "type": "string",
-  "enum": ["0", "1", "2", "3", "5", "8", "13", "21", "?", "coffee"]
+  "enum": ["0", "0.5", "1", "2", "3", "5", "8", "13", "21", "?", "coffee", "XXS", "XS", "S", "M", "L", "XL", "XXL"]
 }

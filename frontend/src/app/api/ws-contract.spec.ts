@@ -13,6 +13,7 @@ import revealedConsensus from '../../../../contract/examples/session-state/revea
 import revealedNoNumeric from '../../../../contract/examples/session-state/revealed-no-numeric-vote.json';
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
+import revealedTshirt from '../../../../contract/examples/session-state/revealed-tshirt-tie.json';
 import changeRole from '../../../../contract/examples/change-role/to-observer.json';
 import clear from '../../../../contract/examples/clear/clear.json';
 import hide from '../../../../contract/examples/hide/hide.json';
@@ -45,6 +46,7 @@ describe('WebSocket contract round trip', () => {
     ['revealed-no-numeric-vote', revealedNoNumeric],
     ['revealed-seen-by-observer', revealedObserver],
     ['revealed-tie', revealedTie],
+    ['revealed-tshirt-tie', revealedTshirt],
   ])('session-state/%s', (_, example) => {
     expect(roundTrip(parseServerMessage(example))).toEqual(example);
   });
@@ -112,5 +114,22 @@ describe('parseServerMessage', () => {
     expect(parseServerMessage({ ...alone, participants: [{ ...seat, vote: '4' }] })).toBeNull();
     expect(parseServerMessage({ ...alone, participants: [{ ...seat, pseudo: '' }] })).toBeNull();
     expect(parseServerMessage({ ...alone, lastChange: { action: 'PRESENCE' } })).toBeNull();
+  });
+
+  it('rejects a snapshot whose deck is missing or outside the contract', () => {
+    const { deck, ...withoutDeck } = alone;
+    expect(deck.type).toBe('FIBONACCI');
+    expect(parseServerMessage(withoutDeck)).toBeNull();
+    expect(parseServerMessage({ ...alone, deck: { ...deck, type: 'EMOJI' } })).toBeNull();
+    expect(parseServerMessage({ ...alone, deck: { ...deck, cards: ['1'] } })).toBeNull();
+    expect(parseServerMessage({ ...alone, deck: { ...deck, cards: ['1', '1'] } })).toBeNull();
+    expect(parseServerMessage({ ...alone, deck: { ...deck, cards: ['1', '4'] } })).toBeNull();
+    expect(parseServerMessage({ ...alone, deck: { ...deck, extra: 1 } })).toBeNull();
+  });
+
+  it('reads the deck of a T-shirt session and a summary without average', () => {
+    const parsed = parseServerMessage(revealedTshirt);
+    expect(parsed?.type === 'sessionState' && parsed.deck).toEqual({ type: 'TSHIRT', cards: ['S', 'M', 'L', 'XL'] });
+    expect(parsed?.type === 'sessionState' && parsed.summary?.average).toBeNull();
   });
 });

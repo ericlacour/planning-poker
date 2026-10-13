@@ -126,4 +126,111 @@ describe('EntryFormComponent', () => {
     expect(notice!.compareDocumentPosition(input()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(input().getAttribute('aria-invalid')).toBeNull();
   });
+
+  describe('deck choice (session creation)', () => {
+    const deckRadios = () => [...element.querySelectorAll<HTMLButtonElement>('.deck-group [role="radio"]')];
+    const chips = () => [...element.querySelectorAll<HTMLButtonElement>('.deck-chip')];
+    const chipTexts = () => chips().map((c) => c.textContent?.trim());
+    const submitForm = () => element.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+
+    beforeEach(() => set('withDeck', true));
+
+    it('is absent unless the form creates a session', () => {
+      fixture = TestBed.createComponent(EntryFormComponent);
+      fixture.componentRef.setInput('submitLabel', 'Rejoindre');
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.deck-group')).toBeNull();
+      fixture.componentInstance.submitted.subscribe((value) => submitted.push(value));
+      const pseudo = fixture.nativeElement.querySelector('#entry-pseudo') as HTMLInputElement;
+      pseudo.value = 'Eric';
+      pseudo.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+      expect(submitted).toEqual([{ pseudo: 'Eric', role: 'VOTER' }]);
+    });
+
+    it('offers Fibonacci, with every card kept at the start', () => {
+      expect(deckRadios().map((r) => r.textContent?.trim())).toEqual(['Fibonacci', 'Tailles de tee-shirt']);
+      expect(deckRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+      expect(chipTexts()).toEqual(['0', '0,5', '1', '2', '3', '5', '8', '13', '21', '?', '☕︎']);
+      expect(chips().every((c) => c.getAttribute('aria-pressed') === 'true')).toBe(true);
+      expect(chips().map((c) => c.getAttribute('aria-label')).slice(-3)).toEqual([
+        'Carte 21', 'Carte je ne sais pas', 'Carte pause café',
+      ]);
+    });
+
+    it('submits the whole Fibonacci suite by default', () => {
+      type('Eric');
+      submitForm();
+      expect(submitted).toEqual([
+        {
+          pseudo: 'Eric',
+          role: 'VOTER',
+          deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
+        },
+      ]);
+    });
+
+    it('removes and brings back cards, keeping the order of the suite', () => {
+      type('Eric');
+      chips()[0].click(); // 0
+      chips()[10].click(); // ☕
+      fixture.detectChanges();
+      expect(chips()[0].getAttribute('aria-pressed')).toBe('false');
+      chips()[10].click();
+      fixture.detectChanges();
+      submitForm();
+      expect(submitted[0].deck).toEqual({ type: 'FIBONACCI', cards: ['0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] });
+    });
+
+    it('switches to T-shirt sizes, each family keeping its own choice', () => {
+      type('Eric');
+      chips()[2].click(); // 1
+      deckRadios()[1].click();
+      fixture.detectChanges();
+      expect(deckRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true']);
+      expect(chipTexts()).toEqual(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL']);
+      chips()[0].click(); // XXS
+      chips()[6].click(); // XXL
+      fixture.detectChanges();
+      submitForm();
+      expect(submitted[0].deck).toEqual({ type: 'TSHIRT', cards: ['XS', 'S', 'M', 'L', 'XL'] });
+
+      deckRadios()[0].click();
+      fixture.detectChanges();
+      expect(chips()[2].getAttribute('aria-pressed')).toBe('false'); // 1 reste retiré
+    });
+
+    it('moves the family with the arrow keys', () => {
+      deckRadios()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      fixture.detectChanges();
+      expect(deckRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true']);
+    });
+
+    it('refuses fewer than two cards: hint in error, button inactive', () => {
+      type('Eric');
+      deckRadios()[1].click();
+      fixture.detectChanges();
+      for (const index of [0, 1, 2, 3, 4]) chips()[index].click();
+      fixture.detectChanges();
+      expect(submit().disabled).toBe(false); // 2 cartes : XL, XXL
+      chips()[5].click();
+      fixture.detectChanges();
+      expect(submit().disabled).toBe(true);
+      expect(element.querySelector('.deck-hint')?.textContent?.trim()).toBe('Garde au moins 2 cartes.');
+      expect(element.querySelector('.deck-hint')?.getAttribute('role')).toBe('alert');
+      submitForm();
+      expect(submitted).toEqual([]);
+      chips()[5].click();
+      fixture.detectChanges();
+      expect(submit().disabled).toBe(false);
+    });
+
+    it('states that the choice is final and locks the chips while busy', () => {
+      expect(element.querySelector('.deck-hint')?.textContent).toContain('définitif pour la session');
+      set('busy', true);
+      expect(chips().every((c) => c.disabled)).toBe(true);
+      expect(deckRadios().every((r) => r.disabled)).toBe(true);
+    });
+  });
 });

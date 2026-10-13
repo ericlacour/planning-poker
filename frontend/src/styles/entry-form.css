@@ -143,6 +143,61 @@
   cursor: default;
 }
 
+/* Choix des cartes de la session (création) : mêmes boutons radio que le rôle, puis une pastille par carte. */
+.deck-group {
+  margin-top: var(--spacing-5);
+}
+
+.deck-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+}
+
+.deck-chip {
+  min-width: var(--spacing-touch-min);
+  min-height: var(--spacing-touch-min);
+  padding: 0 var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+  background: var(--surface);
+  color: var(--foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-emoji: text;
+  cursor: pointer;
+}
+
+/* Carte retirée du jeu : contour pointillé, texte barré et atténué (pas seulement une couleur). */
+.deck-chip[aria-pressed='false'] {
+  border-style: dashed;
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+.deck-chip[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.deck-chip:disabled {
+  cursor: default;
+}
+
+.deck-hint {
+  margin-top: var(--spacing-2);
+  color: var(--muted-foreground);
+  font-size: var(--typography-label-font-size);
+}
+
+.deck-hint-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
 .entry-form-submit {
   width: 100%;
   min-height: 48px;

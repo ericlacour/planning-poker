@@ -75,6 +75,39 @@ const hand = (page: Page) => page.getByRole('toolbar', { name: 'Ta carte' });
 const card = (page: Page, name: string) => hand(page).getByRole('button', { name, exact: true });
 const mySeat = (page: Page) => page.locator('.seat').first();
 
+test('une session de tee-shirts : la main ne propose que les tailles du jeu, lisibles dans la carte', async ({ page }) => {
+  const check = await watchPage(page);
+  await openWithToken(page);
+  const tshirt = { ...snapshot(7, null, false), deck: { type: 'TSHIRT', cards: ['XXS', 'S', 'M', 'XL', 'XXL'] } };
+  const votes: unknown[] = [];
+  await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    ws.send(JSON.stringify(tshirt));
+    ws.onMessage((message) => {
+      const json = JSON.parse(String(message)) as { type: string };
+      if (json.type === 'vote') votes.push(json);
+    });
+  });
+  await page.goto(`/s/${SESSION_ID}`);
+
+  await expect(hand(page).getByRole('button')).toHaveCount(5);
+  await expect(hand(page).locator('.card-value')).toHaveText(['XXS', 'S', 'M', 'XL', 'XXL']);
+  // Aucune valeur ne déborde de sa carte, même à trois lettres.
+  const overflowing = await hand(page)
+    .locator('.poker-card')
+    .evaluateAll((cards) =>
+      cards.filter((c) => {
+        const value = c.querySelector('.card-value')!.getBoundingClientRect();
+        const box = c.getBoundingClientRect();
+        return value.left < box.left || value.right > box.right;
+      }).length,
+    );
+  expect(overflowing).toBe(0);
+
+  await card(page, 'Carte taille XXL').click();
+  await expect.poll(() => votes).toEqual([{ type: 'vote', roundId: ROUND, card: 'XXL' }]);
+  await check();
+});
+
 test('voter à l\'aveugle : choisir, changer, retirer, au clavier aussi, avec le compteur', async ({ page }) => {
   const check = await watchPage(page);
   await openWithToken(page);
@@ -96,7 +129,7 @@ test('voter à l\'aveugle : choisir, changer, retirer, au clavier aussi, avec le
   });
   await page.goto(`/s/${SESSION_ID}`);
 
-  await expect(hand(page).getByRole('button')).toHaveCount(10);
+  await expect(hand(page).getByRole('button')).toHaveCount(11);
   await expect(page.getByText('Choisis ta carte')).toBeVisible();
   await expect(hand(page).locator('[aria-pressed="true"]')).toHaveCount(0);
   await expect(page.locator('.vote-counter')).toHaveText('0 vote sur 2');

@@ -151,6 +151,7 @@ test('une moyenne de 5,25 est arrondie à 5,3 (HALF_UP)', async () => {
 test('l\'absence d\'exemple de tour révélé avec égalité est signalée', async () => {
   const dir = copyContract();
   rmSync(join(dir, 'examples/session-state/revealed-tie.json'));
+  rmSync(join(dir, 'examples/session-state/revealed-tshirt-tie.json'));
   const { errors } = await validateContract(dir);
   assert.ok(hasError(errors, 'égalité'), errors.join('\n'));
 });
@@ -242,4 +243,18 @@ test('un exemple d\'erreur REST dont le nom ne correspond à aucune réponse est
   writeFileSync(join(dir, 'examples/problem/teapot.json'), JSON.stringify({ type: 'about:blank', title: 'Teapot', status: 418 }));
   const { errors } = await validateContract(dir);
   assert.ok(hasError(errors, 'teapot.json', 'le nom doit commencer'), errors.join('\n'));
+});
+
+test('un vote hors du jeu de la session est signalé', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-tshirt-tie.json', (s) => { s.deck.cards = ['S', 'XL']; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'revealed-tshirt-tie.json', 'hors du jeu'), errors.join('\n'));
+});
+
+test('la synthèse de tailles n\'a pas de moyenne', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-tshirt-tie.json', (s) => { s.summary.average = 3; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'revealed-tshirt-tie.json', 'summary'), errors.join('\n'));
 });

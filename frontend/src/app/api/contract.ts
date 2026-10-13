@@ -6,10 +6,26 @@
 /** `role.json` */
 export type Role = 'VOTER' | 'OBSERVER';
 
-/** `create-session-request.json` : le pseudo est brut, le webservice le normalise. */
+/** `common.json#/$defs/deck/properties/type` : la famille de cartes d'une session. */
+export type DeckType = 'FIBONACCI' | 'TSHIRT';
+
+/**
+ * `common.json#/$defs/deck` : les cartes d'une session, choisies à sa création et figées ensuite. Le webservice les
+ * range dans l'ordre de leur famille, qui est aussi l'ordre de la main.
+ */
+export interface Deck {
+  readonly type: DeckType;
+  readonly cards: readonly Card[];
+}
+
+/**
+ * `create-session-request.json` : le pseudo est brut, le webservice le normalise. Sans `deck`, la session propose
+ * toute la suite de Fibonacci.
+ */
 export interface CreateSessionRequest {
   readonly pseudo: string;
   readonly role: Role;
+  readonly deck?: Deck;
 }
 
 /** `create-session-response.json`. `participantToken` est SECRET : jamais dans une URL ni un journal. */
@@ -35,6 +51,7 @@ export interface JoinSessionResponse {
 export type ProblemCode =
   | 'PSEUDO_TAKEN'
   | 'INVALID_PSEUDO'
+  | 'INVALID_DECK'
   | 'SESSION_NOT_FOUND'
   | 'SESSION_FULL'
   | 'SESSION_LIMIT_REACHED'
@@ -55,6 +72,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PROBLEM_CODES: readonly ProblemCode[] = [
   'PSEUDO_TAKEN',
   'INVALID_PSEUDO',
+  'INVALID_DECK',
   'SESSION_NOT_FOUND',
   'SESSION_FULL',
   'SESSION_LIMIT_REACHED',
@@ -67,8 +85,8 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const matches = (value: unknown, pattern: RegExp): value is string =>
   typeof value === 'string' && pattern.test(value);
 
-export function createSessionRequest(pseudo: string, role: Role): CreateSessionRequest {
-  return { pseudo, role };
+export function createSessionRequest(pseudo: string, role: Role, deck?: Deck): CreateSessionRequest {
+  return deck === undefined ? { pseudo, role } : { pseudo, role, deck };
 }
 
 /** Lit une réponse de création, ou lève une erreur si elle ne respecte pas le contrat. */
@@ -130,8 +148,26 @@ export function parseProblem(json: unknown): Problem | null {
 
 // --- WebSocket (`asyncapi.yaml`) ---
 
-/** `card.json` : seul le front affiche `coffee` en ☕. */
-export type Card = '0' | '1' | '2' | '3' | '5' | '8' | '13' | '21' | '?' | 'coffee';
+/** `card.json` : seul le front affiche `coffee` en ☕. Les cartes qu'une session propose sont dans son `deck`. */
+export type Card =
+  | '0'
+  | '0.5'
+  | '1'
+  | '2'
+  | '3'
+  | '5'
+  | '8'
+  | '13'
+  | '21'
+  | '?'
+  | 'coffee'
+  | 'XXS'
+  | 'XS'
+  | 'S'
+  | 'M'
+  | 'L'
+  | 'XL'
+  | 'XXL';
 
 /** `session-state.json#/properties/lastChange/properties/action` */
 export type ChangeAction = 'JOIN' | 'LEAVE' | 'VOTE' | 'REVEAL' | 'HIDE' | 'CLEAR' | 'ROLE' | 'PRESENCE';
@@ -148,7 +184,10 @@ export interface ParticipantState {
   readonly canVoteThisRound: boolean;
 }
 
-/** `session-state.json#/$defs/summary` : synthèse d'un tour révélé, calculée par le webservice seul. */
+/**
+ * `session-state.json#/$defs/summary` : synthèse d'un tour révélé, calculée par le webservice seul. `average` est
+ * nulle pour des tailles de tee-shirt, qui n'ont pas de moyenne.
+ */
 export interface Summary {
   readonly average: number | null;
   readonly mostVoted: { readonly values: readonly Card[]; readonly count: number } | null;
@@ -169,6 +208,8 @@ export interface SessionState {
   readonly progress: { readonly voted: number; readonly expected: number };
   readonly summary: Summary | null;
   readonly lastChange: { readonly action: ChangeAction; readonly byParticipantId: string | null };
+  /** Les cartes de la session, dans l'ordre de la main : les mêmes pour tous, pour toute la vie de la session. */
+  readonly deck: Deck;
 }
 
 /** `tick.json` */
@@ -257,9 +298,20 @@ export function heartbeatMessage(): HeartbeatMessage {
   return { type: 'heartbeat' };
 }
 
-/** Le jeu, dans l'ordre de la main (`card.json`). */
-export const CARDS: readonly Card[] = ['0', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'];
-const NUMERIC_CARDS: readonly Card[] = ['0', '1', '2', '3', '5', '8', '13', '21'];
+/** `common.json#/$defs/deck` : toutes les cartes de chaque famille, dans l'ordre du jeu, parmi lesquelles on choisit. */
+export const DECK_FAMILIES: Readonly<Record<DeckType, readonly Card[]>> = {
+  FIBONACCI: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'],
+  TSHIRT: ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+};
+/** Au moins deux cartes dans un jeu (`common.json#/$defs/deck/properties/cards/minItems`). */
+export const MIN_DECK_CARDS = 2;
+/** Toutes les cartes que le contrat connaît (`card.json`). */
+const CARDS: readonly Card[] = [
+  '0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL',
+];
+/** Les cartes qui comptent dans la synthèse (`numeric-card.json`) : tout sauf `?` et `coffee`. */
+const RANKED_CARDS: readonly Card[] = CARDS.filter((card) => card !== '?' && card !== 'coffee');
+const DECK_TYPES: readonly DeckType[] = ['FIBONACCI', 'TSHIRT'];
 const ACTIONS: readonly ChangeAction[] = ['JOIN', 'LEAVE', 'VOTE', 'REVEAL', 'HIDE', 'CLEAR', 'ROLE', 'PRESENCE'];
 const ERROR_CODES: readonly ErrorCode[] = ['ROUND_REVEALED', 'NOT_A_VOTER', 'INVALID_CARD', 'INVALID_MESSAGE'];
 const ROLES: readonly Role[] = ['VOTER', 'OBSERVER'];
@@ -277,7 +329,7 @@ const isText = (value: unknown, min: number, max: number): value is string =>
 
 const isOneOf = <T>(value: unknown, allowed: readonly T[]): value is T => allowed.includes(value as T);
 
-const isNumericCardOrNull = (value: unknown) => value === null || isOneOf(value, NUMERIC_CARDS);
+const isRankedCardOrNull = (value: unknown) => value === null || isOneOf(value, RANKED_CARDS);
 
 function isParticipant(value: unknown): value is ParticipantState {
   return (
@@ -304,19 +356,33 @@ function isSummary(value: unknown): value is Summary {
         hasExactly(mostVoted, ['values', 'count']) &&
         Array.isArray(mostVoted['values']) &&
         mostVoted['values'].length > 0 &&
-        mostVoted['values'].every((v) => isOneOf(v, NUMERIC_CARDS)) &&
+        mostVoted['values'].every((v) => isOneOf(v, RANKED_CARDS)) &&
         isInteger(mostVoted['count'], 1))) &&
-    isNumericCardOrNull(value['min']) &&
-    isNumericCardOrNull(value['max']) &&
+    isRankedCardOrNull(value['min']) &&
+    isRankedCardOrNull(value['max']) &&
     typeof value['consensus'] === 'boolean'
   );
 }
 
+function isDeck(value: unknown): value is Deck {
+  return (
+    isObject(value) &&
+    hasExactly(value, ['type', 'cards']) &&
+    isOneOf(value['type'], DECK_TYPES) &&
+    Array.isArray(value['cards']) &&
+    value['cards'].length >= MIN_DECK_CARDS &&
+    value['cards'].length <= 11 &&
+    new Set(value['cards']).size === value['cards'].length &&
+    value['cards'].every((card) => isOneOf(card, CARDS))
+  );
+}
+
 function isSessionState(json: Record<string, unknown>): boolean {
-  const { round, participants, progress, lastChange, summary } = json;
+  const { round, participants, progress, lastChange, summary, deck } = json;
   return (
     hasExactly(json, [
       'type', 'sessionId', 'version', 'selfParticipantId', 'round', 'participants', 'progress', 'summary', 'lastChange',
+      'deck',
     ]) &&
     matches(json['sessionId'], BASE64URL_128_BITS) &&
     isInteger(json['version'], 1) &&
@@ -332,6 +398,7 @@ function isSessionState(json: Record<string, unknown>): boolean {
     isInteger(progress['voted'], 0) &&
     isInteger(progress['expected'], 0) &&
     (summary === null || isSummary(summary)) &&
+    isDeck(deck) &&
     isObject(lastChange) &&
     hasExactly(lastChange, ['action', 'byParticipantId']) &&
     isOneOf(lastChange['action'], ACTIONS) &&

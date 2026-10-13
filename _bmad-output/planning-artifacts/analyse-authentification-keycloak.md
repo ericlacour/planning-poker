@@ -1,10 +1,12 @@
 # Analyse : connexion des utilisateurs par Keycloak
 
 - **Date :** 2026-10-13
-- **Statut :** analyse d'impact, aucune modification de code
+- **Statut :** document de réflexion, pour se poser les bonnes questions avant un éventuel passage à Keycloak. **Aucune implémentation n'est prévue à date.**
+- **Contexte :** Keycloak ne serait mis en place que lors d'un déploiement en **environnement d'entreprise** (OpenShift). Dans ce cas, Render est abandonné.
 - **Besoin :**
-  1. l'utilisateur se connecte par Keycloak, et Keycloak contrôle qu'il a le droit d'utiliser l'application ;
-  2. son **nom** (venu de Keycloak) s'affiche à la place du pseudo saisi.
+  1. l'utilisateur se connecte par Keycloak, et Keycloak indique s'il a accès à l'application ;
+  2. son **nom et prénom** (venus de Keycloak) s'affichent à la place du pseudo saisi.
+- **Décisions déjà prises :** voir § 11.
 
 ---
 
@@ -12,9 +14,9 @@
 
 | Point | Aujourd'hui | Avec Keycloak |
 | --- | --- | --- |
-| Accès | Anonyme, « sans compte » | Connexion obligatoire (OIDC, Authorization Code + PKCE) et rôle Keycloak requis |
+| Accès | Anonyme, « sans compte » | Connexion obligatoire (OIDC, Authorization Code + PKCE) ; Keycloak indique si l'utilisateur a accès à l'application |
 | Identité d'un participant | Pseudo saisi + `participantToken` (secret par session, dans le `localStorage`) | Identifiant Keycloak `sub`, prouvé par le jeton d'accès (JWT) |
-| Nom affiché | Pseudo saisi, 1 à 20 points de code, unique dans la session (casse ignorée) | Claim `name` du jeton (repli : `preferred_username`), jamais saisi |
+| Nom affiché | Pseudo saisi, 1 à 20 points de code, unique dans la session (casse ignorée) | « Nom Prénom », construit à partir des claims `family_name` et `given_name` du jeton (repli : `preferred_username`), jamais saisi |
 | Unicité | Par pseudo (`PSEUDO_TAKEN`) | Par `sub` : deux homonymes sont deux participants distincts |
 | Reprise depuis un autre appareil (FR-8) | Rejoindre avec le pseudo d'un participant déconnecté, révocation de l'ancien jeton | Automatique : le même utilisateur retrouve sa place sur tous ses appareils |
 | REST | Sans authentification | `Authorization: Bearer <jeton d'accès>` sur tout `/api/**` sauf `/api/health` |
@@ -63,13 +65,13 @@ Deux niveaux de contrôle du droit d'usage :
 | Client front | `planning-poker`, **public** (pas de secret dans un SPA), *Standard flow* seul, PKCE `S256` obligatoire, *Direct access grants* et *Implicit flow* désactivés |
 | Redirect URIs | `https://<front>/*` (et `http://localhost:4200/*` pour le développement local, dans un realm de dev) |
 | Web origins | `https://<front>` (CORS de l'endpoint de jeton) |
-| Rôle d'accès | rôle client `planning-poker:user` (ou groupe AD/LDAP mappé sur ce rôle) |
+| Accès à l'application | **Décidé : c'est Keycloak qui indique si l'utilisateur a accès** (utilisateur ou groupe AD/LDAP affecté à l'application). À valider avec l'équipe Keycloak : sous quelle forme cet accès apparaît dans le jeton (par exemple un rôle client `planning-poker:user`), pour que le webservice puisse le revérifier. |
 | Audience | *Audience mapper* ajoutant `planning-poker-api` dans `aud`, pour que le webservice n'accepte pas un jeton émis pour une autre application |
-| Claims | `name`, `preferred_username` (scope `profile`) ; les rôles clients sont dans `resource_access.planning-poker.roles` |
+| Claims | `family_name` (nom) et `given_name` (prénom), scope `profile`, normalement alimentés par l'annuaire : **à valider** ; `preferred_username` en repli ; les rôles clients sont dans `resource_access.planning-poker.roles` |
 | Durées | jeton d'accès 5 min (défaut), session SSO ≥ durée d'un atelier (2 h à 8 h) ; rafraîchissement par *refresh token*, pas par iframe |
 | Refus d'accès | *Client policy* / flux d'authentification conditionnel « rôle requis » : l'utilisateur sans rôle voit l'écran de refus de Keycloak |
 
-Optionnel : un second rôle `planning-poker:facilitator` si la **création** de session doit être réservée à certains (question ouverte, § 11).
+**Création de session (décidé) :** pas de rôle « animateur » dans Keycloak. L'animateur est celui qui ouvre l'**URL de départ** (page d'accueil, qui crée la session) ; les participants arrivent par le **lien de session** (`/s/{sessionId}`), qui ne propose que de rejoindre. C'est déjà le fonctionnement actuel : rien à changer. À savoir : l'URL de départ n'est pas secrète, donc tout utilisateur qui a accès à l'application et la connaît peut créer une session. Si un jour il faut vraiment restreindre la création, il faudra un rôle Keycloak dédié.
 
 ---
 
@@ -140,13 +142,20 @@ La suite du document décrit l'option B.
 | --- | --- |
 | `domain` | Nouveau `UserId` (valeur opaque, le `sub`) ; `Pseudo` devient `DisplayName` (NFC, `strip`, 1 à 64 points de code, **tronqué** plutôt que refusé, `toString` sans la valeur ; plus de `uniquenessKey`). `Participant` : `UserId userId` à la place de `ParticipantToken token`, `withToken` supprimé. `Session.join` : retrouve le participant par `userId` (actif ou retiré) au lieu du pseudo ; plus de `PseudoTakenException` ; `participantWithToken` / `departedWithToken` → `participantOf(UserId)` / `departedOf(UserId)`. Le nom affiché est **mis à jour** à chaque entrée (il peut avoir changé dans l'annuaire). Suppression de `ParticipantToken`, `PseudoTakenException`, `InvalidPseudoException`. |
 | `application` | Nouveau record `AuthenticatedUser(UserId id, DisplayName name)`, construit par les adaptateurs. `CreateSessionUseCase.create(user, role, deck)`, `JoinSessionUseCase.join(sessionId, user, role)`, `SessionConnectionUseCase.connect(sessionId, user, connectionId)`. `ConnectResult.UnknownToken` → `NotAParticipant`. Résultats sans `participantToken`. |
-| `adapter.in.rest` | `SessionController` reçoit `@AuthenticationPrincipal Jwt jwt` et le traduit en `AuthenticatedUser` (un petit `JwtUsers` partagé avec le WebSocket : `sub`, `name` → `preferred_username` → `sub`). `CreateSessionRequest`/`JoinSessionRequest` sans `pseudo` ; `EntryRequests` simplifié. `CreationRateLimiter` : clé **par utilisateur** (`sub`) plutôt que par IP (plus juste derrière un proxy d'entreprise où tout le monde a la même IP). |
+| `adapter.in.rest` | `SessionController` reçoit `@AuthenticationPrincipal Jwt jwt` et le traduit en `AuthenticatedUser` (un petit `JwtUsers` partagé avec le WebSocket : `sub` ; nom affiché `family_name` + `given_name` → `preferred_username` → `sub`). `CreateSessionRequest`/`JoinSessionRequest` sans `pseudo` ; `EntryRequests` simplifié. `CreationRateLimiter` : clé **par utilisateur** (`sub`) plutôt que par IP (plus juste derrière un proxy d'entreprise où tout le monde a la même IP). |
 | `adapter.in.ws` | `SessionSocketHandler.handshake` : valide `hello.accessToken()` avec le `JwtDecoder` et le contrôle de rôle ; ferme en `4440` (invalide ou expiré) ou `4403` (rôle absent) avant d'appeler le cas d'usage. `ClientMessages.HelloMessage` : `accessToken`. |
 | `config` | `SecurityConfig` (ci-dessus) ; `SessionConfig` inchangé hors signatures. |
 
 ### 6.4 Durée de vie du jeton et WebSocket
 
-Le JWT est vérifié **au `hello`**, donc à chaque (re)connexion. Une connexion ouverte n'est **pas** fermée quand le jeton expire : c'est cohérent avec AD-8 (« l'inactivité ne déconnecte jamais ») et évite de couper un atelier toutes les 5 min. Conséquence acceptée : un retrait de droits dans Keycloak ne prend effet qu'à la prochaine reconnexion, ou au plus tard à l'expiration de la session (24 h). Si ce délai est jugé trop long, ajouter un message `reauth {accessToken}` envoyé par le client à chaque rafraîchissement, avec fermeture `4440` si le serveur ne reçoit plus de jeton valide (lot optionnel).
+Le JWT est vérifié **au `hello`**, donc à chaque (re)connexion. Une connexion ouverte n'est **pas** fermée quand le jeton expire : c'est cohérent avec AD-8 (« l'inactivité ne déconnecte jamais ») et évite de couper un atelier toutes les 5 min.
+
+**Cas concret (question 5 du § 11) :** pendant un atelier, un administrateur retire dans Keycloak l'accès d'un participant (départ de l'entreprise, erreur d'affectation…). Ce participant est déjà dans la session, connecté. Que se passe-t-il ?
+
+- **Sans développement supplémentaire (recommandé)** : il reste dans la session tant que sa connexion tient. Le retrait ne prend effet qu'à sa **prochaine reconnexion** (coupure réseau, rechargement de la page, téléphone mis en veille), ou au plus tard quand la session disparaît (24 h). Il ne peut plus créer de session ni en rejoindre une autre.
+- **Avec un développement supplémentaire** (environ 1 j) : le navigateur renvoie son nouveau jeton au serveur à chaque rafraîchissement (message `reauth {accessToken}`, toutes les quelques minutes). Quand Keycloak ne lui en délivre plus, le serveur le sort de la session en quelques minutes (fermeture `4440`).
+
+Pour un outil d'estimation en atelier, la première solution paraît suffisante : les données exposées (noms et votes de la séance) sont peu sensibles.
 
 ### 6.5 Confidentialité (NFR-6)
 
@@ -172,16 +181,16 @@ Réglages : `onLoad: 'login-required'`, `pkceMethod: 'S256'`, `checkLoginIframe:
 | `config/app-config.ts` | `AppConfig` : + `auth: { issuer, clientId }` ; validation (URL https de l'émetteur). |
 | `scripts/write-config.mjs`, `scripts/api-base-url.mjs` | Lire `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` ; les écrire dans `config.json` ; **CSP** : ajouter l'origine Keycloak à `connect-src` (endpoint de jeton). La redirection de connexion est une navigation, non soumise à `connect-src`. |
 | `main.ts` | Après `loadAppConfig()`, `await auth.init()` (redirige vers Keycloak si besoin) **avant** `bootstrapApplication`, puis fournir `AuthService`. L'URL de la session (`/s/:id`) est conservée par le paramètre `redirectUri` / `state` : un lien partagé mène bien à la session après connexion. Erreur Keycloak → écran d'erreur dédié. |
-| `auth/auth.service.ts` (nouveau) | `init()`, `token(): Promise<string>` (`updateToken(30)` puis jeton), `displayName` (claim `name`), `logout()`. |
+| `auth/auth.service.ts` (nouveau) | `init()`, `token(): Promise<string>` (`updateToken(30)` puis jeton), `displayName` (« Nom Prénom » : `family_name` + `given_name`), `logout()`. |
 | `api/session-api.ts` | `send()` ajoute `Authorization: Bearer` ; nouveaux genres d'erreur `unauthenticated` (401 : rafraîchir puis relancer une fois, sinon reconnexion Keycloak) et `forbidden` (403 : écran « Accès refusé ») ; `invalidPseudo` et `pseudoTaken` supprimés. |
 | `api/contract.ts` (+ specs de contrat) | Types alignés sur le nouveau contrat (requêtes sans `pseudo`, réponses sans `participantToken`, `hello {accessToken}`, codes `4403`/`4440`). |
 | `session/session.service.ts` | `hello` avec un jeton **frais** à chaque tentative (`await auth.token()`), donc aussi à chaque reconnexion ; `4440` → rafraîchir et retenter (pas une fin de session) ; `4403` → fin `forbidden` ; `4401` → fin `notParticipant` (écran Rejoindre, **sans** le message « place reprise »). Plus de lecture ni d'effacement du jeton de session. |
 | `session/session-entry.component.ts` | Plus de jeton rangé : après `checkSession`, on tente directement la connexion ; `4401` → formulaire Rejoindre. `TAKEN_OVER_MESSAGE`, `PSEUDO_TAKEN_MESSAGE`, `INVALID_PSEUDO_MESSAGE` supprimés. |
 | `home/home.component.ts` | Plus de pseudo à préremplir ni à mémoriser. |
-| `entry-form/entry-form.component.ts`, `entry-messages.ts`, `styles/entry-form.css` | Champ « Ton pseudo » **supprimé**, remplacé par une ligne « Connecté en tant que **Prénom Nom** » ; le bouton n'attend plus que le rôle (et le jeu à la création). |
+| `entry-form/entry-form.component.ts`, `entry-messages.ts`, `styles/entry-form.css` | Champ « Ton pseudo » **supprimé**, remplacé par une ligne « Connecté en tant que **Nom Prénom** » ; le bouton n'attend plus que le rôle (et le jeu à la création). |
 | `storage/browser-storage.ts` | Suppression de `pp.pseudo` et `pp.token.{sessionId}` (nettoyer les anciennes clés au démarrage) ; `pp.theme` reste. |
 | `top-bar/participant-menu.component.ts` | Affiche déjà `me.pseudo` venu de l'instantané : rien à changer pour le nom ; ajouter l'entrée « Se déconnecter ». Prévoir l'ellipse pour un nom de 64 caractères (CSS de la barre et de `participant-table`). |
-| `session/participant-table.component.ts`, `styles/table.css` | Noms plus longs : ellipse + `title` ; homonymes possibles (deux « Julie Martin ») : ils restent distincts par `participantId`, à départager visuellement si besoin (question ouverte). |
+| `session/participant-table.component.ts`, `styles/table.css` | Noms plus longs : ellipse + `title` ; homonymes possibles (deux « Martin Julie ») : ils restent distincts par `participantId`, à départager visuellement si besoin (question ouverte). |
 | `wake/` | Inchangé : `/api/health` reste public. L'écran de réveil s'affiche après la connexion Keycloak. |
 
 ### 7.3 Nouveaux écrans
@@ -211,9 +220,13 @@ Mettre à jour `EXPERIENCE.md` (parcours d'entrée) et `DESIGN.md` (bloc « Conn
 
 ## 9. Déploiement et exploitation
 
-- **Variables** — webservice : `KEYCLOAK_ISSUER_URI`, `KEYCLOAK_AUDIENCE`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_REQUIRED_ROLE` ; front : `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` (→ `config.json`, ConfigMap sur OpenShift, AD-11). Mettre à jour `deploy/render.yaml`, `deploy/README.md`, le `README.md` et `.github/workflows/ci.yml` (Keycloak de test pour les e2e).
+- **Variables** — webservice : `KEYCLOAK_ISSUER_URI`, `KEYCLOAK_AUDIENCE`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_REQUIRED_ROLE` ; front : `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID` (→ `config.json`, ConfigMap sur OpenShift, AD-11). Mettre à jour le `README.md` et la documentation de déploiement.
 - **Réseau** : le webservice doit joindre Keycloak (découverte OIDC et JWKS, mis en cache par Nimbus) ; au démarrage, `issuer-uri` est résolu, donc Keycloak doit répondre avant le webservice (ou utiliser `jwk-set-uri` pour un démarrage paresseux).
-- **Render** : un Keycloak d'entreprise n'est en général pas joignable depuis Render. Cette évolution vise de fait l'hébergement **OpenShift** (Deferred de l'architecture). Si la démo Render doit survivre, il faut un interrupteur `planning-poker.auth.enabled` (voir § 11) ou un Keycloak public.
+- **Cible (décidé)** : environnement d'entreprise (OpenShift), Render abandonné. Pas de mode anonyme à conserver : l'application exige toujours Keycloak, ce qui évite de doubler les chemins de code et les tests. En développement local, un Keycloak en conteneur (`docker compose`, realm de dev importé) remplace Render.
+  - Les images sont déjà compatibles OpenShift (AD-12) ; `config.json` du front viendra d'une ConfigMap (AD-11). Restent à écrire les manifests OpenShift et le pipeline de l'entreprise (déjà listés en « Deferred » dans l'architecture), hors du périmètre de cette analyse.
+  - Deviennent inutiles : `deploy/render.yaml`, `deploy/render-deploy.sh`, `.github/workflows/deploy.yml` et la partie Render de `deploy/README.md`.
+  - Les mécanismes créés pour la mise en veille de Render (`heartbeat` client, appel de `/api/health` toutes les 5 min, écran de réveil) ne gênent pas mais ne servent plus : à garder ou simplifier plus tard, sans urgence.
+  - La CI de l'entreprise (GitHub Actions ou GitLab CI, à confirmer) devra démarrer un Keycloak de test pour les tests de bout en bout.
 - **Bascule** : rupture de contrat → déployer webservice **et** front ensemble, hors atelier (AD-13) ; les sessions en mémoire sont perdues au redémarrage, comme à tout déploiement.
 
 ---
@@ -228,15 +241,24 @@ Mettre à jour `EXPERIENCE.md` (parcours d'entrée) et `DESIGN.md` (bloc « Conn
 
 ---
 
-## 11. Questions ouvertes
+## 11. Décisions et questions restantes
 
-1. **Quel rôle (ou groupe) donne accès**, et qui l'attribue ? Un rôle client dédié est recommandé.
-2. **Création réservée ?** Tout utilisateur autorisé peut-il créer une session, ou seulement un rôle « animateur » ?
-3. **Quel nom afficher** : `name` (« Prénom Nom »), `given_name` seul, `preferred_username` ? Que faire des homonymes (ajouter l'initiale du nom, l'identifiant) ?
+### Décisions (2026-10-13)
+
+| # | Sujet | Décision | Conséquence dans ce document |
+| --- | --- | --- | --- |
+| 1 | Droit d'accès | Keycloak indique si l'utilisateur a accès à l'application. | § 3 ; le webservice revérifie cet accès dans le jeton (§ 6.2). |
+| 2 | Création de session | Réservée à l'animateur, c'est-à-dire celui qui ouvre l'URL de départ. Pas de rôle dédié. | § 3 ; aucun changement par rapport au fonctionnement actuel. |
+| 3 | Nom affiché | « Nom Prénom », récupéré de Keycloak. | § 1, § 3, § 6.3, § 7.2. |
+| 4 | Hébergement | Keycloak implique un environnement d'entreprise : plus de Render, pas de mode anonyme. | § 9. |
+
+### Questions restantes
+
+1. **Forme de l'accès dans le jeton** (suite de la décision 1) : sous quelle forme Keycloak signale-t-il l'accès (rôle client, groupe) ? Le webservice doit pouvoir le lire dans le jeton.
+2. **Nom et prénom disponibles ?** (suite de la décision 3) Les claims `family_name` et `given_name` sont-ils bien présents dans le jeton, alimentés par l'annuaire ? Format attendu : « Martin Julie », « MARTIN Julie » ? Que faire des homonymes (deux « Martin Julie ») : rien, ou ajouter un complément (identifiant, service) ?
+3. **Retrait d'accès en cours d'atelier** (question 5 reformulée, voir le cas concret au § 6.4) : si l'accès d'une personne est retiré dans Keycloak pendant qu'elle participe à une séance, accepte-t-on qu'elle reste jusqu'à sa prochaine reconnexion (rien à développer), ou faut-il l'exclure en quelques minutes (environ 1 j de plus) ?
 4. **Le pseudo reste-t-il possible** en surcharge du nom (surnom d'équipe) ? Le besoin dit « à la place » : l'analyse le supprime.
-5. **Retrait de droits** : la prise d'effet à la prochaine reconnexion suffit-elle, ou faut-il `reauth` (§ 6.4) ?
-6. **Mode anonyme** : faut-il garder un fonctionnement sans Keycloak (démo Render, développement local) derrière un interrupteur ? Cela double une partie des chemins de code et des tests ; à éviter si la démo publique n'est plus nécessaire. Pour le développement local, un Keycloak en conteneur (`docker compose`) suffit.
-7. **Version de Keycloak** de l'entreprise (compatibilité `keycloak-js`) et URL des realms de dev / recette / prod.
+5. **Environnement d'entreprise** : version de Keycloak (compatibilité `keycloak-js`), URL des realms de dev / recette / prod, outil de CI (GitHub Actions ou GitLab CI).
 
 ---
 
@@ -251,5 +273,7 @@ Mettre à jour `EXPERIENCE.md` (parcours d'entrée) et `DESIGN.md` (bloc « Conn
 | 4 | E2E et CI avec Keycloak de test, test de charge | 2 à 3 j |
 | 5 | Documents (AD-14, PRD, UX, README, déploiement) | 1 j |
 | **Total** | | **≈ 12 à 15 j** |
+
+Hors estimation : manifests OpenShift et pipeline de l'entreprise (§ 9).
 
 Ordre conseillé : 0 → 1 → 2 et 3 en parallèle (contrat d'abord, AD-6) → 4 → 5, puis une seule mise en production coordonnée.

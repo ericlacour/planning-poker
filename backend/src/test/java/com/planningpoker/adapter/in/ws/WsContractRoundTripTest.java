@@ -50,7 +50,7 @@ class WsContractRoundTripTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "alone-after-create", "hidden-round", "new-round-after-sweep", "revealed-consensus",
-            "revealed-no-numeric-vote", "revealed-seen-by-observer", "revealed-tie" })
+            "revealed-no-numeric-vote", "revealed-seen-by-observer", "revealed-tie", "revealed-tshirt-tie" })
     void sessionState(String example) throws Exception {
         assertRoundTrip("session-state", example, ServerMessages.SessionStateMessage.class);
     }
@@ -109,6 +109,13 @@ class WsContractRoundTripTest {
         // Sans carte chiffrée : un objet aux valeurs nulles, jamais « summary: null » sur un tour révélé.
         written = writtenSummary("?", "coffee");
         assertThat(written.equals(NUMERIC, exampleSummary("revealed-no-numeric-vote"))).as(written.toString()).isTrue();
+    }
+
+    @Test
+    void aSizeSummaryIsWrittenLikeTheExampleWithoutAnAverage() throws Exception {
+        JsonNode written = writtenSummary("M", "L", "M", "L");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-tshirt-tie"))).as(written.toString()).isTrue();
+        assertThat(written.get("average").isNull()).isTrue();
     }
 
     private JsonNode writtenSummary(String... cards) throws Exception {

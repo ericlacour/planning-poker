@@ -2,20 +2,41 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import { Card } from '../api/contract';
 
-/** Valeur affichée d'une carte : seul le front montre `coffee` en ☕, forcé en texte (sélecteur U+FE0E). */
+/**
+ * Valeur affichée d'une carte : seul le front montre `coffee` en ☕ (forcé en texte, sélecteur U+FE0E) et écrit
+ * `0.5` « 0,5 » à la française.
+ */
 export function cardText(card: Card): string {
-  return card === 'coffee' ? '☕︎' : card;
+  switch (card) {
+    case 'coffee':
+      return '☕︎';
+    case '0.5':
+      return '0,5';
+    default:
+      return card;
+  }
 }
 
-/** Nom accessible d'une carte de la main : « Carte 5 », « Carte je ne sais pas », « Carte pause café ». */
+/**
+ * Nom accessible d'une carte de la main : « Carte 5 », « Carte 0,5 », « Carte taille M », « Carte je ne sais pas »,
+ * « Carte pause café ».
+ */
 export function cardName(card: Card): string {
   switch (card) {
     case '?':
       return 'Carte je ne sais pas';
     case 'coffee':
       return 'Carte pause café';
+    case 'XXS':
+    case 'XS':
+    case 'S':
+    case 'M':
+    case 'L':
+    case 'XL':
+    case 'XXL':
+      return `Carte taille ${card}`;
     default:
-      return `Carte ${card}`;
+      return `Carte ${cardText(card)}`;
   }
 }
 
@@ -33,7 +54,7 @@ export function voteCounter(progress: { readonly voted: number; readonly expecte
 @Component({
   selector: '[appCardFace]',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'card-face' },
+  host: { class: 'card-face', '[class.card-face-long]': 'long()' },
   template: `
     <span class="card-index card-index-top" aria-hidden="true">{{ text() }}</span>
     <span class="card-value" aria-hidden="true">{{ text() }}</span>
@@ -43,4 +64,6 @@ export function voteCounter(progress: { readonly voted: number; readonly expecte
 export class CardFaceComponent {
   readonly appCardFace = input.required<Card>();
   protected readonly text = computed(() => cardText(this.appCardFace()));
+  /** Valeur de trois caractères ou plus (« XXL », « 0,5 ») : écrite plus petit pour tenir dans la carte. */
+  protected readonly long = computed(() => this.text().length > 2);
 }

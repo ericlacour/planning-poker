@@ -21,6 +21,11 @@
   font-variant-emoji: text;
 }
 
+/* Valeur de trois caractères ou plus (« XXL », « 0,5 ») : plus petite, pour rester dans la carte. */
+.card-face-long {
+  font-size: 18px;
+}
+
 /* Liseré intérieur fin. */
 .card-face::before {
   content: '';
@@ -55,6 +60,10 @@
 /* Face sur la table : même anatomie, en plus petit (44 px de large). */
 .seat-card-face {
   font-size: 18px;
+}
+
+.seat-card-face.card-face-long {
+  font-size: 12px;
 }
 
 .seat-card-face .card-index {

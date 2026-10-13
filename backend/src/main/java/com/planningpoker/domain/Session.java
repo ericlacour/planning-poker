@@ -20,12 +20,13 @@ import java.util.stream.Collectors;
  * @param round          tour en cours : statut, votes et participants qui ne votent qu'à partir du prochain tour
  * @param nextJoinOrder  ordre d'arrivée du prochain participant
  * @param lastChange     dernier changement observable
+ * @param deck           jeu de cartes choisi à la création, jamais modifié ensuite
  * @param departed       participants retirés après une longue absence (AD-7) : hors de {@code participants}, donc
  *                       absents de l'instantané et du contrôle d'unicité du pseudo, mais leur jeton reste valable
  *                       pour revenir ({@link #rejoin})
  */
 public record Session(String id, List<Participant> participants, long version, Round round, int nextJoinOrder,
-        Instant createdAt, LastChange lastChange, List<Participant> departed) {
+        Instant createdAt, LastChange lastChange, List<Participant> departed, Deck deck) {
 
     /** Le contrat impose {@code joinOrder >= 1} : le créateur reçoit 1. */
     public static final int FIRST_JOIN_ORDER = 1;
@@ -35,16 +36,26 @@ public record Session(String id, List<Participant> participants, long version, R
         Objects.requireNonNull(round, "round");
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(lastChange, "lastChange");
+        Objects.requireNonNull(deck, "deck");
         participants = List.copyOf(participants);
         departed = List.copyOf(departed);
     }
 
-    /** Crée une session avec son créateur pour seul participant. Le créateur n'a aucun droit particulier. */
+    /** Crée une session avec le jeu par défaut ({@link Deck#standard()}). */
     public static Session create(String id, String roundId, UUID creatorId, Pseudo pseudo, Role role,
             ParticipantToken token, Instant now) {
+        return create(id, roundId, creatorId, pseudo, role, token, now, Deck.standard());
+    }
+
+    /**
+     * Crée une session avec son créateur pour seul participant. Le créateur n'a aucun droit particulier. Le jeu de
+     * cartes est figé : aucune règle ne le modifie.
+     */
+    public static Session create(String id, String roundId, UUID creatorId, Pseudo pseudo, Role role,
+            ParticipantToken token, Instant now, Deck deck) {
         Participant creator = new Participant(creatorId, pseudo, role, FIRST_JOIN_ORDER, token, now);
         return new Session(id, List.of(creator), 1, Round.open(roundId), FIRST_JOIN_ORDER + 1, now,
-                LastChange.of(ChangeAction.JOIN, creatorId), List.of());
+                LastChange.of(ChangeAction.JOIN, creatorId), List.of(), deck);
     }
 
     /** Identifiant du tour en cours. */
@@ -102,7 +113,7 @@ public record Session(String id, List<Participant> participants, long version, R
             List<Participant> updated = participants.stream()
                     .map(p -> p.id().equals(existing.id()) ? existing.withToken(token) : p)
                     .toList();
-            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed);
+            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed, deck);
         }
         requireRoomFor(maxParticipants);
         return withNewcomer(new Participant(participantId, pseudo, role, nextJoinOrder, token, now));
@@ -128,7 +139,7 @@ public record Session(String id, List<Participant> participants, long version, R
         joined.add(newcomer);
         List<Participant> stillDeparted = departed.stream().filter(p -> !p.id().equals(newcomer.id())).toList();
         return new Session(id, joined, version + 1, round.withArrival(newcomer.id()), nextJoinOrder + 1, createdAt,
-                LastChange.of(ChangeAction.JOIN, newcomer.id()), stillDeparted);
+                LastChange.of(ChangeAction.JOIN, newcomer.id()), stillDeparted, deck);
     }
 
     private void requireFreePseudo(Pseudo pseudo) {
@@ -163,7 +174,7 @@ public record Session(String id, List<Participant> participants, long version, R
         List<Participant> nowDeparted = new ArrayList<>(departed);
         nowDeparted.add(leaving);
         return new Session(id, remaining, version + 1, round.without(participantId), nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.LEAVE, participantId), nowDeparted);
+                LastChange.of(ChangeAction.LEAVE, participantId), nowDeparted, deck);
     }
 
     /** Le participant retiré dont {@code token} est le jeton, s'il y en a un. */
@@ -290,10 +301,10 @@ public record Session(String id, List<Participant> participants, long version, R
                 .map(p -> p.id().equals(before.id()) ? after : p)
                 .toList();
         if (before.connected() == after.connected()) {
-            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed);
+            return new Session(id, updated, version, round, nextJoinOrder, createdAt, lastChange, departed, deck);
         }
         return new Session(id, updated, version + 1, round, nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.PRESENCE, before.id()), departed);
+                LastChange.of(ChangeAction.PRESENCE, before.id()), departed, deck);
     }
 
     /** Le vote du participant pendant le tour courant, s'il a voté. */
@@ -325,7 +336,7 @@ public record Session(String id, List<Participant> participants, long version, R
         if (participant.role() != Role.VOTER) {
             throw new VoteRejectedException(VoteRejectedException.Reason.NOT_A_VOTER);
         }
-        return withRound(round.vote(participantId, card), ChangeAction.VOTE, participantId);
+        return withRound(round.vote(participantId, card, deck), ChangeAction.VOTE, participantId);
     }
 
     /**
@@ -408,7 +419,7 @@ public record Session(String id, List<Participant> participants, long version, R
                 .map(p -> p.id().equals(participantId) ? p.withRole(role) : p)
                 .toList();
         return new Session(id, updated, version + 1, round.withRole(participantId, role), nextJoinOrder, createdAt,
-                LastChange.of(ChangeAction.ROLE, participantId), departed);
+                LastChange.of(ChangeAction.ROLE, participantId), departed, deck);
     }
 
     /** Synthèse du tour révélé ; vide pendant un tour caché (FR-14). */
@@ -425,7 +436,7 @@ public record Session(String id, List<Participant> participants, long version, R
             return this;
         }
         return new Session(id, participants, version + 1, next, nextJoinOrder, createdAt,
-                LastChange.of(action, participantId), departed);
+                LastChange.of(action, participantId), departed, deck);
     }
 
     private Participant requireParticipant(UUID participantId) {

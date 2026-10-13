@@ -5,6 +5,7 @@ import { createSessionRequest } from '../api/contract';
 import { SessionApi, SessionApiError } from '../api/session-api';
 import { EntryFormComponent, EntryFormValue } from '../entry-form/entry-form.component';
 import {
+  INVALID_DECK_MESSAGE,
   INVALID_PSEUDO_MESSAGE,
   NETWORK_MESSAGE,
   SESSION_LIMIT_REACHED_MESSAGE,
@@ -21,6 +22,7 @@ import { BrowserStorage } from '../storage/browser-storage';
     <main class="entry-screen">
       <app-entry-form
         submitLabel="Créer une session"
+        [withDeck]="true"
         [initialPseudo]="initialPseudo"
         [busy]="busy()"
         [pseudoError]="pseudoError()"
@@ -40,13 +42,13 @@ export class HomeComponent {
   protected readonly pseudoError = signal<string | null>(null);
   protected readonly submitError = signal<string | null>(null);
 
-  protected async create({ pseudo, role }: EntryFormValue): Promise<void> {
+  protected async create({ pseudo, role, deck }: EntryFormValue): Promise<void> {
     this.busy.set(true);
     this.pseudoError.set(null);
     this.submitError.set(null);
     let sessionId: string;
     try {
-      const response = await this.api.createSession(createSessionRequest(pseudo, role));
+      const response = await this.api.createSession(createSessionRequest(pseudo, role, deck));
       sessionId = response.sessionId;
       this.storage.saveToken(sessionId, response.participantToken);
       this.storage.savePseudo(pseudo.trim());
@@ -54,6 +56,8 @@ export class HomeComponent {
       const kind = e instanceof SessionApiError ? e.kind : 'network';
       if (kind === 'invalidPseudo') {
         this.pseudoError.set(INVALID_PSEUDO_MESSAGE);
+      } else if (kind === 'invalidDeck') {
+        this.submitError.set(INVALID_DECK_MESSAGE);
       } else if (kind === 'sessionLimitReached') {
         this.submitError.set(SESSION_LIMIT_REACHED_MESSAGE);
       } else if (kind === 'tooManyRequests') {

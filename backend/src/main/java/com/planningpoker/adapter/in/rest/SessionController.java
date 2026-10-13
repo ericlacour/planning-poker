@@ -37,8 +37,8 @@ public class SessionController {
     }
 
     /**
-     * Ordre : corps malformé (400) → trop de créations depuis cette IP (429) → pseudo invalide (400) → trop de
-     * sessions (503). Seule une création réussie compte pour l'IP.
+     * Ordre : corps malformé (400) → trop de créations depuis cette IP (429) → jeu invalide (400 {@code INVALID_DECK}) →
+     * pseudo invalide (400) → trop de sessions (503). Seule une création réussie compte pour l'IP.
      */
     @PostMapping("/api/sessions")
     @ResponseStatus(HttpStatus.CREATED)
@@ -49,7 +49,7 @@ public class SessionController {
         CreationRateLimiter.Slot slot = creationRateLimiter.acquire(ClientAddress.of(http));
         CreateSessionResult result;
         try {
-            result = createSession.create(request.pseudo(), request.role());
+            result = createSession.create(request.pseudo(), request.role(), request.deckOrDefault());
         } catch (RuntimeException e) {
             creationRateLimiter.release(slot);
             throw e;

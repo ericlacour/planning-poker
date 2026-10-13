@@ -6,6 +6,7 @@ import hiddenRound from '../../../../contract/examples/session-state/hidden-roun
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
 import { Card, SessionState } from '../api/contract';
+import revealedTshirt from '../../../../contract/examples/session-state/revealed-tshirt-tie.json';
 import { HandComponent } from './hand.component';
 import { ConnectionStatus, SessionService } from './session.service';
 
@@ -52,11 +53,11 @@ describe('HandComponent', () => {
     expect(toolbar?.getAttribute('aria-label')).toBe('Ta carte');
     expect(cards()).toHaveLength(10);
     expect(cards().map((c) => c.getAttribute('aria-label'))).toEqual([
-      'Carte 0', 'Carte 1', 'Carte 2', 'Carte 3', 'Carte 5', 'Carte 8', 'Carte 13', 'Carte 21',
+      'Carte 0', 'Carte 0,5', 'Carte 1', 'Carte 3', 'Carte 5', 'Carte 8', 'Carte 13', 'Carte 21',
       'Carte je ne sais pas', 'Carte pause café',
     ]);
     expect(cards().map((c) => c.querySelector('.card-value')?.textContent)).toEqual([
-      '0', '1', '2', '3', '5', '8', '13', '21', '?', '☕︎',
+      '0', '0,5', '1', '3', '5', '8', '13', '21', '?', '☕︎',
     ]);
     expect(cards().every((c) => c.querySelectorAll('.card-index').length === 2)).toBe(true);
     expect(element.querySelector('[aria-pressed="true"]')).toBeNull();
@@ -94,9 +95,50 @@ describe('HandComponent', () => {
     cards()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     expect(document.activeElement).toBe(cards()[1]);
     cards()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    expect(session.vote).toHaveBeenCalledWith('1');
+    expect(session.vote).toHaveBeenCalledWith('0.5');
     cards()[1].dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
     expect(session.vote).toHaveBeenCalledTimes(2);
+  });
+
+  describe('with the deck of the session', () => {
+    /** Alice vote dans une session de tee-shirts : S, M, L, XL. */
+    const tshirt = (vote: Card | null): SessionState => {
+      const state = { ...(revealedTshirt as SessionState), round: { roundId: 'Jd8sK2pQ', status: 'HIDDEN' as const } };
+      return {
+        ...state,
+        summary: null,
+        participants: state.participants.map((p) =>
+          p.participantId === ALICE ? { ...p, vote, hasVoted: vote !== null } : { ...p, vote: null },
+        ),
+      };
+    };
+
+    it('offers only the cards of the deck, in its order, sizes named as such', () => {
+      const { cards } = render(tshirt(null));
+      expect(cards().map((c) => c.getAttribute('aria-label'))).toEqual([
+        'Carte taille S', 'Carte taille M', 'Carte taille L', 'Carte taille XL',
+      ]);
+      expect(cards().map((c) => c.querySelector('.card-value')?.textContent)).toEqual(['S', 'M', 'L', 'XL']);
+    });
+
+    it('chooses, then withdraws a size', () => {
+      const { cards, session, show } = render(tshirt(null));
+      cards()[2].click();
+      expect(session.vote).toHaveBeenLastCalledWith('L');
+      show(tshirt('L'));
+      expect(cards()[2].getAttribute('aria-pressed')).toBe('true');
+      cards()[2].click();
+      expect(session.vote).toHaveBeenLastCalledWith(null);
+    });
+
+    it('keeps the arrow keys inside the deck', () => {
+      const { cards } = render(tshirt(null));
+      cards()[0].focus();
+      cards()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      expect(document.activeElement).toBe(cards()[3]);
+      cards()[3].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      expect(document.activeElement).toBe(cards()[3]);
+    });
   });
 
   it('keyboard: a held Enter or Space (auto-repeat) sends nothing more', () => {

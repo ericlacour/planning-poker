@@ -24,6 +24,9 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import com.planningpoker.ContractExamples;
 import com.planningpoker.application.SessionStore;
+import com.planningpoker.domain.Card;
+import com.planningpoker.domain.Deck;
+import com.planningpoker.domain.DeckType;
 import com.planningpoker.domain.Role;
 import com.planningpoker.domain.Session;
 
@@ -84,6 +87,12 @@ class SessionControllerTest {
     void acceptsTheContractRequestExamples() throws Exception {
         JsonNode voter = created(ContractExamples.read("create-session-request", "voter"));
         assertThat(stored(voter).participants().getFirst().role()).isEqualTo(Role.VOTER);
+
+        Session tshirt = stored(created(ContractExamples.read("create-session-request", "tshirt")));
+        assertThat(tshirt.deck().cards()).containsExactly(Card.S, Card.M, Card.L, Card.XL);
+        Session subset = stored(created(ContractExamples.read("create-session-request", "fibonacci-subset")));
+        assertThat(subset.deck().cards()).containsExactly(Card.ONE, Card.THREE, Card.FIVE, Card.EIGHT, Card.UNKNOWN,
+                Card.COFFEE);
 
         JsonNode observer = created(ContractExamples.read("create-session-request", "observer"));
         assertThat(stored(observer).participants().getFirst().role()).isEqualTo(Role.OBSERVER);
@@ -163,5 +172,58 @@ class SessionControllerTest {
         assertThat(output.getAll()).contains(response.get("participantId").asString());
         assertThat(output.getAll()).doesNotContain(token).doesNotContain("Zébulon")
                 .doesNotContain(response.get("sessionId").asString());
+    }
+
+    @Test
+    void withoutADeckTheSessionOffersTheWholeFibonacciSuite() throws Exception {
+        JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\"}");
+        assertThat(stored(response).deck()).isEqualTo(Deck.standard());
+    }
+
+    @Test
+    void storesTheChosenDeckInTheFamilyOrder() throws Exception {
+        JsonNode response = created(
+                "{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"deck\":{\"type\":\"TSHIRT\",\"cards\":[\"XL\",\"S\",\"M\"]}}");
+        Deck deck = stored(response).deck();
+        assertThat(deck.type()).isEqualTo(DeckType.TSHIRT);
+        assertThat(deck.cards()).containsExactly(Card.S, Card.M, Card.XL);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"type\":\"EMOJI\",\"cards\":[\"S\",\"M\"]}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\"]}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"S\"]}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"5\"]}",
+            "{\"type\":\"FIBONACCI\",\"cards\":[\"1\",\"2\"]}",
+            "{\"type\":\"FIBONACCI\",\"cards\":[\"1\",\"nope\"]}",
+            "{\"type\":\"FIBONACCI\",\"cards\":[]}" })
+    void refusesAnInvalidDeckWithItsCodeAndStoresNothing(String deck) throws Exception {
+        int before = store.count();
+        create("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"deck\":" + deck + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("INVALID_DECK"));
+        assertThat(store.count()).isEqualTo(before);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "null",
+            "\"S\"",
+            "{\"type\":\"TSHIRT\"}",
+            "{\"cards\":[\"S\",\"M\"]}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\",null]}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"M\"],\"extra\":1}",
+            "{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]}" })
+    void answersAMalformedDeckAsAMalformedBody(String deck) throws Exception {
+        // « deck: null » est lu comme l'absence de jeu : la création réussit avec le jeu par défaut.
+        if (deck.equals("null")) {
+            created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"deck\":null}");
+            return;
+        }
+        create("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"deck\":" + deck + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").doesNotExist());
     }
 }

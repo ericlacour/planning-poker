@@ -33,7 +33,7 @@ class ContractRoundTripTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "voter", "observer" })
+    @ValueSource(strings = { "voter", "observer", "tshirt", "fibonacci-subset" })
     void createSessionRequest(String example) throws Exception {
         assertRoundTrip("create-session-request", example, CreateSessionRequest.class);
     }

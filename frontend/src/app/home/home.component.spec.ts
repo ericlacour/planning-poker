@@ -69,7 +69,11 @@ describe('HomeComponent', () => {
     expect(submit.textContent?.trim()).toBe('Connexion…');
     expect(submit.disabled).toBe(true);
     expect(input.value).toBe('  Sofia ');
-    expect(api.createSession).toHaveBeenCalledWith({ pseudo: '  Sofia ', role: 'VOTER' });
+    expect(api.createSession).toHaveBeenCalledWith({
+      pseudo: '  Sofia ',
+      role: 'VOTER',
+      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] },
+    });
 
     resolve(created);
     await fixture.whenStable();

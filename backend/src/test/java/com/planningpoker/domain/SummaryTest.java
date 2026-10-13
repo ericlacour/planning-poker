@@ -83,6 +83,31 @@ class SummaryTest {
     void cardsKnowWhetherTheyAreNumeric() {
         assertThat(Card.UNKNOWN.isNumeric()).isFalse();
         assertThat(Card.COFFEE.isNumeric()).isFalse();
-        assertThat(Card.THIRTEEN.numericValue()).hasValue(13);
+        assertThat(Card.THIRTEEN.numericValue()).hasValue(new java.math.BigDecimal(13));
+    }
+
+    @Test
+    void halfAPointCountsInTheAverageAndComesBeforeOne() {
+        Summary summary = of("0.5", "1", "1");
+        assertThat(summary.average()).isEqualTo(new BigDecimal("0.8"));
+        assertThat(summary.min()).isEqualTo(Card.HALF);
+        assertThat(summary.max()).isEqualTo(Card.ONE);
+        assertThat(of("0", "0.5").mostVoted().values()).containsExactly(Card.ZERO, Card.HALF);
+    }
+
+    @Test
+    void sizesHaveNoAverageButAMostVotedAMinAMaxAndAConsensus() {
+        Summary summary = of("XL", "S", "XL", "M");
+        assertThat(summary.average()).isNull();
+        assertThat(summary.mostVoted()).isEqualTo(new Summary.MostVoted(List.of(Card.XL), 2));
+        assertThat(summary.min()).isEqualTo(Card.S);
+        assertThat(summary.max()).isEqualTo(Card.XL);
+        assertThat(summary.consensus()).isFalse();
+        assertThat(of("M", "M").consensus()).isTrue();
+    }
+
+    @Test
+    void sizesTieInSizeOrder() {
+        assertThat(of("XXL", "XXS", "XXL", "XXS").mostVoted().values()).containsExactly(Card.XXS, Card.XXL);
     }
 }

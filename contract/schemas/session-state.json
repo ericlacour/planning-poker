@@ -5,7 +5,7 @@
   "description": "Complete snapshot built by the domain for one recipient, sent after each version change and on each new connection. The client replaces its state with it and never merges. Within a connection it ignores a lower version; after a reconnection it accepts the first snapshot whatever its version.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "sessionId", "version", "selfParticipantId", "round", "participants", "progress", "summary", "lastChange"],
+  "required": ["type", "sessionId", "version", "selfParticipantId", "round", "participants", "progress", "summary", "lastChange", "deck"],
   "properties": {
     "type": { "const": "sessionState" },
     "sessionId": { "$ref": "common.json#/$defs/sessionId" },
@@ -66,6 +66,10 @@
           ]
         }
       }
+    },
+    "deck": {
+      "description": "The cards of the session, in hand order. Identical for everyone and for the whole life of the session.",
+      "$ref": "common.json#/$defs/deck"
     }
   },
   "$defs": {
@@ -94,7 +98,7 @@
       }
     },
     "summary": {
-      "description": "\"?\" and \"coffee\" are excluded. Without any numeric vote, every value is null and consensus is false.",
+      "description": "\"?\" and \"coffee\" are excluded. Without any numeric or size vote, every value is null and consensus is false. T-shirt sizes have no average: average is null.",
       "type": "object",
       "additionalProperties": false,
       "required": ["average", "mostVoted", "min", "max", "consensus"],

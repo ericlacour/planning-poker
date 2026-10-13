@@ -35,6 +35,22 @@
       "description": "Pseudo as typed by the user. Normalization and validation belong to the domain (INVALID_PSEUDO).",
       "type": "string",
       "maxLength": 200
+    },
+    "deck": {
+      "description": "The cards of a session, chosen at creation and frozen afterwards. FIBONACCI draws from [\"0\", \"0.5\", \"1\", \"3\", \"5\", \"8\", \"13\", \"21\", \"?\", \"coffee\"], TSHIRT from [\"XXS\", \"XS\", \"S\", \"M\", \"L\", \"XL\", \"XXL\"]. At least two distinct cards of that one family; the server stores and sends them in the order of the family, whatever the order requested.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "cards"],
+      "properties": {
+        "type": { "type": "string", "enum": ["FIBONACCI", "TSHIRT"] },
+        "cards": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": { "$ref": "card.json" }
+        }
+      }
     }
   }
 }

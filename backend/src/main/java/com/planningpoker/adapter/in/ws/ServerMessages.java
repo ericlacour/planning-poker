@@ -35,7 +35,7 @@ final class ServerMessages {
     /** {@code session-state.json} : instantané pour un destinataire, sans aucun jeton. */
     record SessionStateMessage(String type, String sessionId, long version, String selfParticipantId,
             RoundView round, List<ParticipantView> participants, ProgressView progress, SummaryView summary,
-            LastChangeView lastChange) {
+            LastChangeView lastChange, DeckView deck) {
 
         static SessionStateMessage of(SessionSnapshot snapshot) {
             return new SessionStateMessage("sessionState", snapshot.sessionId(), snapshot.version(),
@@ -46,8 +46,14 @@ final class ServerMessages {
                     SummaryView.of(snapshot.summary()),
                     new LastChangeView(snapshot.lastChange().action().name(),
                             snapshot.lastChange().byParticipantId() == null ? null
-                                    : snapshot.lastChange().byParticipantId().toString()));
+                                    : snapshot.lastChange().byParticipantId().toString()),
+                    new DeckView(snapshot.deck().type().name(),
+                            snapshot.deck().cards().stream().map(Card::value).toList()));
         }
+    }
+
+    /** Jeu de cartes de la session ({@code session-state.json#/$defs/deck}), dans l'ordre de la main. */
+    record DeckView(String type, List<String> cards) {
     }
 
     record RoundView(String roundId, String status) {

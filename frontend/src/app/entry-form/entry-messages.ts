@@ -8,3 +8,4 @@ export const SESSION_LIMIT_REACHED_MESSAGE =
 export const TOO_MANY_REQUESTS_MESSAGE =
   'Trop de sessions créées depuis ton réseau. Patiente une minute.';
 export const SESSION_FULL_MESSAGE = 'Cette session est complète.';
+export const INVALID_DECK_MESSAGE = "Ce jeu de cartes n'est pas valide.";

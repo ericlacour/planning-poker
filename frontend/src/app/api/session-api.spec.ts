@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 
 import created from '../../../../contract/examples/create-session-response/created.json';
+import invalidDeck from '../../../../contract/examples/problem/bad-request-invalid-deck.json';
 import invalidPseudo from '../../../../contract/examples/problem/bad-request-invalid-pseudo.json';
 import malformedBody from '../../../../contract/examples/problem/bad-request-malformed-body.json';
 import pseudoTaken from '../../../../contract/examples/problem/pseudo-taken.json';
@@ -53,6 +54,13 @@ describe('SessionApi.createSession', () => {
     const fetchFn = async () => json(invalidPseudo, 400, 'application/problem+json');
     expect(await kindOf(api(fetchFn as typeof fetch).createSession({ pseudo: ' ', role: 'VOTER' }))).toBe(
       'invalidPseudo',
+    );
+  });
+
+  it('maps 400 INVALID_DECK to invalidDeck on creation', async () => {
+    const fetchFn = async () => json(invalidDeck, 400, 'application/problem+json');
+    expect(await kindOf(api(fetchFn as typeof fetch).createSession({ pseudo: 'Alice', role: 'VOTER' }))).toBe(
+      'invalidDeck',
     );
   });
 
@@ -158,6 +166,7 @@ describe('SessionApi.joinSession', () => {
     ['a 503 SESSION_LIMIT_REACHED on join', async () => problem(sessionLimitReached, 503), 'network'],
     ['404 SESSION_NOT_FOUND', async () => problem(sessionNotFound, 404), 'notFound'],
     ['400 INVALID_PSEUDO', async () => problem(invalidPseudo, 400), 'invalidPseudo'],
+    ['400 INVALID_DECK on join', async () => problem(invalidDeck, 400), 'network'],
     ['a malformed-body 400', async () => problem(malformedBody, 400), 'network'],
     ['a 409 without the contract code', async () => problem({ ...pseudoTaken, code: undefined }, 409), 'network'],
     ['a fetch failure', async () => Promise.reject(new TypeError('Failed to fetch')), 'network'],

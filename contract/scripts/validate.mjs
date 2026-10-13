@@ -203,6 +203,10 @@ function checkSessionStates(states) {
     if (s.progress?.expected !== voters.length) fail('progress.expected doit compter tous les votants');
     if (s.progress?.voted !== voters.filter((p) => p.hasVoted).length) fail('progress.voted doit compter les votants qui ont voté');
 
+    const deck = s.deck?.cards ?? [];
+    for (const p of ps) {
+      if (p.vote !== null && !deck.includes(p.vote)) fail(`${p.pseudo} : vote hors du jeu de la session`);
+    }
     if (s.round?.status === 'HIDDEN' && s.summary !== null) fail('summary doit valoir null pendant un tour caché');
     if (s.round?.status === 'REVEALED') {
       const expected = summarize(ps.map((p) => p.vote));
@@ -221,22 +225,24 @@ function checkSessionStates(states) {
   return errors;
 }
 
-// Synthèse de référence (FR14), pour vérifier les exemples ; le domaine Java reste l'autorité.
-const NUMERIC = ['0', '1', '2', '3', '5', '8', '13', '21'];
+// Synthèse de référence (FR14), pour vérifier les exemples ; le domaine Java reste l'autorité. Les cartes qui comptent
+// sont les numériques et les tailles, dans l'ordre du jeu ; les tailles n'ont pas de moyenne.
+const RANKED = ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const isNumber = (v) => /^\d+(\.\d+)?$/.test(v);
 function summarize(votes) {
-  const numeric = votes.filter((v) => NUMERIC.includes(v));
-  if (numeric.length === 0) return { average: null, mostVoted: null, min: null, max: null, consensus: false };
+  const ranked = votes.filter((v) => RANKED.includes(v));
+  if (ranked.length === 0) return { average: null, mostVoted: null, min: null, max: null, consensus: false };
   const counts = new Map();
-  for (const v of numeric) counts.set(v, (counts.get(v) ?? 0) + 1);
+  for (const v of ranked) counts.set(v, (counts.get(v) ?? 0) + 1);
   const count = Math.max(...counts.values());
-  const sorted = [...numeric].sort((a, b) => Number(a) - Number(b));
-  const sum = numeric.reduce((acc, v) => acc + Number(v), 0);
+  const sorted = [...ranked].sort((a, b) => RANKED.indexOf(a) - RANKED.indexOf(b));
+  const numbers = ranked.filter(isNumber).map(Number);
   return {
-    average: Math.round((sum * 10) / numeric.length) / 10,
-    mostVoted: { values: NUMERIC.filter((v) => counts.get(v) === count), count },
+    average: numbers.length === 0 ? null : Math.round((numbers.reduce((acc, v) => acc + v, 0) * 10) / numbers.length) / 10,
+    mostVoted: { values: RANKED.filter((v) => counts.get(v) === count), count },
     min: sorted[0],
     max: sorted.at(-1),
-    consensus: numeric.length >= 2 && counts.size === 1,
+    consensus: ranked.length >= 2 && counts.size === 1,
   };
 }
 

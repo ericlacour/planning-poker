@@ -502,7 +502,7 @@ class SessionSocketHandlerTest {
         }
         assertThat(seat(forAlice, alice.participantId()).get("vote").asString()).isEqualTo("8");
         assertThat(seat(forBob, alice.participantId()).get("vote").isNull()).isTrue();
-        assertThat(forBob.toString()).doesNotContain("\"8\"");
+        assertThat(forBob.toString()).doesNotContain("\"vote\":\"8\"");
 
         // Changer : la version avance, le compteur reste.
         a.client().send(vote(a.state(), "5"));

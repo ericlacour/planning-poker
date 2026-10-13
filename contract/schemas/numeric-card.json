@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "numeric-card.json",
-  "title": "Numeric card",
-  "description": "A numeric card. Min, max and most voted only consider numeric cards (\"?\" and \"coffee\" are excluded).",
+  "title": "Ranked card",
+  "description": "A card that counts in the summary: a number or a T-shirt size (\"?\" and \"coffee\" are excluded). Min, max and most voted only consider these. The file keeps its historical name.",
   "type": "string",
-  "enum": ["0", "1", "2", "3", "5", "8", "13", "21"]
+  "enum": ["0", "0.5", "1", "2", "3", "5", "8", "13", "21", "XXS", "XS", "S", "M", "L", "XL", "XXL"]
 }

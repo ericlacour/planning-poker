@@ -99,6 +99,37 @@ test('l\'accueil montre le formulaire d\'entrée : panneau de 400 px, « Je vote
   await check();
 });
 
+test('choisir les cartes de la session : tailles de tee-shirt, certaines retirées, au moins deux gardées', async ({
+  page,
+}) => {
+  const check = await watchPage(page);
+  const bodies = await mockApi(page, () => 'created');
+  await page.goto('/');
+
+  await expect(page.getByText('Cartes de la session')).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Fibonacci' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.deck-chip')).toHaveCount(10);
+  await page.getByRole('radio', { name: 'Tailles de tee-shirt' }).click();
+  await expect(page.locator('.deck-chip')).toHaveText(['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL']);
+
+  await page.getByRole('button', { name: 'Carte taille XXS' }).click();
+  await page.getByRole('button', { name: 'Carte taille XXL' }).click();
+  await expect(page.getByRole('button', { name: 'Carte taille XXS' })).toHaveAttribute('aria-pressed', 'false');
+  await check();
+
+  // Moins de deux cartes : message et bouton inactif.
+  await page.getByLabel('Ton pseudo').fill('Eric');
+  for (const size of ['XS', 'S', 'M', 'L']) await page.getByRole('button', { name: `Carte taille ${size}` }).click();
+  await expect(page.getByText('Garde au moins 2 cartes.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Créer une session' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Carte taille M' }).click();
+  await expect(page.getByRole('button', { name: 'Créer une session' })).toBeEnabled();
+
+  await page.getByRole('button', { name: 'Créer une session' }).click();
+  await expect(page).toHaveURL(`${APP}/s/${SESSION_ID}`);
+  expect(bodies).toEqual([{ pseudo: 'Eric', role: 'VOTER', deck: { type: 'TSHIRT', cards: ['M', 'XL'] } }]);
+});
+
 test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistrés, et « Copier le lien » copie le lien', async ({
   page,
   context,
@@ -116,7 +147,13 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
   await page.getByLabel('Ton pseudo').press('Enter');
 
   await expect(page).toHaveURL(`${APP}/s/${SESSION_ID}`);
-  expect(bodies).toEqual([{ pseudo: '  Eric ', role: 'OBSERVER' }]);
+  expect(bodies).toEqual([
+    {
+      pseudo: '  Eric ',
+      role: 'OBSERVER',
+      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '3', '5', '8', '13', '21', '?', 'coffee'] },
+    },
+  ]);
   expect(await page.evaluate((id) => localStorage.getItem(`pp.token.${id}`), SESSION_ID)).toBe(CREATED.participantToken);
   expect(await page.evaluate(() => localStorage.getItem('pp.pseudo'))).toBe('Eric');
 

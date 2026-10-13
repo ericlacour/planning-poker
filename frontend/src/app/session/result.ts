@@ -1,16 +1,18 @@
 import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, input } from '@angular/core';
 
 import { Card, SessionState, Summary } from '../api/contract';
+import { cardText } from './cards';
 
 /** Moyenne au format de la langue de l'interface (`fr` : « 5,9 », « 6,5 », « 3 »). */
 export function formatAverage(average: number, locale: string): string {
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(average);
 }
 
-/** « 5 », « 5 et 8 », « 3, 5 et 8 » : les valeurs à égalité, dans l'ordre reçu (ordre du jeu). */
+/** « 5 », « 5 et 8 », « 3, 5 et 8 », « M et L » : les valeurs à égalité, dans l'ordre reçu (ordre du jeu). */
 export function joinValues(values: readonly Card[]): string {
-  if (values.length <= 1) return values.join('');
-  return `${values.slice(0, -1).join(', ')} et ${values[values.length - 1]}`;
+  const texts = values.map(cardText);
+  if (texts.length <= 1) return texts.join('');
+  return `${texts.slice(0, -1).join(', ')} et ${texts[texts.length - 1]}`;
 }
 
 /** « 1 vote », « 6 votes », et pour une égalité « 1 vote chacune », « 3 votes chacune ». */
@@ -18,24 +20,28 @@ export function votesCount(count: number, tie: boolean): string {
   return `${count} ${count > 1 ? 'votes' : 'vote'}${tie ? ' chacune' : ''}`;
 }
 
-/** Vrai si la synthèse porte au moins un vote numérique. */
-export function hasNumbers(summary: Summary): boolean {
-  return summary.average !== null && summary.mostVoted !== null && summary.min !== null && summary.max !== null;
+/**
+ * Vrai si la synthèse porte au moins un vote qui compte (chiffre ou taille). La moyenne, elle, manque pour des
+ * tailles : elle est facultative.
+ */
+export function hasResult(summary: Summary): boolean {
+  return summary.mostVoted !== null && summary.min !== null && summary.max !== null;
 }
 
 /**
  * Annonce d'une révélation pour la région `aria-live` : « Votes révélés. Moyenne 5,9. Plus votée 5, 6 votes.
  * Min 3, max 13. », avec « Consensus ! » à la fin s'il y a consensus, ou « Votes révélés. Pas de résultat chiffré. ».
+ * Des tailles n'ont pas de moyenne : l'annonce la saute.
  */
 export function revealAnnouncement(summary: Summary | null, locale: string): string {
-  if (!summary || !hasNumbers(summary)) return 'Votes révélés. Pas de résultat chiffré.';
+  if (!summary || !hasResult(summary)) return 'Votes révélés. Pas de résultat chiffré.';
   const mostVoted = summary.mostVoted!;
   const tie = mostVoted.values.length > 1;
   return [
     'Votes révélés.',
-    `Moyenne ${formatAverage(summary.average!, locale)}.`,
+    ...(summary.average === null ? [] : [`Moyenne ${formatAverage(summary.average, locale)}.`]),
     `Plus votée ${joinValues(mostVoted.values)}, ${votesCount(mostVoted.count, tie)}.`,
-    `Min ${summary.min}, max ${summary.max}.`,
+    `Min ${cardText(summary.min!)}, max ${cardText(summary.max!)}.`,
     ...(summary.consensus ? ['Consensus !'] : []),
   ].join(' ');
 }
@@ -79,8 +85,8 @@ export function arrivalAnnouncements(previous: SessionState | null, next: Sessio
 
 /**
  * Panneau de résultat (`result-panel`, `consensus-badge`) : affichage pur de la synthèse reçue, sans aucun calcul.
- * Moyenne au format français, badge « Consensus ! », « Plus votée », « Min », « Max » ; sans vote numérique,
- * « Pas de résultat chiffré ».
+ * Moyenne au format français (absente pour des tailles), badge « Consensus ! », « Plus votée », « Min », « Max » ;
+ * sans vote qui compte, « Pas de résultat chiffré ».
  */
 @Component({
   selector: 'app-result-panel',
@@ -88,9 +94,11 @@ export function arrivalAnnouncements(previous: SessionState | null, next: Sessio
   template: `
     <div class="result-panel" role="group" aria-label="Résultat">
       @if (numbers(); as n) {
-        <div class="result-stat result-average">
-          <span class="result-label">Moyenne</span>{{ ' ' }}<span class="result-value">{{ n.average }}</span>
-        </div>
+        @if (n.average !== null) {
+          <div class="result-stat result-average">
+            <span class="result-label">Moyenne</span>{{ ' ' }}<span class="result-value">{{ n.average }}</span>
+          </div>
+        }
         @if (n.consensus) {
           <span class="consensus-badge">Consensus !</span>
         }
@@ -118,15 +126,15 @@ export class ResultPanelComponent {
 
   protected readonly numbers = computed(() => {
     const summary = this.summary();
-    if (!summary || !hasNumbers(summary)) return null;
+    if (!summary || !hasResult(summary)) return null;
     const mostVoted = summary.mostVoted!;
     return {
-      average: formatAverage(summary.average!, this.locale),
+      average: summary.average === null ? null : formatAverage(summary.average, this.locale),
       consensus: summary.consensus,
       mostVoted: joinValues(mostVoted.values),
       count: votesCount(mostVoted.count, mostVoted.values.length > 1),
-      min: summary.min,
-      max: summary.max,
+      min: cardText(summary.min!),
+      max: cardText(summary.max!),
     };
   });
 }
@@ -144,9 +152,11 @@ export class ResultPanelComponent {
     <div class="result-line" role="group" aria-label="Résultat">
       @if (numbers(); as n) {
         <p class="result-line-items">
-          <span class="result-line-item result-line-average"
-            >Moy.{{ ' ' }}<span class="result-line-value">{{ n.average }}</span></span
-          >
+          @if (n.average !== null) {
+            <span class="result-line-item result-line-average"
+              >Moy.{{ ' ' }}<span class="result-line-value">{{ n.average }}</span></span
+            >
+          }
           @if (n.consensus) {
             <span class="result-line-item result-line-badge"><span class="consensus-badge">Consensus !</span></span>
           }
@@ -169,13 +179,13 @@ export class ResultLineComponent {
 
   protected readonly numbers = computed(() => {
     const summary = this.summary();
-    if (!summary || !hasNumbers(summary)) return null;
+    if (!summary || !hasResult(summary)) return null;
     return {
-      average: formatAverage(summary.average!, this.locale),
+      average: summary.average === null ? null : formatAverage(summary.average, this.locale),
       consensus: summary.consensus,
       mostVoted: compactMostVoted(summary.mostVoted!),
-      min: summary.min,
-      max: summary.max,
+      min: cardText(summary.min!),
+      max: cardText(summary.max!),
     };
   });
 }

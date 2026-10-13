@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.planningpoker.domain.Deck;
 import com.planningpoker.domain.IdGenerator;
 import com.planningpoker.domain.ParticipantToken;
 import com.planningpoker.domain.Pseudo;
@@ -37,12 +38,18 @@ public class CreateSessionUseCase {
         this.maxSessions = maxSessions;
     }
 
+    /** Crée une session avec le jeu par défaut ({@link Deck#standard()}). */
+    public CreateSessionResult create(String rawPseudo, Role role) {
+        return create(rawPseudo, role, Deck.standard());
+    }
+
     /**
      * @throws com.planningpoker.domain.InvalidPseudoException si le pseudo est vide ou trop long une fois normalisé
+     * @param deck jeu de cartes de la session, figé dès sa création
      * @throws SessionLimitReachedException                    si {@code maxSessions} sessions sont déjà en mémoire ;
      *                                                         rien n'est enregistré
      */
-    public CreateSessionResult create(String rawPseudo, Role role) {
+    public CreateSessionResult create(String rawPseudo, Role role, Deck deck) {
         Pseudo pseudo = Pseudo.of(rawPseudo);
         UUID participantId = ids.newParticipantId();
         String token = ids.newParticipantToken();
@@ -51,11 +58,12 @@ public class CreateSessionUseCase {
                 LOG.info("Session creation refused: session limit reached");
                 throw new SessionLimitReachedException();
             }
-            return register(pseudo, role, participantId, token);
+            return register(pseudo, role, deck, participantId, token);
         }
     }
 
-    private CreateSessionResult register(Pseudo pseudo, Role role, UUID participantId, String token) {
+    private CreateSessionResult register(Pseudo pseudo, Role role, Deck deck, UUID participantId,
+            String token) {
         while (true) {
             String sessionId = ids.newSessionId();
             boolean created = locks.withLock(sessionId, () -> {
@@ -63,7 +71,7 @@ public class CreateSessionUseCase {
                     return false;
                 }
                 store.save(Session.create(sessionId, ids.newRoundId(), participantId, pseudo, role,
-                        ParticipantToken.of(token), clock.instant()));
+                        ParticipantToken.of(token), clock.instant(), deck));
                 return true;
             });
             if (created) {

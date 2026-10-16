@@ -157,7 +157,7 @@ describe('SessionPageComponent', () => {
       progress: { voted: 0, expected: 0 },
     });
     expect(element.querySelector('.vote-counter')?.textContent).toBe('Aucun votant');
-    expect(element.textContent).toContain('Tu observes');
+    expect(element.querySelector('.hand-role [aria-pressed="true"]')?.textContent?.trim()).toBe("J'observe");
   });
 
   it('before the first snapshot: neither action bar nor hand', () => {

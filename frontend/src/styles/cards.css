@@ -97,15 +97,28 @@
   text-wrap: balance;
 }
 
-/* Main « Ta carte » : une ligne de 10 cartes en bas de l'écran Session (placement : session-layout.css). */
+/*
+ * Main « Ta carte » : une ligne de 10 cartes en bas de l'écran Session (placement : session-layout.css), et la bascule
+ * « Je vote » / « J'observe » en bas à gauche.
+ */
 .hand {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'role main';
+  align-items: end;
+  gap: var(--spacing-1) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-4) var(--spacing-3);
+  background: var(--surface-muted);
+  border-top: 1px solid var(--border);
+}
+
+.hand-main {
+  grid-area: main;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-1);
-  padding: var(--spacing-2) var(--spacing-4) var(--spacing-3);
-  background: var(--surface-muted);
-  border-top: 1px solid var(--border);
+  min-width: 0;
 }
 
 .hand-hint {
@@ -116,46 +129,26 @@
   line-height: var(--typography-label-line-height);
 }
 
-.hand-observer {
-  padding: 20px var(--spacing-4);
+/* Bascule de rôle : les boutons segmentés du formulaire d'entrée (entry-form.css), le rôle actuel enfoncé. */
+.hand-role {
+  grid-area: role;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-3);
 }
 
-/*
- * Lien « Je veux voter » : un bouton à l'aspect de lien, avec une zone tactile de 44 px. Texte en foreground (primary
- * sur surface-muted n'atteint pas 4,5:1 en clair), souligné en primary (élément graphique, au moins 3:1).
- */
-.link-button {
-  min-height: var(--spacing-touch-min);
-  padding: 0 var(--spacing-2);
-  border: 0;
-  background: none;
-  color: var(--foreground);
-  font-family: var(--typography-label-font-family);
-  font-size: var(--typography-label-font-size);
-  font-weight: var(--typography-label-font-weight);
-  line-height: var(--typography-label-line-height);
-  text-decoration: underline;
-  text-decoration-color: var(--primary);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 3px;
-  cursor: pointer;
+.hand-role .role {
+  flex: none;
+  padding: 0 var(--spacing-3);
 }
 
-.link-button[aria-disabled='true'] {
+.hand-role .role[aria-pressed='true'] {
+  z-index: 1;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.hand-role .role[aria-disabled='true'] {
   opacity: 0.4;
   cursor: default;
-}
-
-.hand-observer .hand-hint {
-  font-family: var(--typography-body-font-family);
-  font-size: var(--typography-body-font-size);
-  font-weight: var(--typography-body-font-weight);
-  line-height: var(--typography-body-line-height);
 }
 
 .hand-cards {
@@ -187,7 +180,7 @@
   box-shadow: var(--elevation-card-selected);
 }
 
-/* Main grisée (tour révélé) : les cartes gardent le focus mais ne réagissent plus. */
+/* Main grisée (tour révélé, observateur) : les cartes gardent le focus mais ne réagissent plus. */
 .poker-card[aria-disabled="true"] {
   cursor: default;
   opacity: 0.45;

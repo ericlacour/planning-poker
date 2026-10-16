@@ -39,7 +39,7 @@ const ratio = (a, b) => {
 const TEXT = [
   ['foreground', 'background'],
   ['foreground', 'surface'],
-  // Couple sur lequel repose le lien « Je veux voter » (.link-button de cards.css, sur la main surface-muted).
+  // Texte posé directement sur la main (surface-muted).
   ['foreground', 'surface-muted'],
   ['muted-foreground', 'background'],
   ['muted-foreground', 'surface'],

@@ -60,7 +60,7 @@ describe('HandComponent', () => {
       '0', '0,5', '1', '2', '3', '5', '8', '13', '21', '?', '☕︎',
     ]);
     expect(cards().every((c) => c.querySelectorAll('.card-index').length === 2)).toBe(true);
-    expect(element.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect(element.querySelector('.poker-card[aria-pressed="true"]')).toBeNull();
     expect(cards().every((c) => c.getAttribute('aria-pressed') === 'false')).toBe(true);
     expect(element.querySelector('.hand-hint')?.textContent).toBe('Choisis ta carte');
     // Un seul arrêt de tabulation.
@@ -71,12 +71,12 @@ describe('HandComponent', () => {
     const { element, session, cards, show } = render(withMyVote(null));
     cards()[6].click();
     expect(session.vote).toHaveBeenCalledWith('8');
-    expect(element.querySelector('[aria-pressed="true"]')).toBeNull();
+    expect(element.querySelector('.poker-card[aria-pressed="true"]')).toBeNull();
 
     show(withMyVote('8'));
     expect(cards()[6].getAttribute('aria-pressed')).toBe('true');
     expect(cards()[6].classList).toContain('poker-card-selected');
-    expect(element.querySelectorAll('[aria-pressed="true"]')).toHaveLength(1);
+    expect(element.querySelectorAll('.poker-card[aria-pressed="true"]')).toHaveLength(1);
     expect(element.querySelector('.hand-hint')).toBeNull();
     expect(cards()[6].tabIndex).toBe(0);
   });
@@ -169,24 +169,57 @@ describe('HandComponent', () => {
     expect(cards().filter((c) => c.tabIndex === 0)).toEqual([cards()[9]]);
   });
 
-  it('an observer has no hand but « Tu observes » and « Je veux voter »', () => {
-    const { element } = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
-    expect(element.querySelector('[role="toolbar"]')).toBeNull();
-    expect(element.querySelectorAll('.poker-card')).toHaveLength(0);
-    expect(element.querySelector('.hand-hint')?.textContent).toBe('Tu observes');
-    expect(element.querySelector('button.link-button')?.textContent?.trim()).toBe('Je veux voter');
+  it('an observer sees the cards greyed out, without « Tu observes » nor « Je veux voter », and clicks do nothing', () => {
+    const { element, session, cards } = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
+    expect(element.querySelector('[role="toolbar"]')?.getAttribute('aria-disabled')).toBe('true');
+    expect(cards()).toHaveLength(11);
+    expect(cards().every((c) => c.getAttribute('aria-disabled') === 'true')).toBe(true);
+    expect(element.querySelector('.hand-hint')).toBeNull();
+    expect(element.textContent).not.toContain('Tu observes');
+    expect(element.textContent).not.toContain('Je veux voter');
+    cards()[3].click();
+    expect(session.vote).not.toHaveBeenCalled();
   });
 
-  it('« Je veux voter » sends changeRole VOTER, and nothing while the connection is lost (FR5)', () => {
+  it('the role switch « Je vote » / « J\'observe » shows my role pressed, at the bottom left of the hand', () => {
+    const voter = render(withMyVote(null));
+    const group = voter.element.querySelector('.hand-role');
+    expect(group?.getAttribute('role')).toBe('group');
+    expect(group?.getAttribute('aria-label')).toBe('Ton rôle');
+    const buttons = [...group!.querySelectorAll('button')];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['Je vote', "J'observe"]);
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    // La bascule suit la main dans le DOM : elle vient après les cartes (en bas sur téléphone, à gauche sur PC).
+    expect(voter.element.querySelector('.hand')?.lastElementChild).toBe(group);
+    voter.fixture.destroy();
+    TestBed.resetTestingModule();
+
+    const observer = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
+    const pressed = [...observer.element.querySelectorAll('.hand-role button')].map((b) => b.getAttribute('aria-pressed'));
+    expect(pressed).toEqual(['false', 'true']);
+  });
+
+  it('choosing the other role sends changeRole, my current role nothing, and nothing while the connection is lost (FR5)', () => {
     const { element, session, setConnection } = render({ ...(hiddenRound as SessionState), selfParticipantId: EMMA });
-    const link = () => element.querySelector<HTMLButtonElement>('button.link-button')!;
-    link().click();
+    const button = (label: string) =>
+      [...element.querySelectorAll<HTMLButtonElement>('.hand-role button')].find((b) => b.textContent?.trim() === label)!;
+    button("J'observe").click();
+    expect(session.changeRole).not.toHaveBeenCalled();
+    button('Je vote').click();
     expect(session.changeRole).toHaveBeenCalledExactlyOnceWith('VOTER');
 
     setConnection('lost');
-    expect(link().getAttribute('aria-disabled')).toBe('true');
-    link().click();
+    expect(button('Je vote').getAttribute('aria-disabled')).toBe('true');
+    expect(button("J'observe").getAttribute('aria-disabled')).toBe('true');
+    button('Je vote').click();
     expect(session.changeRole).toHaveBeenCalledTimes(1);
+  });
+
+  it('a voter switching to « J\'observe » sends changeRole OBSERVER', () => {
+    const { element, session } = render(withMyVote('5'));
+    const observe = [...element.querySelectorAll<HTMLButtonElement>('.hand-role button')][1];
+    observe.click();
+    expect(session.changeRole).toHaveBeenCalledExactlyOnceWith('OBSERVER');
   });
 
   it('revealed round: the hand is greyed (aria-disabled), keeps my card pressed, and clicks do nothing', () => {

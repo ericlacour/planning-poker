@@ -24,8 +24,8 @@ const THEMES: readonly { readonly value: Theme; readonly label: string }[] = [
  * Menu du participant (`participant-menu`, UX-DR11), dans la barre du haut de l'écran Session : un bouton qui affiche
  * mon pseudo (lu dans l'instantané que l'écran Session confie à {@link TopBarState}) et une flèche, et ouvre sous la
  * barre la liste du thème « Automatique » / « Clair » / « Sombre » (UX-DR2), le thème actuel coché. Le thème,
- * préférence locale, passe par {@link ThemeService} et reste actif hors connexion. Le rôle ne se choisit plus ici : il
- * se choisit à l'entrée, et un observateur redevient votant par « Je veux voter ». Rien n'est affiché avant le premier
+ * préférence locale, passe par {@link ThemeService} et reste actif hors connexion. Le rôle ne se choisit pas ici, mais
+ * par la bascule « Je vote » / « J'observe » en bas à gauche de la main. Rien n'est affiché avant le premier
  * instantané. Clavier : flèches haut / bas entre les trois choix, Début / Fin au premier et au dernier, Entrée ou
  * Espace pour choisir, Échap ou Tab pour fermer ; à la fermeture par Échap ou par un choix, le focus revient au bouton.
  */

@@ -226,7 +226,7 @@ const SCREENS: readonly Screen[] = [
   {
     name: 'session en observateur',
     open: (page) =>
-      // Sur téléphone, le tiroir de la main (et « Je veux voter ») se replie en tour révélé : on attend ma place.
+      // Sur téléphone, le tiroir de la main (et la bascule de rôle) se replie en tour révélé : on attend ma place.
       openSession(page, { ...revealedObserver, version: 30 }, (p) => p.locator('.seat-me')),
   },
 ];
@@ -414,10 +414,27 @@ test('une séance complète au clavier seul, avec un contour primary visible', a
   await expect(menu).toHaveCount(0);
   await expect(trigger).toBeFocused();
 
+  // Changer de rôle par la bascule en bas à gauche : « J'observe » à l'Entrée, puis « Je vote » à l'Espace.
+  const roleGroup = page.getByRole('group', { name: 'Ton rôle' });
+  const observe = roleGroup.getByRole('button', { name: "J'observe" });
+  await tabTo(page, observe);
+  await expectPrimaryOutline(page);
+  await page.keyboard.press('Enter');
+  await expect(observe).toHaveAttribute('aria-pressed', 'true');
+  await expect(hand).toHaveAttribute('aria-disabled', 'true');
+  const vote = roleGroup.getByRole('button', { name: 'Je vote' });
+  await tabTo(page, vote, 'Shift+Tab');
+  await expectPrimaryOutline(page);
+  await page.keyboard.press('Space');
+  await expect(vote).toHaveAttribute('aria-pressed', 'true');
+  await expect(hand).not.toHaveAttribute('aria-disabled', /.*/);
+
   expect(server.intents).toEqual([
     { type: 'vote', roundId: ROUND, card: '5' },
     { type: 'reveal', roundId: ROUND },
     { type: 'clear', roundId: ROUND },
+    { type: 'changeRole', role: 'OBSERVER' },
+    { type: 'changeRole', role: 'VOTER' },
   ]);
 });
 

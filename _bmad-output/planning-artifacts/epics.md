@@ -159,7 +159,8 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - On navigue avec les flèches, et on choisit avec Entrée ou Espace.
   - L'indication « Choisis ta carte » s'affiche tant qu'aucune carte n'est choisie.
   - La main est grisée quand le tour est révélé.
-  - Un observateur voit à la place « Tu observes » et le lien « Je veux voter ».
+  - La main est affichée quel que soit le rôle : grisée pour un observateur (ni « Tu observes » ni « Je veux voter »).
+  - En bas à gauche, une bascule « Je vote » / « J'observe » (groupe « Ton rôle ») change le rôle (FR5).
 - **UX-DR8 :** **barre d'action** : compteur « N votes sur M », ou « Aucun votant ».
   - Un seul bouton principal selon l'état : « Révéler les votes » ou « Nouveau tour ».
   - Un bouton secondaire : « Effacer les votes » ou « Masquer ».
@@ -813,11 +814,11 @@ afin de m'adapter au déroulé de l'atelier (FR5).
 **Étant donné** le menu du participant dans la barre du haut
 **Quand** je l'ouvre
 **Alors** il affiche mon pseudo et le choix du thème, sans proposer « Je vote » ni « J'observe » (UX-DR11 ; décision du 2026-10-16, voir `spec-menu-participant-sans-choix-de-role.md`).
-**Et** « Je veux voter », sous la main d'un observateur, envoie `changeRole` avec le champ `role` (AD-4). Choisir le rôle que j'ai déjà ne change rien.
+**Et** la bascule « Je vote » / « J'observe », en bas à gauche de la main, montre mon rôle actuel ; choisir l'autre envoie `changeRole` avec le champ `role` (AD-4). Choisir le rôle que j'ai déjà ne change rien (décision du 2026-10-16, voir `spec-bascule-de-role-et-main-grisee.md`).
 
 **Étant donné** que je suis votant, que j'ai voté et que le tour est caché
 **Quand** je passe observateur
-**Alors** mon vote est retiré, ma main est remplacée par « Tu observes » et « Je veux voter », et ma place passe dans le groupe des observateurs, à la fin de la table (FR5, UX-DR6).
+**Alors** mon vote est retiré, ma main reste visible mais grisée, « J'observe » est enfoncé, et ma place passe dans le groupe des observateurs, à la fin de la table (FR5, UX-DR6).
 
 **Étant donné** que je suis votant, que j'ai voté et que le tour est révélé
 **Quand** je passe observateur

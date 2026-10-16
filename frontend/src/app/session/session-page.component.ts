@@ -31,7 +31,7 @@ export function sessionLink(origin: string, sessionId: string): string {
  * Écran Session : ouvre la connexion de la session ({@link SessionService}) et montre la table des participants en
  * direct. Seul dans la session : « Partage le lien pour inviter ton équipe » et « Copier le lien » en bouton principal,
  * suivi de « QR code », sans barre d'action. Avec d'autres : la barre d'action (compteur ou résultat, et ses boutons).
- * En bas, la main « Ta carte » (votant) ou « Tu observes » (observateur). Une région `aria-live="polite"` annonce
+ * En bas, la main « Ta carte » (grisée pour un observateur) et la bascule « Je vote » / « J'observe ». Une région `aria-live="polite"` annonce
  * chaque révélation (« Votes révélés. Moyenne … ») et chaque nouveau tour (« Nouveau tour »), quel qu'en soit l'auteur,
  * ainsi que chaque arrivée (« Sofia a rejoint la session »), sauf au premier instantané et au premier instantané qui
  * suit une coupure. Une seconde région polie annonce le compteur « N votes sur M » quand `progress` change pendant un

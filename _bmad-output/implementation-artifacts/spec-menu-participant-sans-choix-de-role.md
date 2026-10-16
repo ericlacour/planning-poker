@@ -28,6 +28,8 @@ context:
 
 **Conséquence assumée :** un votant ne peut plus passer observateur en pleine séance depuis l'interface (il faut rejoindre de nouveau en observateur). Le sens observateur → votant reste couvert par « Je veux voter ». FR5 n'est donc plus couvert que dans ce sens par le front.
 
+> **Suite (2026-10-16) :** levée par `spec-bascule-de-role-et-main-grisee.md` : une bascule « Je vote » / « J'observe » en bas à gauche de la main couvre les deux sens, et « Tu observes » / « Je veux voter » disparaissent.
+
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior |

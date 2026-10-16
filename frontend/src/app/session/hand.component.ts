@@ -1,12 +1,19 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, signal, viewChildren } from '@angular/core';
 
-import { Card, SessionState } from '../api/contract';
+import { Card, Role, SessionState } from '../api/contract';
 import { CardFaceComponent, cardName } from './cards';
 import { SessionService } from './session.service';
 
+const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
+  { value: 'VOTER', label: 'Je vote' },
+  { value: 'OBSERVER', label: "J'observe" },
+];
+
 /**
- * Main « Ta carte » (`poker-card`, `poker-card-selected`) pour un votant, ou « Tu observes » et le lien « Je veux
- * voter » (`changeRole VOTER`) pour un observateur.
+ * Main « Ta carte » (`poker-card`, `poker-card-selected`), affichée quel que soit mon rôle, et en bas à gauche la
+ * bascule « Je vote » / « J'observe » (`hand-role`, groupe « Ton rôle » de deux boutons bascule, mon rôle actuel
+ * enfoncé). Choisir l'autre rôle envoie `changeRole` (FR5) ; choisir le rôle actuel ne fait rien ; hors connexion, la
+ * bascule est grisée (`aria-disabled`) et sans effet. Observateur : les cartes restent visibles mais grisées.
  * Barre d'outils d'autant de boutons bascule que de cartes du jeu de la session (2 à 11) à focus itinérant : un seul arrêt de tabulation, flèches gauche / droite
  * pour passer d'une carte à l'autre, Entrée ou Espace pour choisir. Cliquer une carte envoie `vote`, recliquer la
  * carte choisie retire le vote. L'état « choisi » vient de l'instantané (mon `vote`), sans mise à jour optimiste.
@@ -20,8 +27,8 @@ import { SessionService } from './session.service';
   host: { role: 'region', 'aria-label': 'Ta main' },
   template: `
     @if (me(); as me) {
-      @if (me.role === 'VOTER') {
-        <div class="hand" [class.hand-locked]="!open()">
+      <div class="hand" [class.hand-locked]="!open()">
+        <div class="hand-main">
           @if (open() && myVote() === null) {
             <p class="hand-hint">Choisis ta carte</p>
           }
@@ -50,19 +57,20 @@ import { SessionService } from './session.service';
             }
           </div>
         </div>
-      } @else {
-        <div class="hand hand-observer">
-          <p class="hand-hint">Tu observes</p>
-          <button
-            type="button"
-            class="link-button"
-            [attr.aria-disabled]="connected() ? null : 'true'"
-            (click)="becomeVoter()"
-          >
-            Je veux voter
-          </button>
+        <div class="hand-role" role="group" aria-label="Ton rôle">
+          @for (option of roles; track option.value) {
+            <button
+              type="button"
+              class="role"
+              [attr.aria-pressed]="me.role === option.value"
+              [attr.aria-disabled]="connected() ? null : 'true'"
+              (click)="chooseRole(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          }
         </div>
-      }
+      </div>
     }
   `,
 })
@@ -74,6 +82,7 @@ export class HandComponent {
   readonly state = input<SessionState | null>(null);
 
   protected readonly name = cardName;
+  protected readonly roles = ROLES;
   /** Carte qui a reçu le focus en dernier, `null` tant que la main ne l'a jamais eu. */
   protected readonly focused = signal<number | null>(null);
 
@@ -100,7 +109,7 @@ export class HandComponent {
       this.state()?.round.status === 'HIDDEN' &&
       this.me()?.canVoteThisRound === true,
   );
-  /** Connexion rétablie : hors connexion, « Je veux voter » est grisé (`aria-disabled`) et sans effet. */
+  /** Connexion rétablie : hors connexion, la bascule de rôle est grisée (`aria-disabled`) et sans effet. */
   protected readonly connected = computed(() => this.session.connection() === 'open');
   /** Seul arrêt de tabulation : la dernière carte visitée, sinon la carte choisie, sinon la première. */
   protected readonly activeIndex = computed(() => {
@@ -115,8 +124,8 @@ export class HandComponent {
     this.session.vote(card === this.myVote() ? null : card);
   }
 
-  protected becomeVoter(): void {
-    if (this.connected()) this.session.changeRole('VOTER');
+  protected chooseRole(role: Role): void {
+    if (this.connected() && role !== this.me()?.role) this.session.changeRole(role);
   }
 
   protected onKeydown(event: KeyboardEvent): void {

@@ -20,7 +20,9 @@ test("UJ-1 : création par un observateur, sept votants, révélation, effacemen
   if (clipboard)
     await ericContext.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
   const { page: eric, sessionId } = await create(ericContext, 'Eric', "J'observe");
-  await expect(eric.getByText('Tu observes')).toBeVisible();
+  await expect(
+    eric.getByRole('group', { name: 'Ton rôle' }).getByRole('button', { name: "J'observe" }),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(eric.getByText('Partage le lien pour inviter ton équipe')).toBeVisible();
 
   // Il copie le lien.

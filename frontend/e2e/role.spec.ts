@@ -49,7 +49,9 @@ function snapshot(version: number, role: Role, mine: string | null) {
 const seatOf = (page: Page, pseudo: string) =>
   page.locator('.seat').filter({ has: page.locator('.seat-pseudo', { hasText: pseudo }) });
 
-test('changer de rôle en pleine séance : menu du participant, puis « Je veux voter »', async ({ page }) => {
+test('changer de rôle en pleine séance : bascule « Je vote » / « J\'observe » en bas à gauche, cartes grisées en observateur', async ({
+  page,
+}) => {
   await openWithToken(page);
   // Faux serveur : applique `changeRole` comme le webservice (le vote est retiré en tour caché).
   let version = 7;
@@ -71,34 +73,40 @@ test('changer de rôle en pleine séance : menu du participant, puis « Je veux 
   });
   await page.goto(`/s/${SESSION_ID}`);
 
-  const trigger = page.getByRole('button', { name: 'Menu du participant : Alice' });
-  await expect(trigger).toHaveText('Alice');
+  const hand = page.getByRole('toolbar', { name: 'Ta carte' });
+  const roleGroup = page.getByRole('group', { name: 'Ton rôle' });
+  const vote = roleGroup.getByRole('button', { name: 'Je vote' });
+  const observe = roleGroup.getByRole('button', { name: "J'observe" });
   await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
+  await expect(vote).toHaveAttribute('aria-pressed', 'true');
+  await expect(observe).toHaveAttribute('aria-pressed', 'false');
 
-  // Le menu s'ouvre sous la barre, mon rôle actuel coché.
-  await trigger.click();
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  // En bas à gauche : la bascule est à gauche des cartes et sous le haut de la main.
+  const roleBox = (await roleGroup.boundingBox())!;
+  const cardsBox = (await hand.boundingBox())!;
+  expect(roleBox.x + roleBox.width).toBeLessThanOrEqual(cardsBox.x + 1);
+  expect(roleBox.y + roleBox.height).toBeGreaterThan(cardsBox.y);
+
+  // Le menu du participant ne propose pas le rôle.
+  await page.getByRole('button', { name: 'Menu du participant : Alice' }).click();
   const menu = page.getByRole('menu', { name: 'Menu du participant : Alice' });
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toHaveAttribute('aria-checked', 'true');
-  await expect(menu.getByRole('menuitemradio', { name: "J'observe" })).toHaveAttribute('aria-checked', 'false');
+  await expect(menu.getByRole('menuitemradio', { name: "J'observe" })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
-  // Au clavier : flèche bas puis Entrée choisit « J'observe ».
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect(menu).toHaveCount(0);
-  await expect(trigger).toBeFocused();
-
-  // Observatrice : plus de main, mon vote retiré, ma place chez les observateurs, M recalculé.
-  await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveCount(0);
-  await expect(page.getByText('Tu observes')).toBeVisible();
+  // « J'observe » : les cartes restent visibles mais grisées, sans « Tu observes » ni « Je veux voter ».
+  await observe.click();
+  await expect(observe).toHaveAttribute('aria-pressed', 'true');
+  await expect(hand).toHaveAttribute('aria-disabled', 'true');
+  await expect(hand.getByRole('button')).toHaveCount(11);
+  await expect(page.getByText('Tu observes')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Je veux voter' })).toHaveCount(0);
   await expect(seatOf(page, 'Alice').locator('.seat-card-observer')).toHaveText('observe');
   await expect(page.locator('.seat .seat-pseudo')).toHaveText(['Bob', 'Alice', 'Emma']);
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 1');
 
-  // « Je veux voter » me rend votante, avec une main active.
-  await page.getByRole('button', { name: 'Je veux voter' }).click();
-  await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toBeVisible();
+  // « Je vote » : la main redevient active.
+  await vote.click();
+  await expect(hand).not.toHaveAttribute('aria-disabled', /.*/);
   await expect(page.getByText('Choisis ta carte')).toBeVisible();
   await expect(page.locator('.seat .seat-pseudo')).toHaveText(['Alice', 'Bob', 'Emma']);
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 2');

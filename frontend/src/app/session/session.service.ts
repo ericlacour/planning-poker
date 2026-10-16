@@ -171,7 +171,7 @@ export class SessionService {
   }
 
   /**
-   * Intention `changeRole` : passer votant ou observateur (« Je vote », « J'observe », « Je veux voter »). Aucune
+   * Intention `changeRole` : passer votant ou observateur (bascule « Je vote » / « J'observe » de la main). Aucune
    * mise à jour optimiste ; hors connexion rétablie (ou avant le premier instantané), rien n'est envoyé.
    */
   changeRole(role: Role): void {

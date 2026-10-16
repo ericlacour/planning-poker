@@ -74,10 +74,23 @@ app-action-bar,
   display: none;
 }
 
-/* ≥ 600 px : la main reste sur une ligne, les cartes rétrécissent jusqu'à 44 px. */
+/* < 900 px : la main reste sur une ligne (≥ 600 px), les cartes rétrécissent jusqu'à 44 px. */
 @media (max-width: 899px) {
   .hand-cards {
     gap: var(--spacing-2);
+  }
+
+  /* Faute de place à côté des cartes, la bascule de rôle passe dessous, toujours à gauche. */
+  .hand {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'main'
+      'role';
+    row-gap: var(--spacing-3);
+  }
+
+  .hand-role {
+    justify-self: start;
   }
 }
 

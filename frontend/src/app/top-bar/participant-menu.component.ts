@@ -11,14 +11,8 @@ import {
   viewChildren,
 } from '@angular/core';
 
-import { Role } from '../api/contract';
 import { Theme, ThemeService } from '../theme/theme';
 import { TopBarState } from './top-bar-state';
-
-const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
-  { value: 'VOTER', label: 'Je vote' },
-  { value: 'OBSERVER', label: "J'observe" },
-];
 
 const THEMES: readonly { readonly value: Theme; readonly label: string }[] = [
   { value: 'auto', label: 'Automatique' },
@@ -28,15 +22,12 @@ const THEMES: readonly { readonly value: Theme; readonly label: string }[] = [
 
 /**
  * Menu du participant (`participant-menu`, UX-DR11), dans la barre du haut de l'écran Session : un bouton qui affiche
- * mon pseudo et une flèche, et ouvre sous la barre une liste en deux groupes : « Je vote » / « J'observe », mon rôle
- * actuel coché, puis le thème « Automatique » / « Clair » / « Sombre » (UX-DR2), le thème actuel coché. Les rôles
- * passent par la connexion que l'écran Session confie à {@link TopBarState} ; le thème, préférence locale, par
- * {@link ThemeService}.
- * Choisir l'autre rôle envoie `changeRole` (FR5) ; choisir le rôle actuel ne fait que fermer le menu. Hors connexion,
- * les rôles sont grisés (`aria-disabled`) et sans effet, comme « Je veux voter » ; les thèmes restent actifs. Rien
- * n'est affiché avant le premier instantané. Clavier : flèches haut / bas entre les cinq choix, d'un groupe à l'autre,
- * Début / Fin au premier et au dernier, Entrée ou Espace pour choisir, Échap ou Tab pour fermer ; à la fermeture par
- * Échap ou par un choix, le focus revient au bouton.
+ * mon pseudo (lu dans l'instantané que l'écran Session confie à {@link TopBarState}) et une flèche, et ouvre sous la
+ * barre la liste du thème « Automatique » / « Clair » / « Sombre » (UX-DR2), le thème actuel coché. Le thème,
+ * préférence locale, passe par {@link ThemeService} et reste actif hors connexion. Le rôle ne se choisit pas ici, mais
+ * par la bascule « Je vote » / « J'observe » en bas à gauche de la main. Rien n'est affiché avant le premier
+ * instantané. Clavier : flèches haut / bas entre les trois choix, Début / Fin au premier et au dernier, Entrée ou
+ * Espace pour choisir, Échap ou Tab pour fermer ; à la fermeture par Échap ou par un choix, le focus revient au bouton.
  */
 @Component({
   selector: 'app-participant-menu',
@@ -68,24 +59,6 @@ const THEMES: readonly { readonly value: Theme; readonly label: string }[] = [
           [attr.aria-label]="'Menu du participant : ' + me.pseudo"
           (keydown)="onMenuKeydown($event)"
         >
-          <div role="group" aria-label="Ton rôle">
-            @for (option of roles; track option.value) {
-              <button
-                #item
-                type="button"
-                class="participant-menu-item"
-                role="menuitemradio"
-                [attr.aria-checked]="me.role === option.value"
-                [attr.aria-disabled]="connected() ? null : 'true'"
-                tabindex="-1"
-                (click)="choose(option.value)"
-              >
-                <span class="participant-menu-check" aria-hidden="true">{{ me.role === option.value ? '✓' : '' }}</span>
-                {{ option.label }}
-              </button>
-            }
-          </div>
-          <div role="separator" class="participant-menu-separator"></div>
           <div role="group" aria-label="Thème">
             @for (option of themes; track option.value) {
               <button
@@ -115,7 +88,6 @@ export class ParticipantMenuComponent {
   private readonly trigger = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   private readonly items = viewChildren<ElementRef<HTMLButtonElement>>('item');
 
-  protected readonly roles = ROLES;
   protected readonly themes = THEMES;
   protected readonly theme = this.themeService.theme;
   protected readonly open = signal(false);
@@ -123,8 +95,6 @@ export class ParticipantMenuComponent {
     const state = this.topBar.session()?.state();
     return state?.participants.find((p) => p.participantId === state.selfParticipantId) ?? null;
   });
-  /** Connexion rétablie : hors connexion, les choix sont grisés et sans effet. */
-  protected readonly connected = computed(() => this.topBar.session()?.connection() === 'open');
 
   protected toggle(): void {
     if (this.open()) {
@@ -134,12 +104,6 @@ export class ParticipantMenuComponent {
     this.open.set(true);
     // Le focus va au choix coché, une fois la liste rendue.
     afterNextRender(() => this.focusItem(Math.max(this.checkedIndex(), 0)), { injector: this.injector });
-  }
-
-  protected choose(role: Role): void {
-    if (!this.connected()) return;
-    if (role !== this.me()?.role) this.topBar.session()?.changeRole(role);
-    this.close();
   }
 
   /** Le thème s'applique tout de suite, même hors connexion : rien ne part sur le WebSocket. */
@@ -188,7 +152,7 @@ export class ParticipantMenuComponent {
   }
 
   private checkedIndex(): number {
-    return ROLES.findIndex((option) => option.value === this.me()?.role);
+    return THEMES.findIndex((option) => option.value === this.theme());
   }
 
   private focusItem(index: number): void {

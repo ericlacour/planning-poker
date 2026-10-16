@@ -39,9 +39,9 @@ Rendre l'outil complet et agréable pour un vrai atelier d'affinage : changer de
 
 ## UX & Interaction Patterns
 
-- **Menu du participant** (barre du haut, pas de modale ni de navigation) : affiche le pseudo, bascule « Je vote » / « J'observe » avec le rôle actuel sélectionné, et choix du thème « Automatique », « Clair » ou « Sombre ».
+- **Menu du participant** (barre du haut, pas de modale ni de navigation) : affiche le pseudo, bascule « Je vote » / « J'observe » avec le rôle actuel sélectionné, et choix du thème « Automatique », « Clair » ou « Sombre ». *Depuis le 2026-10-16, la bascule de rôle est retirée du menu (`spec-menu-participant-sans-choix-de-role.md`) et placée en bas à gauche de la main (`spec-bascule-de-role-et-main-grisee.md`).*
 - **Thème sombre :** fonds en bleu nuit, jamais en noir pur. Les cartes gardent une face claire (`card-face-dark`) avec le liseré clair `card-frame-dark` ; la carte choisie a un contour en `card-ink-dark` (au moins 3:1 sur la face claire). Les ombres sont remplacées par des surfaces un peu plus claires (`surface-muted-dark`). Le rouge reste réservé aux cartes, à « ma carte » et à l'action principale ; le vert au consensus et à la présence.
-- **Main :** un observateur voit « Tu observes » et le lien « Je veux voter » à la place des cartes ; main grisée en tour révélé.
+- **Main :** un observateur voit « Tu observes » et le lien « Je veux voter » à la place des cartes ; main grisée en tour révélé. *Depuis le 2026-10-16, la main reste affichée et grisée pour un observateur, et une bascule « Je vote » / « J'observe » en bas à gauche remplace « Tu observes » / « Je veux voter » (`spec-bascule-de-role-et-main-grisee.md`).*
 - **Table :** votants d'abord, observateurs toujours à la fin, chaque groupe par ordre d'arrivée, ma place en tête de son groupe ; une place change de groupe au changement de rôle.
 - **Barre d'action :** bouton secondaire « Masquer » en tour révélé ; ni raccourci clavier, ni confirmation.
 - **Maquette de référence du thème sombre :** l'écran Session sur téléphone (en cas de conflit, DESIGN fait foi).

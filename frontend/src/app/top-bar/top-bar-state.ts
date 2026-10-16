@@ -9,7 +9,7 @@ export class TopBarState {
   readonly shareUrl = signal<string | null>(null);
   /**
    * Connexion de la session affichée (fournie par l'écran Session, pas à la racine) : le menu du participant y lit mon
-   * pseudo et mon rôle, et y envoie `changeRole`. Nulle hors de l'écran Session.
+   * pseudo. Nulle hors de l'écran Session.
    */
   readonly session = signal<SessionService | null>(null);
 }

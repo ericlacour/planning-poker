@@ -194,14 +194,19 @@ test('les autres votants : dos de carte quand ils ont voté, compteur mis à jou
   await check();
 });
 
-test('un observateur n\'a pas de main : « Tu observes »', async ({ page }) => {
+test('un observateur voit la main grisée, et « J\'observe » enfoncé en bas à gauche', async ({ page }) => {
   const check = await watchPage(page);
   await openWithToken(page);
   await fakeSessionSocket(page, SESSION_ID, (ws) => ws.send(JSON.stringify({ ...hiddenRound, selfParticipantId: EMMA })));
   await page.goto(`/s/${SESSION_ID}`);
 
-  await expect(page.getByText('Tu observes')).toBeVisible();
-  await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveCount(0);
+  const hand = page.getByRole('toolbar', { name: 'Ta carte' });
+  await expect(hand).toHaveAttribute('aria-disabled', 'true');
+  await expect(hand.getByRole('button')).toHaveCount(11);
+  await expect(page.getByText('Tu observes')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Je veux voter' })).toHaveCount(0);
+  const role = page.getByRole('group', { name: 'Ton rôle' });
+  await expect(role.getByRole('button', { name: "J'observe" })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.vote-counter')).toHaveText('3 votes sur 4');
   await check();
 });

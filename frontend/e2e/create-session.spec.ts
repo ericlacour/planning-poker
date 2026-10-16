@@ -77,7 +77,7 @@ async function watchPage(page: Page) {
   };
 }
 
-test('l\'accueil montre le formulaire d\'entrée : panneau de 400 px, « Je vote » choisi, bouton pleine largeur', async ({ page }) => {
+test('l\'accueil montre le formulaire d\'entrée : panneau de 640 px sur PC, « Je vote » choisi, bouton pleine largeur', async ({ page }) => {
   const check = await watchPage(page);
   await mockApi(page, () => 'created');
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -85,7 +85,7 @@ test('l\'accueil montre le formulaire d\'entrée : panneau de 400 px, « Je vote
 
   const form = page.locator('form.entry-form');
   await expect(form).toBeVisible();
-  expect((await form.boundingBox())?.width).toBe(400);
+  expect((await form.boundingBox())?.width).toBe(640);
   await expect(page.getByLabel('Ton pseudo')).toBeVisible();
   await expect(page.getByRole('radiogroup', { name: 'Ton rôle' })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Je vote' })).toBeChecked();
@@ -96,6 +96,17 @@ test('l\'accueil montre le formulaire d\'entrée : panneau de 400 px, « Je vote
   const formBox = (await form.boundingBox())!;
   const submitBox = (await submit.boundingBox())!;
   expect(submitBox.width).toBeCloseTo(formBox.width - 48, 0);
+  await check();
+});
+
+test('sur PC, l\'accueil tient sans défiler dans 1280 × 600 px (écran 1920 × 1080 affiché à 150 %)', async ({ page }) => {
+  const check = await watchPage(page);
+  await mockApi(page, () => 'created');
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto('/');
+
+  await expect(page.getByRole('button', { name: 'Créer une session' })).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(600);
   await check();
 });
 

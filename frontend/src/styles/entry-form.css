@@ -219,3 +219,44 @@
   font-weight: var(--typography-body-font-weight);
   line-height: var(--typography-body-line-height);
 }
+
+/*
+ * PC : un écran 1920×1080 affiché à 150 % (réglage recommandé par Windows) ne laisse qu'environ 1280×600 px
+ * au navigateur. Le formulaire s'élargit pour tenir les cartes sur une ligne, et se resserre en hauteur
+ * quand l'écran est bas, pour ne jamais avoir à défiler.
+ */
+@media (min-width: 700px) {
+  .entry-form {
+    width: var(--spacing-panel-entry-pc);
+  }
+}
+
+@media (min-width: 600px) and (max-height: 800px) {
+  .entry-screen {
+    padding-top: var(--spacing-4);
+    padding-bottom: var(--spacing-4);
+  }
+
+  .entry-form {
+    padding-top: var(--spacing-5);
+    padding-bottom: var(--spacing-5);
+  }
+
+  /* Le dos de carte double déjà celui de la barre du haut. */
+  .entry-form-mark {
+    display: none;
+  }
+
+  .entry-form h1 {
+    margin-bottom: var(--spacing-4);
+  }
+
+  .role-group,
+  .deck-group {
+    margin-top: var(--spacing-4);
+  }
+
+  .entry-form-submit {
+    margin-top: var(--spacing-5);
+  }
+}

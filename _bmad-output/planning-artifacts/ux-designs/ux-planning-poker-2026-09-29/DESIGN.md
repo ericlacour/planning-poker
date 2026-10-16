@@ -114,6 +114,7 @@ spacing:
   margin-mobile: 16px
   content-max: 960px
   panel-narrow: 400px
+  panel-entry-pc: 640px
   seat-card-width-pc: 44px
   hand-card-width-pc: 60px
   session-min-height-pc: 650px
@@ -274,7 +275,7 @@ Ce document fixe la géométrie. Le comportement du tiroir et de la barre d'acti
 
 Tout élément sur lequel on peut appuyer mesure au moins `{spacing.touch-min}`, soit 44 × 44 px (NFR-5).
 
-Les écrans **Accueil**, **Rejoindre** et les écrans d'état tiennent en une seule colonne. Sur PC, c'est un panneau centré de `{spacing.panel-narrow}` de large. Le nom de l'outil sert de titre, en `{typography.display}`.
+Les écrans **Accueil**, **Rejoindre** et les écrans d'état tiennent en une seule colonne. Sur PC, c'est un panneau centré de `{spacing.panel-narrow}` de large ; le formulaire d'entrée s'élargit à `{spacing.panel-entry-pc}` à partir de 700 px de large, pour que les cartes de la session tiennent sur une ligne. Ces écrans tiennent sans défiler dans un navigateur de 1280 × 600 px (écran 1920 × 1080 affiché à 150 %, réglage recommandé par Windows) : quand la fenêtre fait moins de 800 px de haut, le formulaire resserre ses espacements et masque son dos de carte, déjà présent dans la barre du haut. Le nom de l'outil sert de titre, en `{typography.display}`.
 
 ## Elevation & Depth
 
@@ -326,7 +327,7 @@ Les composants sont regroupés par zone : d'abord les cartes, puis les barres et
 
 ### Écrans à une colonne
 
-- **Formulaire d'entrée** (`entry-form`) : panneau `{colors.surface}` de `{spacing.panel-narrow}` de large, `{rounded.lg}`. Le champ est bordé de `{colors.border}`. Sa bordure passe en `{colors.primary}` au focus et en `{colors.danger}` en cas d'erreur ; le message d'erreur s'affiche alors dessous, avec une icône « ! ». Le rôle se choisit avec deux boutons segmentés côte à côte, « Je vote » et « J'observe » : l'option choisie a un fond `{colors.primary-soft}` et un contour `{colors.primary}`. En dessous, le bouton principal occupe toute la largeur.
+- **Formulaire d'entrée** (`entry-form`) : panneau `{colors.surface}` de `{spacing.panel-narrow}` de large (`{spacing.panel-entry-pc}` sur PC), `{rounded.lg}`. Le champ est bordé de `{colors.border}`. Sa bordure passe en `{colors.primary}` au focus et en `{colors.danger}` en cas d'erreur ; le message d'erreur s'affiche alors dessous, avec une icône « ! ». Le rôle se choisit avec deux boutons segmentés côte à côte, « Je vote » et « J'observe » : l'option choisie a un fond `{colors.primary-soft}` et un contour `{colors.primary}`. En dessous, le bouton principal occupe toute la largeur.
 - **Écran d'état** (`state-screen`) : colonne centrée de `{spacing.panel-narrow}`. En haut, trois dos de carte animés pour le réveil, ou une icône pour une erreur. Viennent ensuite le titre en `{typography.display}` (en `{colors.foreground}` pour le réveil, en `{colors.danger}` pour une erreur), un texte en `{typography.body}` et enfin le bouton principal.
 
 Maquettes de référence (en cas de conflit, ce document fait foi) :

@@ -172,7 +172,7 @@ Ce document découpe en epics et en stories implémentables les exigences du PRD
   - sur téléphone, il tient sur une ligne condensée, qui passe sur deux lignes si elle déborde ;
   - sans vote numérique, il affiche « Pas de résultat chiffré ».
 - **UX-DR10 :** **révélation animée** : les cartes se retournent l'une après l'autre, en 400 ms au total. L'animation est supprimée avec `prefers-reduced-motion`. Pas de son, pas de confettis, pas de fenêtre modale.
-- **UX-DR11 :** **barre du haut** (56 px) : logo en dos de carte, nom de l'outil, bouton « Copier le lien » (« Lien copié » pendant 2 s ; partage natif sur téléphone), et menu du participant (pseudo, « Je vote » / « J'observe », thème).
+- **UX-DR11 :** **barre du haut** (56 px) : logo en dos de carte, nom de l'outil, bouton « Copier le lien » (« Lien copié » pendant 2 s ; partage natif sur téléphone), et menu du participant (pseudo, thème).
 - **UX-DR12 :** **formulaire d'entrée**, pour l'accueil comme pour rejoindre :
   - panneau de 400 px ;
   - champ « Ton pseudo », avec le dernier pseudo prérempli (`pp.pseudo`) ;
@@ -812,8 +812,8 @@ afin de m'adapter au déroulé de l'atelier (FR5).
 
 **Étant donné** le menu du participant dans la barre du haut
 **Quand** je l'ouvre
-**Alors** il affiche mon pseudo et me propose « Je vote » ou « J'observe », mon rôle actuel étant sélectionné (UX-DR11).
-**Et** mon choix envoie `changeRole` avec le champ `role` (AD-4). Choisir le rôle que j'ai déjà ne change rien.
+**Alors** il affiche mon pseudo et le choix du thème, sans proposer « Je vote » ni « J'observe » (UX-DR11 ; décision du 2026-10-16, voir `spec-menu-participant-sans-choix-de-role.md`).
+**Et** « Je veux voter », sous la main d'un observateur, envoie `changeRole` avec le champ `role` (AD-4). Choisir le rôle que j'ai déjà ne change rien.
 
 **Étant donné** que je suis votant, que j'ai voté et que le tour est caché
 **Quand** je passe observateur

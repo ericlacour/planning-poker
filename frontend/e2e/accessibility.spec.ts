@@ -402,30 +402,22 @@ test('une séance complète au clavier seul, avec un contour primary visible', a
   await expect(actions.getByRole('button', { name: 'Révéler les votes' })).toBeFocused();
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 2');
 
-  // Changer de rôle par le menu du participant : Entrée, flèche bas, Entrée.
+  // Menu du participant : Entrée l'ouvre sur le thème coché, sans choix de rôle ; Échap le referme et rend le focus.
   const trigger = page.getByRole('button', { name: 'Menu du participant : Alice' });
   await tabTo(page, trigger, 'Shift+Tab');
   await expectPrimaryOutline(page);
   await page.keyboard.press('Enter');
   const menu = page.getByRole('menu', { name: 'Menu du participant : Alice' });
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect(page.getByText('Tu observes')).toBeVisible();
-
-  // Revenir votant par « Je veux voter », à l'Espace.
-  const becomeVoter = page.getByRole('button', { name: 'Je veux voter' });
-  await tabTo(page, becomeVoter);
-  await expectPrimaryOutline(page);
-  await page.keyboard.press('Space');
-  await expect(hand).toBeVisible();
+  await expect(menu.getByRole('menuitemradio', { name: 'Automatique' })).toBeFocused();
+  await expect(menu.getByRole('menuitemradio', { name: "J'observe" })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 
   expect(server.intents).toEqual([
     { type: 'vote', roundId: ROUND, card: '5' },
     { type: 'reveal', roundId: ROUND },
     { type: 'clear', roundId: ROUND },
-    { type: 'changeRole', role: 'OBSERVER' },
-    { type: 'changeRole', role: 'VOTER' },
   ]);
 });
 

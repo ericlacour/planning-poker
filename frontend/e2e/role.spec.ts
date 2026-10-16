@@ -49,52 +49,42 @@ function snapshot(version: number, role: Role, mine: string | null) {
 const seatOf = (page: Page, pseudo: string) =>
   page.locator('.seat').filter({ has: page.locator('.seat-pseudo', { hasText: pseudo }) });
 
-test('changer de rôle en pleine séance : menu du participant, puis « Je veux voter »', async ({ page }) => {
+test('changer de rôle en pleine séance : le menu du participant ne propose plus le rôle, « Je veux voter » oui', async ({
+  page,
+}) => {
   await openWithToken(page);
-  // Faux serveur : applique `changeRole` comme le webservice (le vote est retiré en tour caché).
+  // Faux serveur : applique `changeRole` comme le webservice. Alice entre observatrice.
   let version = 7;
-  let role: Role = 'VOTER';
-  let mine: string | null = '8';
+  let role: Role = 'OBSERVER';
   const changes: unknown[] = [];
   await fakeSessionSocket(page, SESSION_ID, (ws) => {
-    ws.send(JSON.stringify(snapshot(version, role, mine)));
+    ws.send(JSON.stringify(snapshot(version, role, null)));
     ws.onMessage((message) => {
       const json = JSON.parse(String(message)) as { type: string; role?: Role };
       if (json.type !== 'changeRole') return;
       changes.push(json);
       if (json.role === role) return;
       role = json.role ?? role;
-      if (role === 'OBSERVER') mine = null;
       version += 1;
-      ws.send(JSON.stringify(snapshot(version, role, mine)));
+      ws.send(JSON.stringify(snapshot(version, role, null)));
     });
   });
   await page.goto(`/s/${SESSION_ID}`);
 
   const trigger = page.getByRole('button', { name: 'Menu du participant : Alice' });
   await expect(trigger).toHaveText('Alice');
-  await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
-
-  // Le menu s'ouvre sous la barre, mon rôle actuel coché.
-  await trigger.click();
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-  const menu = page.getByRole('menu', { name: 'Menu du participant : Alice' });
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toHaveAttribute('aria-checked', 'true');
-  await expect(menu.getByRole('menuitemradio', { name: "J'observe" })).toHaveAttribute('aria-checked', 'false');
-
-  // Au clavier : flèche bas puis Entrée choisit « J'observe ».
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toBeFocused();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await expect(menu).toHaveCount(0);
-  await expect(trigger).toBeFocused();
-
-  // Observatrice : plus de main, mon vote retiré, ma place chez les observateurs, M recalculé.
-  await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveCount(0);
   await expect(page.getByText('Tu observes')).toBeVisible();
   await expect(seatOf(page, 'Alice').locator('.seat-card-observer')).toHaveText('observe');
-  await expect(page.locator('.seat .seat-pseudo')).toHaveText(['Bob', 'Alice', 'Emma']);
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 1');
+
+  // Le menu s'ouvre sous la barre avec le seul thème : ni « Je vote » ni « J'observe ».
+  await trigger.click();
+  const menu = page.getByRole('menu', { name: 'Menu du participant : Alice' });
+  await expect(menu.getByRole('menuitemradio')).toHaveText([/Automatique/, /Clair/, /Sombre/]);
+  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toHaveCount(0);
+  await expect(menu.getByRole('menuitemradio', { name: "J'observe" })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
 
   // « Je veux voter » me rend votante, avec une main active.
   await page.getByRole('button', { name: 'Je veux voter' }).click();
@@ -103,8 +93,5 @@ test('changer de rôle en pleine séance : menu du participant, puis « Je veux 
   await expect(page.locator('.seat .seat-pseudo')).toHaveText(['Alice', 'Bob', 'Emma']);
   await expect(page.locator('.vote-counter')).toHaveText('1 vote sur 2');
 
-  expect(changes).toEqual([
-    { type: 'changeRole', role: 'OBSERVER' },
-    { type: 'changeRole', role: 'VOTER' },
-  ]);
+  expect(changes).toEqual([{ type: 'changeRole', role: 'VOTER' }]);
 });

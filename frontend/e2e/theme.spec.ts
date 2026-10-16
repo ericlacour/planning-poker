@@ -84,7 +84,7 @@ test('choisir son thème : sombre automatique sans ombre, puis « Clair » forc�
     'aria-checked',
     'true',
   );
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toBeFocused();
+  await expect(menu.getByRole('menuitemradio', { name: 'Automatique' })).toBeFocused();
   await menu.getByRole('menuitemradio', { name: 'Clair' }).click();
   await expect(menu).toHaveCount(0);
   await expect(trigger).toBeFocused();
@@ -122,9 +122,9 @@ test("« Sombre » forcé l'emporte sur un système clair, « Automatique » le 
   const menu = page.getByRole('menu', { name: 'Menu du participant : Alice' });
   expect(await background(page)).toBe(LIGHT_BACKGROUND);
 
-  // Au clavier : de « Je vote », Fin va à « Sombre ».
+  // Au clavier : de « Automatique », Fin va à « Sombre ».
   await trigger.click();
-  await expect(menu.getByRole('menuitemradio', { name: 'Je vote' })).toBeFocused();
+  await expect(menu.getByRole('menuitemradio', { name: 'Automatique' })).toBeFocused();
   await page.keyboard.press('End');
   await expect(menu.getByRole('menuitemradio', { name: 'Sombre' })).toBeFocused();
   await page.keyboard.press('Enter');

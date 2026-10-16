@@ -258,7 +258,7 @@ Les chiffres utilisent des chasses fixes (`font-variant-numeric: tabular-nums`) 
 On utilise une échelle en multiples de 4 : `{spacing.1}` à `{spacing.7}`. Le contenu est centré, avec une largeur maximale de `{spacing.content-max}`. Sur téléphone, les marges latérales valent `{spacing.margin-mobile}`.
 
 L'écran de session s'organise en trois bandes verticales :
-1. **la barre du haut** : nom de l'outil, bouton « Copier le lien », et le menu du participant, qui contient aussi le choix du thème ;
+1. **la barre du haut** : nom de l'outil, bouton « Copier le lien », et le menu du participant, qui contient le choix du thème (et plus le choix du rôle) ;
 2. **la table** : les participants, chacun représenté par une place avec sa carte posée devant lui. Juste en dessous se trouvent la barre d'action (compteur de votes et boutons) et, une fois les votes révélés, le panneau de résultat ;
 3. **la main** : les 10 cartes, fixées en bas de l'écran. Sur PC, elles tiennent sur une ligne. Sur téléphone, elles sont disposées en 2 lignes de 5 cartes, dans un tiroir fixe en bas.
 
@@ -314,7 +314,7 @@ Les composants sont regroupés par zone : d'abord les cartes, puis les barres et
 
 ### Écran de session
 
-- **Barre du haut** (`top-bar`) : fond `{colors.surface}`, filet inférieur `{colors.border}`, 56 px de haut. À gauche, le nom de l'outil est précédé d'un petit dos de carte qui sert de logo. À droite se trouvent le bouton « Copier le lien » (`copy-link-button`, un bouton secondaire avec une icône de lien), puis le menu du participant (`participant-menu`). Ce menu affiche le pseudo et une flèche, et s'ouvre en liste déroulante sous la barre.
+- **Barre du haut** (`top-bar`) : fond `{colors.surface}`, filet inférieur `{colors.border}`, 56 px de haut. À gauche, le nom de l'outil est précédé d'un petit dos de carte qui sert de logo. À droite se trouvent le bouton « Copier le lien » (`copy-link-button`, un bouton secondaire avec une icône de lien), puis le menu du participant (`participant-menu`). Ce menu affiche le pseudo et une flèche, et s'ouvre en liste déroulante sous la barre, avec les seuls choix de thème « Automatique », « Clair » et « Sombre ».
 - **Bandeau d'état** (`status-banner`) : bandeau ambre sous la barre du haut, pour « Reconnexion… » uniquement. Les erreurs définitives n'utilisent jamais ce bandeau : elles s'affichent en écran d'état ou sous le champ concerné.
 - **Barre d'action** (`action-bar`) : à gauche, le compteur « N votes sur M » en `{typography.label}` et `{colors.muted-foreground}`. À droite, le bouton secondaire puis le bouton principal, espacés de `{spacing.3}`. Un bouton inactif passe à 40 % d'opacité.
   - **Bouton principal** (`button-primary`) : il n'y en a qu'un à la fois dans la barre d'action. C'est « Révéler les votes » quand le tour est caché, et « Nouveau tour » quand il est révélé. Les autres actions sont des boutons secondaires (`button-secondary`).

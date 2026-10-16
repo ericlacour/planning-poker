@@ -171,8 +171,8 @@ export class SessionService {
   }
 
   /**
-   * Intention `changeRole` : passer votant ou observateur (« Je vote », « J'observe », « Je veux voter »). Aucune
-   * mise à jour optimiste ; hors connexion rétablie (ou avant le premier instantané), rien n'est envoyé.
+   * Intention `changeRole` : passer votant ou observateur (l'écran n'envoie que « Je veux voter »). Aucune mise à jour
+   * optimiste ; hors connexion rétablie (ou avant le premier instantané), rien n'est envoyé.
    */
   changeRole(role: Role): void {
     this.sendWhenOpen(changeRoleMessage(role));

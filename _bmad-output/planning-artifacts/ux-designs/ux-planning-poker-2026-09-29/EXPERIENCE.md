@@ -37,7 +37,7 @@ Il n'y a ni menu de navigation, ni fenêtre modale. Le changement de rôle (FR-5
 - `mockups/rejoindre.html` : l'Accueil sur PC (choix des cartes, échec de l'envoi), Rejoindre sur téléphone, le pseudo refusé et la place reprise ;
 - `mockups/etats.html` : Réveil du serveur, Serveur indisponible, Session introuvable, Session injoignable et Session vide (avec le QR code).
 
-Les écrans sont générés par `mockups/generer.mjs` avec la feuille de style du front (`node generer.mjs` pour les remettre à jour). Les maquettes sont publiées sur GitHub Pages (https://ericlacour.github.io/planning-poker/) par le workflow `.github/workflows/maquettes.yml`.
+Les écrans sont générés par `mockups/generer.mjs` avec la feuille de style du front (`node generer.mjs` pour les remettre à jour).
 
 ## Voice and Tone
 

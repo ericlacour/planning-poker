@@ -330,10 +330,10 @@ Les composants sont regroupés par zone : d'abord les cartes, puis les barres et
 - **Formulaire d'entrée** (`entry-form`) : panneau `{colors.surface}` de `{spacing.panel-narrow}` de large (`{spacing.panel-entry-pc}` sur PC), `{rounded.lg}`. Le champ est bordé de `{colors.border}`. Sa bordure passe en `{colors.primary}` au focus et en `{colors.danger}` en cas d'erreur ; le message d'erreur s'affiche alors dessous, avec une icône « ! ». Le rôle se choisit avec deux boutons segmentés côte à côte, « Je vote » et « J'observe » : l'option choisie a un fond `{colors.primary-soft}` et un contour `{colors.primary}`. En dessous, le bouton principal occupe toute la largeur.
 - **Écran d'état** (`state-screen`) : colonne centrée de `{spacing.panel-narrow}`. En haut, trois dos de carte animés pour le réveil, ou une icône pour une erreur. Viennent ensuite le titre en `{typography.display}` (en `{colors.foreground}` pour le réveil, en `{colors.danger}` pour une erreur), un texte en `{typography.body}` et enfin le bouton principal.
 
-Maquettes de référence (en cas de conflit, ce document fait foi) :
+Maquettes de référence (en cas de conflit, ce document fait foi ; sommaire navigable : `mockups/index.html`) :
 - `mockups/session-pc.html` : cartes, places et barre d'action ;
 - `mockups/session-telephone.html` : thème sombre et tiroir ;
-- `mockups/rejoindre.html` : formulaire d'entrée ;
+- `mockups/rejoindre.html` : formulaire d'entrée, dont le choix des cartes de la session ;
 - `mockups/etats.html` : écrans d'état.
 
 ## Do's and Don'ts

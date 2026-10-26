@@ -1,0 +1,1683 @@
+/* Copie générée de frontend/src/styles.css (node generer.mjs) : ne pas modifier à la main. */
+/*
+ * Feuilles globales uniquement : la CSP du front (AD-11) interdit les styles injectés en ligne.
+ * Les composants Angular ne déclarent donc ni `styles` ni `styleUrl`.
+ */
+/* ---- styles/tokens.css ---- */
+/*
+ * Jetons de DESIGN.md en propriétés CSS globales (UX-DR1, AD-10). Ne pas modifier à la main :
+ * toute évolution part de DESIGN.md, et scripts/tokens.test.mjs vérifie la correspondance.
+ *   colors      → --<nom>               (les jetons -dark redéfinissent les mêmes propriétés)
+ *   typography  → --typography-<nom>-<propriété>
+ *   rounded     → --rounded-<nom>
+ *   spacing     → --spacing-<nom>
+ */
+:root {
+  color-scheme: light;
+  --background: #F6F4F0;
+  --surface: #FFFFFF;
+  --surface-muted: #EFECE6;
+  --foreground: #1F2330;
+  --muted-foreground: #646B78;
+  --border: #E3DED5;
+  --primary: #CF3F4A;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: #FDECEC;
+  --card-back: #E0646C;
+  --card-back-pattern: #F4B3B7;
+  --card-face: #FFFFFF;
+  --card-ink: #CF3F4A;
+  --card-frame: #F2C4C7;
+  --success: #16754F;
+  --success-soft: #E3F4EC;
+  --warning: #8A560C;
+  --warning-soft: #FBF0DC;
+  --danger: #8E2A1E;
+  --presence-online: #16754F;
+  --presence-offline: #7E8490;
+  --typography-display-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-display-font-size: 28px;
+  --typography-display-font-weight: 700;
+  --typography-display-line-height: 1.2;
+  --typography-display-letter-spacing: -0.01em;
+  --typography-title-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-title-font-size: 18px;
+  --typography-title-font-weight: 600;
+  --typography-title-line-height: 1.3;
+  --typography-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-body-font-size: 16px;
+  --typography-body-font-weight: 400;
+  --typography-body-line-height: 1.5;
+  --typography-label-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-label-font-size: 14px;
+  --typography-label-font-weight: 500;
+  --typography-label-line-height: 1.4;
+  --typography-card-value-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-card-value-font-size: 26px;
+  --typography-card-value-font-weight: 700;
+  --typography-card-value-line-height: 1;
+  --typography-card-corner-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-card-corner-font-size: 12px;
+  --typography-card-corner-font-weight: 700;
+  --typography-card-corner-line-height: 1;
+  --typography-result-stat-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-result-stat-font-size: 20px;
+  --typography-result-stat-font-weight: 700;
+  --typography-result-stat-line-height: 1.2;
+  --typography-result-value-font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --typography-result-value-font-size: 40px;
+  --typography-result-value-font-weight: 700;
+  --typography-result-value-line-height: 1;
+  --rounded-sm: 6px;
+  --rounded-md: 10px;
+  --rounded-lg: 16px;
+  --rounded-card: 12px;
+  --rounded-full: 9999px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 24px;
+  --spacing-6: 32px;
+  --spacing-7: 48px;
+  --spacing-margin-mobile: 16px;
+  --spacing-content-max: 960px;
+  --spacing-panel-narrow: 400px;
+  --spacing-panel-entry-pc: 640px;
+  --spacing-seat-card-width-pc: 44px;
+  --spacing-hand-card-width-pc: 60px;
+  --spacing-session-min-height-pc: 650px;
+  --spacing-touch-min: 44px;
+}
+
+/* Thème sombre : automatique (préférence système) sauf choix forcé du clair, ou forcé. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #14161D;
+    --surface: #1D2029;
+    --surface-muted: #262A35;
+    --foreground: #ECEDF0;
+    --muted-foreground: #9CA2AE;
+    --border: #2E3340;
+    --primary: #F28B8F;
+    --primary-foreground: #14161D;
+    --primary-soft: #3A2226;
+    --card-back: #C9505A;
+    --card-back-pattern: #E38A90;
+    --card-face: #F4F1EC;
+    --card-ink: #B8323D;
+    --card-frame: #E3B3B7;
+    --success: #42C58E;
+    --success-soft: #173A2C;
+    --warning: #E3A94B;
+    --warning-soft: #3A2E17;
+    --danger: #F0A36A;
+    --presence-online: #42C58E;
+    --presence-offline: #7A8191;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #14161D;
+  --surface: #1D2029;
+  --surface-muted: #262A35;
+  --foreground: #ECEDF0;
+  --muted-foreground: #9CA2AE;
+  --border: #2E3340;
+  --primary: #F28B8F;
+  --primary-foreground: #14161D;
+  --primary-soft: #3A2226;
+  --card-back: #C9505A;
+  --card-back-pattern: #E38A90;
+  --card-face: #F4F1EC;
+  --card-ink: #B8323D;
+  --card-frame: #E3B3B7;
+  --success: #42C58E;
+  --success-soft: #173A2C;
+  --warning: #E3A94B;
+  --warning-soft: #3A2E17;
+  --danger: #F0A36A;
+  --presence-online: #42C58E;
+  --presence-offline: #7A8191;
+}
+
+/* ---- styles/elevation.css ---- */
+/*
+ * Élévation selon le thème (UX-DR2). En clair, les panneaux, la liste du menu, la carte choisie et le tiroir portent
+ * une ombre ; en sombre (automatique ou forcé), aucune ombre d'élévation : les surfaces plus claires détachent les
+ * éléments. Seule paire de sélecteurs sombres hors de tokens.css, qui reste le reflet de DESIGN.md.
+ * Les `box-shadow: inset` qui dessinent la marge des dos de cartes ne sont pas des élévations et restent.
+ */
+:root {
+  --elevation-panel: 0 1px 3px rgb(31 35 48 / 6%);
+  --elevation-menu: 0 4px 12px rgb(31 35 48 / 12%);
+  --elevation-card-selected: 0 10px 18px rgb(207 63 74 / 30%);
+  --elevation-dock: 0 -4px 12px rgb(31 35 48 / 10%);
+  /* Ombre ajoutée à la marge `inset` d'un dos de carte : une liste d'ombres n'accepte pas `none`. */
+  --elevation-card-back: 0 2px 6px rgb(31 35 48 / 12%);
+  --menu-background: var(--surface);
+  --poker-card-selected-border: var(--primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --elevation-panel: none;
+    --elevation-menu: none;
+    --elevation-card-selected: none;
+    --elevation-dock: none;
+    --elevation-card-back: 0 0 transparent;
+    --menu-background: var(--surface-muted);
+    /* Contour en card-ink : contraste d'au moins 3:1 sur la face claire. */
+    --poker-card-selected-border: var(--card-ink);
+  }
+}
+
+:root[data-theme='dark'] {
+  --elevation-panel: none;
+  --elevation-menu: none;
+  --elevation-card-selected: none;
+  --elevation-dock: none;
+  --elevation-card-back: 0 0 transparent;
+  --menu-background: var(--surface-muted);
+  --poker-card-selected-border: var(--card-ink);
+}
+
+/* ---- styles/base.css ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--typography-body-font-family);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-body-font-weight);
+  line-height: var(--typography-body-line-height);
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.btn {
+  min-height: var(--spacing-touch-min);
+  padding: 0 20px;
+  border-radius: var(--rounded-md);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+/* Un bouton inactif passe à 40 % d'opacité (DESIGN.md, action-bar). */
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---- styles/card-back.css ---- */
+/* Dos de carte (seat-card-back) : marge blanche et croisillons en losanges, réutilisé pour le logo et le réveil. */
+.card-back {
+  background-color: var(--card-back);
+  background-image:
+    repeating-linear-gradient(45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(-45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-card);
+  box-shadow: inset 0 0 0 4px var(--card-face);
+}
+
+/* ---- styles/top-bar.css ---- */
+.top-bar {
+  height: 56px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  font-size: var(--typography-title-font-size);
+  font-weight: var(--typography-title-font-weight);
+  line-height: var(--typography-title-line-height);
+}
+
+.brand-mark {
+  width: 20px;
+  height: 30px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 2px var(--card-face);
+}
+
+/* Menu du participant (participant-menu) : pseudo et flèche ; liste déroulante sous la barre. */
+.participant-menu {
+  position: relative;
+  display: flex;
+}
+
+.participant-menu-trigger {
+  max-width: 200px;
+  padding: 0 var(--spacing-3);
+}
+
+.participant-menu-pseudo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chev {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: -4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.participant-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 180px;
+  padding: var(--spacing-1) 0;
+  background: var(--menu-background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+  box-shadow: var(--elevation-menu);
+}
+
+.participant-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  width: 100%;
+  min-height: var(--spacing-touch-min);
+  padding: 0 var(--spacing-4) 0 var(--spacing-3);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.participant-menu-item[aria-checked='true'] {
+  background: var(--primary-soft);
+}
+
+.participant-menu-check {
+  width: 1em;
+  color: var(--primary);
+  font-weight: var(--typography-label-font-weight);
+}
+
+@media (max-width: 599px) {
+  .top-bar {
+    padding: 0 var(--spacing-margin-mobile);
+  }
+
+  .participant-menu-trigger {
+    max-width: 140px;
+  }
+}
+
+/* ---- styles/state-screen.css ---- */
+/* Écran d'état (state-screen) : colonne centrée de 400 px, titre, texte, au plus un bouton. */
+.state-screen {
+  flex: 1;
+  width: var(--spacing-panel-narrow);
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--spacing-6) var(--spacing-margin-mobile);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.state-screen h1 {
+  font-family: var(--typography-display-font-family);
+  font-size: var(--typography-display-font-size);
+  font-weight: var(--typography-display-font-weight);
+  line-height: var(--typography-display-line-height);
+  letter-spacing: var(--typography-display-letter-spacing);
+}
+
+.state-screen h1.state-error {
+  color: var(--danger);
+}
+
+.state-screen .lead {
+  margin-top: var(--spacing-3);
+  color: var(--muted-foreground);
+}
+
+.state-screen .btn {
+  margin-top: var(--spacing-6);
+}
+
+.state-icon {
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--spacing-4);
+  color: var(--danger);
+}
+
+/* Animation de réveil : trois dos de carte qui se battent. */
+.deck {
+  position: relative;
+  width: 120px;
+  height: 84px;
+  margin-bottom: var(--spacing-6);
+}
+
+.deck .card-back {
+  position: absolute;
+  left: 32px;
+  top: 0;
+  width: 56px;
+  height: 84px;
+  box-shadow: inset 0 0 0 4px var(--card-face), var(--elevation-card-back);
+}
+
+.deck .card-back:nth-child(1) {
+  animation: shuffle-left 1.4s ease-in-out infinite;
+}
+
+.deck .card-back:nth-child(2) {
+  animation: shuffle-right 1.4s ease-in-out 0.2s infinite;
+}
+
+.deck .card-back:nth-child(3) {
+  animation: shuffle-left 1.4s ease-in-out 0.4s infinite;
+}
+
+@keyframes shuffle-left {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  40% { transform: translateX(-30px) rotate(-8deg); }
+  70% { transform: translateX(0) rotate(0); }
+}
+
+@keyframes shuffle-right {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  40% { transform: translateX(30px) rotate(8deg); }
+  70% { transform: translateX(0) rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck .card-back {
+    animation: none !important;
+  }
+}
+
+/* ---- styles/entry-form.css ---- */
+/* Formulaire d'entrée (entry-form) : panneau surface de 400 px, rounded.lg, bouton principal pleine largeur. */
+.entry-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-6) var(--spacing-margin-mobile);
+}
+
+/* Le formulaire ne déborde jamais d'un écran étroit (360 px, zoom 200 %) : l'hôte reste dans l'écran. */
+.entry-screen > app-entry-form {
+  max-width: 100%;
+}
+
+.entry-form {
+  width: var(--spacing-panel-narrow);
+  max-width: 100%;
+  padding: var(--spacing-6) var(--spacing-5);
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--elevation-panel);
+}
+
+.entry-form-mark {
+  width: 32px;
+  height: 48px;
+  margin-bottom: var(--spacing-5);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 3px var(--card-face);
+}
+
+.entry-form h1 {
+  margin-bottom: var(--spacing-6);
+  font-family: var(--typography-display-font-family);
+  font-size: var(--typography-display-font-size);
+  font-weight: var(--typography-display-font-weight);
+  line-height: var(--typography-display-line-height);
+  letter-spacing: var(--typography-display-letter-spacing);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-sm);
+  background: var(--surface);
+  color: var(--foreground);
+  font-family: var(--typography-body-font-family);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-body-font-weight);
+  line-height: var(--typography-body-line-height);
+  caret-color: var(--primary);
+}
+
+.input:focus,
+.input:focus-visible {
+  border-color: var(--primary);
+  outline: 1px solid var(--primary);
+  outline-offset: 0;
+}
+
+.field-error .input {
+  border-color: var(--danger);
+}
+
+.field-error .input:focus,
+.field-error .input:focus-visible {
+  outline-color: var(--danger);
+}
+
+.error-msg {
+  margin-top: var(--spacing-2);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--danger);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.error-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+/* Rôle : deux boutons segmentés ; l'option choisie est remplie en primary-soft, contour primary. */
+.role-group {
+  margin-top: var(--spacing-5);
+}
+
+.roles {
+  display: flex;
+}
+
+.role {
+  flex: 1;
+  position: relative;
+  min-height: var(--spacing-touch-min);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  cursor: pointer;
+}
+
+.role:first-child {
+  border-radius: var(--rounded-md) 0 0 var(--rounded-md);
+}
+
+.role:last-child {
+  margin-left: -1px;
+  border-radius: 0 var(--rounded-md) var(--rounded-md) 0;
+}
+
+.role[aria-checked='true'] {
+  z-index: 1;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.role:focus-visible {
+  z-index: 2;
+}
+
+.role:disabled {
+  cursor: default;
+}
+
+/* Choix des cartes de la session (création) : mêmes boutons radio que le rôle, puis une pastille par carte. */
+.deck-group {
+  margin-top: var(--spacing-5);
+}
+
+.deck-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+}
+
+.deck-chip {
+  min-width: var(--spacing-touch-min);
+  min-height: var(--spacing-touch-min);
+  padding: 0 var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+  background: var(--surface);
+  color: var(--foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-emoji: text;
+  cursor: pointer;
+}
+
+/* Carte retirée du jeu : contour pointillé, texte barré et atténué (pas seulement une couleur). */
+.deck-chip[aria-pressed='false'] {
+  border-style: dashed;
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+
+.deck-chip[aria-pressed='true'] {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.deck-chip:disabled {
+  cursor: default;
+}
+
+.deck-hint {
+  margin-top: var(--spacing-2);
+  color: var(--muted-foreground);
+  font-size: var(--typography-label-font-size);
+}
+
+.deck-hint-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.entry-form-submit {
+  width: 100%;
+  min-height: 48px;
+  margin-top: var(--spacing-6);
+}
+
+@media (max-width: 599px) {
+  .entry-screen {
+    align-items: flex-start;
+  }
+}
+
+/* Information neutre au-dessus du champ (place reprise depuis un autre appareil). */
+.entry-notice {
+  margin-bottom: var(--spacing-5);
+  color: var(--foreground);
+  font-family: var(--typography-body-font-family);
+  font-size: var(--typography-body-font-size);
+  font-weight: var(--typography-body-font-weight);
+  line-height: var(--typography-body-line-height);
+}
+
+/*
+ * PC : un écran 1920×1080 affiché à 150 % (réglage recommandé par Windows) ne laisse qu'environ 1280×600 px
+ * au navigateur. Le formulaire s'élargit pour tenir les cartes sur une ligne, et se resserre en hauteur
+ * quand l'écran est bas, pour ne jamais avoir à défiler.
+ */
+@media (min-width: 700px) {
+  .entry-form {
+    width: var(--spacing-panel-entry-pc);
+  }
+}
+
+@media (min-width: 600px) and (max-height: 800px) {
+  .entry-screen {
+    padding-top: var(--spacing-4);
+    padding-bottom: var(--spacing-4);
+  }
+
+  .entry-form {
+    padding-top: var(--spacing-5);
+    padding-bottom: var(--spacing-5);
+  }
+
+  /* Le dos de carte double déjà celui de la barre du haut. */
+  .entry-form-mark {
+    display: none;
+  }
+
+  .entry-form h1 {
+    margin-bottom: var(--spacing-4);
+  }
+
+  .role-group,
+  .deck-group {
+    margin-top: var(--spacing-4);
+  }
+
+  .entry-form-submit {
+    margin-top: var(--spacing-5);
+  }
+}
+
+/* ---- styles/copy-link.css ---- */
+/* Bouton « Copier le lien » (copy-link-button). */
+.top-actions {
+  /* Ancre du panneau « QR code » (qr-code.css). */
+  position: relative;
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.copy-link-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* Téléphone : « Copier le lien » de la barre du haut devient une icône, avec son libellé accessible. */
+@media (max-width: 599px) {
+  .top-bar .copy-link {
+    padding: 0 var(--spacing-3);
+  }
+
+  .top-bar .copy-link-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ---- styles/qr-code.css ---- */
+/* Bouton « QR code » et son panneau déroulant non modal (qr-code-button), à côté de « Copier le lien ». */
+
+/* L'hôte s'efface : le bouton et le panneau se placent directement dans la rangée de « Copier le lien ». */
+.qr-code-host {
+  display: contents;
+}
+
+.qr-code-button-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+/* Session vide : « Copier le lien » puis « QR code », côte à côte ; le panneau se déplie dessous, dans la carte. */
+.invite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-2);
+}
+
+.qr-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-md);
+  text-align: center;
+}
+
+/* Barre du haut : sous les boutons, aligné à droite comme le menu du participant, sans sortir de l'écran. */
+.top-bar .qr-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  width: min(288px, calc(100vw - 2 * var(--spacing-margin-mobile)));
+  background: var(--menu-background);
+  box-shadow: var(--elevation-menu);
+}
+
+/* Session vide : sur sa propre ligne, sous les boutons, la carte s'agrandissant d'autant. Base à 100 % pour passer
+   à la ligne, puis marges latérales qui ramènent le panneau à 288 px, centré. */
+.invite .qr-panel {
+  flex: 0 1 100%;
+  margin: var(--spacing-2) max(0px, calc(50% - 144px)) 0;
+}
+
+.qr-panel-title {
+  margin: 0;
+  font-size: var(--typography-title-font-size);
+  font-weight: var(--typography-title-font-weight);
+  line-height: var(--typography-title-line-height);
+}
+
+/* Noir sur blanc quel que soit le thème : un QR code inversé se lit mal au scan. La marge blanche fait partie
+   du `viewBox`. */
+.qr-code {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  aspect-ratio: 1;
+  background: #fff;
+  border-radius: var(--rounded-sm);
+  /* Couleurs forcées (contraste élevé) : le navigateur ne doit pas remplacer le blanc ni le noir. */
+  forced-color-adjust: none;
+}
+
+.qr-code path {
+  fill: #000;
+}
+
+.qr-panel-url {
+  max-width: 100%;
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+/* Téléphone : « QR code » de la barre du haut devient une icône, avec son libellé accessible, comme
+   « Copier le lien ». */
+@media (max-width: 599px) {
+  .top-bar .qr-code-button {
+    padding: 0 var(--spacing-3);
+  }
+
+  .top-bar .qr-code-button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* ---- styles/table.css ---- */
+/* Écran Session : table des participants (seat-card-empty, presence-dot) et état « Session vide ». */
+/* Géométrie de l'écran (hauteur, zone qui défile, tiroir du téléphone) : session-layout.css. */
+.session-page {
+  width: var(--spacing-content-max);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.session-table {
+  padding: var(--spacing-4);
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--elevation-panel);
+}
+
+.invite {
+  margin-top: var(--spacing-5);
+  padding: var(--spacing-6) var(--spacing-4);
+  border-radius: var(--rounded-lg);
+  background: var(--surface-muted);
+  text-align: center;
+}
+
+.invite-text {
+  margin-bottom: var(--spacing-2);
+}
+
+.invite-url {
+  margin-bottom: var(--spacing-4);
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.seats {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--spacing-3) var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  min-width: 0;
+  min-height: 108px;
+}
+
+.seat-card {
+  flex: none;
+  width: var(--spacing-seat-card-width-pc);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--rounded-card);
+}
+
+.seat-card-empty {
+  border: 2px dashed var(--muted-foreground);
+  background: transparent;
+}
+
+.seat-card-observer {
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.seat-who {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 20px;
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  white-space: nowrap;
+}
+
+.seat-pseudo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Participant déconnecté : pseudo en muted-foreground (avec pastille grise et « déconnecté »), opacité inchangée. */
+.seat.offline .seat-pseudo {
+  color: var(--muted-foreground);
+}
+
+.seat-me {
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.presence-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--rounded-full);
+}
+
+.presence-online {
+  background: var(--presence-online);
+}
+
+.presence-offline {
+  background: var(--presence-offline);
+}
+
+/* En attente du premier instantané : places vides, sans pseudo. */
+.seat-pending .seat-card-empty {
+  opacity: 0.5;
+}
+
+@media (max-width: 899px) {
+  .seats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 599px) {
+  .seats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ---- styles/cards.css ---- */
+/*
+ * Cartes à jouer (DESIGN.md › Cartes) : anatomie commune de la main (poker-card, poker-card-selected) et de la
+ * face sur la table (seat-card-face) ; main « Ta carte » fixée en bas de l'écran Session.
+ */
+.card-face {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-card);
+  background: var(--card-face);
+  color: var(--card-ink);
+  font-family: var(--typography-card-value-font-family);
+  font-size: var(--typography-card-value-font-size);
+  font-weight: var(--typography-card-value-font-weight);
+  line-height: var(--typography-card-value-line-height);
+  font-variant-numeric: tabular-nums;
+  font-variant-emoji: text;
+}
+
+/* Valeur de trois caractères ou plus (« XXL », « 0,5 ») : plus petite, pour rester dans la carte. */
+.card-face-long {
+  font-size: 18px;
+}
+
+/* Liseré intérieur fin. */
+.card-face::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid var(--card-frame);
+  border-radius: 9px;
+  pointer-events: none;
+}
+
+.card-index {
+  position: absolute;
+  padding: 0 1px;
+  background: var(--card-face);
+  font-family: var(--typography-card-corner-font-family);
+  font-size: var(--typography-card-corner-font-size);
+  font-weight: var(--typography-card-corner-font-weight);
+  line-height: var(--typography-card-corner-line-height);
+}
+
+.card-index-top {
+  top: 5px;
+  left: 5px;
+}
+
+.card-index-bottom {
+  right: 5px;
+  bottom: 5px;
+  transform: rotate(180deg);
+}
+
+/* Face sur la table : même anatomie, en plus petit (44 px de large). */
+.seat-card-face {
+  font-size: 18px;
+}
+
+.seat-card-face.card-face-long {
+  font-size: 12px;
+}
+
+.seat-card-face .card-index {
+  font-size: 9px;
+}
+
+.seat-card-face .card-index-top {
+  top: 3px;
+  left: 3px;
+}
+
+.seat-card-face .card-index-bottom {
+  right: 3px;
+  bottom: 3px;
+}
+
+.seat-card-face::before {
+  inset: 2px;
+  border-radius: 10px;
+}
+
+/* Mentions de place (« déconnecté », « visible par toi seul », « n'a pas voté », « votera au prochain tour ») : label en muted-foreground. */
+.seat-note {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: 1.3;
+  text-align: center;
+  max-width: 100%;
+  text-wrap: balance;
+}
+
+/*
+ * Main « Ta carte » : une ligne de 10 cartes en bas de l'écran Session (placement : session-layout.css), et la bascule
+ * « Je vote » / « J'observe » en bas à gauche.
+ */
+.hand {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'role main';
+  align-items: end;
+  gap: var(--spacing-1) var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-4) var(--spacing-3);
+  background: var(--surface-muted);
+  border-top: 1px solid var(--border);
+}
+
+.hand-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-1);
+  min-width: 0;
+}
+
+.hand-hint {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+/* Bascule de rôle : les boutons segmentés du formulaire d'entrée (entry-form.css), le rôle actuel enfoncé. */
+.hand-role {
+  grid-area: role;
+  display: flex;
+}
+
+.hand-role .role {
+  flex: none;
+  padding: 0 var(--spacing-3);
+}
+
+.hand-role .role[aria-pressed='true'] {
+  z-index: 1;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.hand-role .role[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.hand-cards {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-3);
+  /* Pleine largeur : les cartes partent de 60 px et ne rétrécissent (jusqu'à 44 px) que faute de place. */
+  width: 100%;
+  padding-top: var(--spacing-3);
+}
+
+.poker-card {
+  flex: 0 1 var(--spacing-hand-card-width-pc);
+  min-width: var(--spacing-touch-min);
+  cursor: pointer;
+  transition: transform 150ms ease-out;
+}
+
+.poker-card:not([aria-disabled="true"]):hover,
+.poker-card:not([aria-disabled="true"]):focus-visible {
+  border-color: var(--primary);
+}
+
+/* Carte choisie : face blanche, contour épais, soulevée de 12 px en 150 ms. */
+.poker-card-selected,
+.poker-card-selected:not([aria-disabled="true"]):hover {
+  border: 3px solid var(--poker-card-selected-border);
+  transform: translateY(-12px);
+  box-shadow: var(--elevation-card-selected);
+}
+
+/* Main grisée (tour révélé, observateur) : les cartes gardent le focus mais ne réagissent plus. */
+.poker-card[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.45;
+  filter: grayscale(0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poker-card {
+    transition: none;
+  }
+}
+
+/* ---- styles/action-bar.css ---- */
+/* Barre d'action (action-bar) : compteur « N votes sur M » ou résultat à gauche ; boutons à droite. */
+.action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  min-height: 72px;
+  margin-top: var(--spacing-3);
+  padding: 0 var(--spacing-4) 0 20px;
+  background: var(--surface);
+  border-radius: var(--rounded-lg);
+  box-shadow: var(--elevation-panel);
+}
+
+.vote-counter {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+.action-buttons {
+  display: flex;
+  flex: none;
+  gap: var(--spacing-3);
+}
+
+/* Panneau de résultat (result-panel) intégré à la barre d'action sur PC, sur une seule rangée. */
+.result-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-2) var(--spacing-6);
+  min-width: 0;
+  padding: var(--spacing-2) 0;
+}
+
+.result-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.result-label {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.result-value {
+  margin-top: 2px;
+  font-family: var(--typography-result-stat-font-family);
+  font-size: var(--typography-result-stat-font-size);
+  font-weight: var(--typography-result-stat-font-weight);
+  line-height: var(--typography-result-stat-line-height);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Moyenne : result-stat agrandi à 28 px, séparée des autres chiffres par un filet. */
+.result-average {
+  padding-right: var(--spacing-6);
+  border-right: 1px solid var(--border);
+}
+
+.result-average .result-value {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.result-count {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+.result-none {
+  color: var(--muted-foreground);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
+/* Badge « Consensus ! » (consensus-badge) : vert, l'information est aussi dans le texte. */
+.consensus-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 var(--spacing-3);
+  border-radius: var(--rounded-full);
+  background: var(--success-soft);
+  color: var(--success);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: 700;
+  line-height: var(--typography-label-line-height);
+  white-space: nowrap;
+}
+
+/* ---- styles/session-layout.css ---- */
+/*
+ * Mise en page de l'écran Session (DESIGN.md › Layout & Spacing, EXPERIENCE.md › Responsive & Platform).
+ *
+ * L'écran occupe exactement la hauteur de la fenêtre : barre du haut, zone de la table (seule à défiler), barre
+ * d'action, puis la main. Trois paliers :
+ *   ≥ 900 px  : table de 7 places par rangée (table.css), main d'une ligne de 10 cartes de 60 × 90 px ;
+ *   600–899   : table de 5 places par rangée, main d'une ligne, cartes d'au moins 44 px ;
+ *   < 600 px  : barre du haut compacte, table de 3 places, barre d'action pleine largeur au-dessus du tiroir de la
+ *               main (2 lignes de 5 cartes), qui se replie quand le tour est révélé ; résultat condensé au-dessus
+ *               de la barre d'action.
+ * Budget PC (1280 × 650, 13 participants) : 56 (barre du haut) + 16 + 2 × ~110 + 12 + 32 (table) + 12 + 72 (barre
+ * d'action) + 12 + 146 (main) ≈ 580 px.
+ */
+
+app-root:has(app-session-page) {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
+
+app-session-entry:has(> app-session-page),
+app-session-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.session-page {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: var(--spacing-4) var(--spacing-margin-mobile) var(--spacing-3);
+}
+
+/* Bandeau « Reconnexion… » (status-banner) : ambre, réservé à la reconnexion (DESIGN.md › Colors). Sa région
+   `status-region` reste dans la page, vide hors reconnexion ; les marges latérales viennent de `.session-page`. */
+.status-region {
+  flex: none;
+}
+
+.status-banner {
+  display: flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--spacing-touch-min);
+  margin-bottom: var(--spacing-3);
+  padding: 0 var(--spacing-4);
+  border-radius: var(--rounded-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+}
+
+/* Zone de la table : la seule qui défile quand la fenêtre est moins haute que le budget. */
+.session-scroll {
+  flex: 0 1 auto;
+  min-height: calc(2 * var(--spacing-7));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: var(--spacing-1);
+}
+
+app-action-bar,
+.hand-dock {
+  display: block;
+  flex: none;
+}
+
+/* Résultat condensé : téléphone seulement. */
+.result-line-dock {
+  display: none;
+}
+
+/* < 900 px : la main reste sur une ligne (≥ 600 px), les cartes rétrécissent jusqu'à 44 px. */
+@media (max-width: 899px) {
+  .hand-cards {
+    gap: var(--spacing-2);
+  }
+
+  /* Faute de place à côté des cartes, la bascule de rôle passe dessous, toujours à gauche. */
+  .hand {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'main'
+      'role';
+    row-gap: var(--spacing-3);
+  }
+
+  .hand-role {
+    justify-self: start;
+  }
+}
+
+/* Téléphone (< 600 px, dès 360 px). */
+@media (max-width: 599px) {
+  /* Barre du haut compacte : le logo seul, « Copier le lien » en icône (copy-link.css). */
+  .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .brand {
+    min-width: var(--spacing-touch-min);
+    min-height: var(--spacing-touch-min);
+    justify-content: center;
+  }
+
+  .brand-mark {
+    width: 22px;
+    height: 32px;
+  }
+
+  .top-bar .copy-link {
+    min-width: var(--spacing-touch-min);
+  }
+
+  .session-page {
+    padding: 0;
+  }
+
+  /* La table prend toute la place libre et défile ; la barre d'action reste collée au tiroir. */
+  .session-scroll {
+    flex: 1 1 auto;
+    padding: var(--spacing-3) var(--spacing-margin-mobile);
+  }
+
+  /* Résultat condensé, juste au-dessus de la barre d'action ; le panneau intégré du PC disparaît. */
+  .result-line-dock {
+    display: block;
+    margin: 0 var(--spacing-margin-mobile) var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    background: var(--surface);
+    border-radius: var(--rounded-lg);
+    box-shadow: var(--elevation-panel);
+  }
+
+  .action-bar .result-panel {
+    display: none;
+  }
+
+  /* Barre d'action pleine largeur : le compteur sur une ligne, les deux boutons côte à côte en dessous. */
+  .action-bar {
+    flex-wrap: wrap;
+    gap: var(--spacing-2) var(--spacing-3);
+    min-height: 0;
+    margin: 0;
+    padding: var(--spacing-2) var(--spacing-margin-mobile) var(--spacing-3);
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .vote-counter {
+    flex: 1 1 100%;
+  }
+
+  .action-buttons {
+    flex: 1 1 100%;
+    gap: var(--spacing-3);
+  }
+
+  .action-buttons .btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 var(--spacing-2);
+  }
+
+  /*
+   * Tiroir de la main : fixé en bas, 2 lignes de 5 cartes, ombre vers le haut. Il se replie complètement quand le
+   * tour est révélé (classe session-revealed de la page), et se redéploie au tour suivant.
+   */
+  .hand-dock {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition:
+      grid-template-rows 200ms ease-out,
+      visibility 0s;
+  }
+
+  .hand-dock > .hand {
+    min-height: 0;
+    overflow: hidden;
+    padding: var(--spacing-3) var(--spacing-margin-mobile) var(--spacing-4);
+    box-shadow: var(--elevation-dock);
+    transition: padding 200ms ease-out;
+  }
+
+  .hand-dock .hand-cards {
+    display: grid;
+    /* Deux rangées au plus : le nombre de colonnes suit le jeu de la session (--hand-columns, posé par la main). */
+    grid-template-columns: repeat(var(--hand-columns, 5), minmax(var(--spacing-touch-min), var(--spacing-hand-card-width-pc)));
+    justify-content: center;
+    gap: var(--spacing-3) var(--spacing-2);
+    width: 100%;
+  }
+
+  .hand-dock .poker-card {
+    min-width: var(--spacing-touch-min);
+  }
+
+  .session-revealed .hand-dock {
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows 200ms ease-out,
+      visibility 0s 200ms;
+  }
+
+  .session-revealed .hand-dock > .hand {
+    padding-block: 0;
+    border-top-width: 0;
+  }
+}
+
+/* Animations réduites : le tiroir se replie et se redéploie sans mouvement. */
+@media (prefers-reduced-motion: reduce) {
+  .hand-dock,
+  .session-revealed .hand-dock,
+  .hand-dock > .hand {
+    transition: none;
+  }
+}
+
+/* Résultat condensé (result-panel sur téléphone) : « Moy. 5,9 · Plus votée 5 (6) · Min 3 · Max 13 ». */
+.result-line {
+  /* Les séparateurs en début de ligne (première ligne ou ligne repliée) tombent dans la marge rognée. */
+  --result-line-separator: var(--spacing-4);
+  overflow: hidden;
+}
+
+.result-line-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: var(--spacing-1);
+  margin-left: calc(-1 * var(--result-line-separator));
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+  font-variant-numeric: tabular-nums;
+}
+
+.result-line-rest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+}
+
+.result-line-item {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.result-line-item::before {
+  /* Repli pour les navigateurs sans texte alternatif de content (Safari < 17.4, Firefox < 128). */
+  content: '·';
+  content: '·' / '';
+  flex: none;
+  width: var(--result-line-separator);
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.result-line-badge::before {
+  content: '';
+}
+
+.result-line-average {
+  align-items: baseline;
+}
+
+.result-line-value {
+  margin-left: var(--spacing-1);
+  font-family: var(--typography-result-stat-font-family);
+  font-size: var(--typography-result-stat-font-size);
+  font-weight: var(--typography-result-stat-font-weight);
+  line-height: var(--typography-result-stat-line-height);
+}
+
+.result-line .result-none {
+  padding: var(--spacing-1) 0;
+}
+
+/* ---- styles/reveal.css ---- */
+/*
+ * Révélation (DESIGN › un seul moment de mise en scène) : pendant `session-flipping` (400 ms, posé par l'écran
+ * Session), les faces des autres places (`seat-card-flip`) se retournent l'une après l'autre, chacune en 200 ms
+ * après son délai `--flip-delay` : le dos (`::after`) se referme, puis la face s'ouvre. La synthèse reste cachée
+ * jusqu'à la fin. L'état est déjà à jour : seul l'affichage est animé.
+ */
+@property --seat-card-flip-back {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Dos qui se referme (scaleX 1 → 0, dos visible), puis face qui s'ouvre (0 → 1, dos retiré). */
+@keyframes seat-card-flip {
+  0% {
+    --seat-card-flip-back: 1;
+    transform: scaleX(1);
+    animation-timing-function: ease-in;
+  }
+  49.9% {
+    --seat-card-flip-back: 1;
+  }
+  50% {
+    --seat-card-flip-back: 0;
+    transform: scaleX(0);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    --seat-card-flip-back: 0;
+    transform: scaleX(1);
+  }
+}
+
+.session-flipping .seat-card-flip {
+  animation: seat-card-flip 200ms both;
+  animation-delay: var(--flip-delay, 0ms);
+}
+
+/* Dos de carte posé sur la face pendant la première moitié (et l'attente) : motif de card-back.css. */
+.session-flipping .seat-card-flip::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--border);
+  border-radius: var(--rounded-card);
+  background-color: var(--card-back);
+  background-image:
+    repeating-linear-gradient(45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient(-45deg, var(--card-back-pattern) 0 2px, transparent 2px 8px);
+  box-shadow: inset 0 0 0 4px var(--card-face);
+  opacity: var(--seat-card-flip-back);
+  pointer-events: none;
+}
+
+/* Synthèse (panneau sur PC, ligne condensée sur téléphone) : invisible pendant le retournement, puis sans fondu. */
+.session-flipping .result-panel,
+.session-flipping .result-line {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-flipping .seat-card-flip {
+    animation: none;
+  }
+
+  .session-flipping .seat-card-flip::after {
+    content: none;
+  }
+
+  .session-flipping .result-panel,
+  .session-flipping .result-line {
+    visibility: visible;
+  }
+}
+

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rejoindre, pseudo pris</title>
+<link rel="stylesheet" href="../app.css">
+<script src="nav.js" defer></script>
+</head>
+<body>
+<!-- Maquette générée par ../generer.mjs : ne pas modifier à la main. -->
+<app-root><header class="top-bar"><div class="brand"><span class="brand-mark card-back" aria-hidden="true"></span><span class="brand-name">Planning Poker</span></div></header><app-session-entry><main class="entry-screen"><app-entry-form><form class="entry-form" novalidate><div class="entry-form-mark card-back" aria-hidden="true"></div><h1>Planning Poker</h1><div class="field field-error"><label class="field-label" for="entry-pseudo">Ton pseudo</label><input id="entry-pseudo" class="input" type="text" name="pseudo" maxlength="20" autocomplete="nickname" spellcheck="false" value="Sofia" aria-invalid="true" aria-describedby="entry-pseudo-error"><p id="entry-pseudo-error" class="error-msg" role="alert"><svg class="error-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8"></circle><path d="M10 5.5v5.5"></path><circle cx="10" cy="14.2" r=".6" fill="currentColor"></circle></svg> Ce pseudo est déjà pris dans cette session.</p></div><div class="role-group"><span class="field-label" id="entry-role-label">Ton rôle</span><div class="roles" role="radiogroup" aria-labelledby="entry-role-label"><button type="button" class="role" role="radio" aria-checked="true" tabindex="0">Je vote</button><button type="button" class="role" role="radio" aria-checked="false" tabindex="-1">J'observe</button></div></div><button type="submit" class="btn btn-primary entry-form-submit" data-go="../session-telephone.html#cache">Rejoindre</button></form></app-entry-form></main></app-session-entry></app-root>
+</body>
+</html>

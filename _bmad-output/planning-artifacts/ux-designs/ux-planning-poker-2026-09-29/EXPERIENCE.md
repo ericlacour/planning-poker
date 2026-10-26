@@ -31,11 +31,13 @@ sources:
 
 Il n'y a ni menu de navigation, ni fenêtre modale. Le changement de rôle (FR-5) et le choix du thème se font depuis la barre du haut de l'écran Session, sans quitter la table.
 
-→ Maquettes (en cas de conflit, ce document fait foi) :
-- `mockups/session-pc.html` : l'écran Session sur PC, vu par Eric (observateur) puis par Sofia (tour caché), puis le tour révélé sans consensus ;
-- `mockups/session-telephone.html` : l'écran Session sur téléphone, en thème sombre, avec le tour caché, le tour révélé avec consensus et la reconnexion ;
-- `mockups/rejoindre.html` : Rejoindre sur téléphone, le cas du pseudo refusé, et l'Accueil sur PC ;
-- `mockups/etats.html` : Réveil du serveur, Serveur indisponible, Session introuvable et Session vide.
+→ Maquettes (en cas de conflit, ce document fait foi). Point d'entrée : `mockups/index.html`, qui relie les planches et suit les deux parcours ; dans chaque écran, un clic sur un bouton mène à l'écran qu'il produit :
+- `mockups/session-pc.html` : l'écran Session sur PC, vu par Eric (observateur), par Sofia avant et après son vote, le tour révélé sans consensus, le menu du participant et le QR code ;
+- `mockups/session-telephone.html` : l'écran Session sur téléphone, en thème sombre, avec le tour caché, le tour révélé avec consensus, la reconnexion et le passage en observatrice ;
+- `mockups/rejoindre.html` : l'Accueil sur PC (choix des cartes, échec de l'envoi), Rejoindre sur téléphone, le pseudo refusé et la place reprise ;
+- `mockups/etats.html` : Réveil du serveur, Serveur indisponible, Session introuvable, Session injoignable et Session vide (avec le QR code).
+
+Les écrans sont générés par `mockups/generer.mjs` avec la feuille de style du front (`node generer.mjs` pour les remettre à jour).
 
 ## Voice and Tone
 

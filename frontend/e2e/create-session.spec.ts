@@ -110,6 +110,32 @@ test('sur PC, l\'accueil tient sans défiler dans 1280 × 600 px (écran 1920 ×
   await check();
 });
 
+test('sur PC, l\'accueil tient encore dans 1280 × 600 px avec un message d\'erreur sous le bouton', async ({ page }) => {
+  const check = await watchPage(page);
+  await mockApi(page, () => 'error503');
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await page.goto('/');
+  await page.getByLabel('Ton pseudo').fill('Eric');
+  await page.getByRole('button', { name: 'Créer une session' }).click();
+
+  const error = page.getByText('Impossible de joindre le serveur.');
+  await expect(error).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(600);
+  await check({ allowConsoleErrors: true });
+});
+
+test('sur PC, le formulaire d\'entrée est centré verticalement sous la barre du haut', async ({ page }) => {
+  await mockApi(page, () => 'created');
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.goto('/');
+
+  const bar = (await page.locator('.top-bar').boundingBox())!;
+  const form = (await page.locator('form.entry-form').boundingBox())!;
+  const above = form.y - (bar.y + bar.height);
+  const below = 1000 - (form.y + form.height);
+  expect(Math.abs(above - below)).toBeLessThanOrEqual(2);
+});
+
 test('choisir les cartes de la session : tailles de tee-shirt, certaines retirées, au moins deux gardées', async ({
   page,
 }) => {

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes</title>
+<link rel="stylesheet" href="maquettes.css">
+</head>
+<body>
+<!--
+  Planche générée par generer.mjs : ne pas modifier à la main.
+  Chaque écran est une page de ecrans/, rendue avec app.css (copie de la feuille de style du front) dans une iframe
+  à la taille du cadre. Cliquer un bouton d'écran mène à l'écran qu'il produit ; les liens « › » des légendes
+  suivent les parcours. En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas ces maquettes.
+-->
+<nav class="board-nav" aria-label="Planches"><span class="title">Maquettes Planning Poker</span><a href="index.html" aria-current="page">Sommaire</a><a href="rejoindre.html">Accueil et Rejoindre</a><a href="etats.html">Écrans d'état</a><a href="session-pc.html">Session sur PC</a><a href="session-telephone.html">Session sur téléphone</a></nav>
+<div class="board-intro"><h1>Maquettes de Planning Poker</h1>
+<p>Les écrans tels qu'ils sont dans le front aujourd'hui, avec la feuille de style de l'application (<code>app.css</code>, copie de <code>frontend/src/styles.css</code>). Chaque planche montre les écrans dans un cadre de navigateur ou de téléphone ; un clic sur un bouton d'un écran mène à l'écran qu'il produit, et les liens « › » sous chaque légende suivent les parcours.</p>
+<p>Pour les remettre à jour après un changement d'écran : adapter les gabarits de <code>generer.mjs</code> puis lancer <code>node generer.mjs</code>. En cas de conflit, EXPERIENCE.md et DESIGN.md font foi, pas ces maquettes.</p></div>
+<div class="toc">
+<section>
+  <h2>Flux 1 : Eric anime l'affinage</h2>
+  <p class="who">Sur PC, en observateur</p>
+  <ol>
+    <li><a href="rejoindre.html#accueil">Accueil</a> <span>: pseudo prérempli, « J'observe », cartes de la session.</span></li>
+    <li><a href="etats.html#session-vide">Session vide</a> <span>: le lien, « Copier le lien » et « QR code ».</span></li>
+    <li><a href="session-pc.html#observateur">Session, tour caché</a> <span>: 9 votes sur 12, main grisée.</span></li>
+    <li><a href="session-pc.html#revele">Tour révélé</a> <span>: résultat dans la barre d'action, « Nouveau tour ».</span></li>
+  </ol>
+</section>
+<section>
+  <h2>Flux 2 : Sofia vote depuis son téléphone</h2>
+  <p class="who">Sur téléphone, en thème sombre</p>
+  <ol>
+    <li><a href="rejoindre.html#rejoindre">Rejoindre</a> <span>: le lien ouvert, « Je vote » par défaut.</span></li>
+    <li><a href="rejoindre.html#rejoindre-pseudo-pris">Pseudo pris</a> <span>: message sous le champ, saisie conservée.</span></li>
+    <li><a href="session-telephone.html#cache">Session, tour caché</a> <span>: carte 8 choisie, tiroir de la main.</span></li>
+    <li><a href="session-telephone.html#revele">Tour révélé, consensus</a> <span>: tiroir replié, résultat condensé.</span></li>
+    <li><a href="session-telephone.html#reconnexion">Reconnexion</a> <span>: bandeau ambre, actions inactives.</span></li>
+  </ol>
+</section>
+<section>
+  <h2>Accueil et Rejoindre</h2>
+  <ul>
+    <li><a href="rejoindre.html#accueil">Accueil, Fibonacci</a></li>
+    <li><a href="rejoindre.html#accueil-tailles">Accueil, tailles de tee-shirt</a></li>
+    <li><a href="rejoindre.html#accueil-erreur">Accueil, serveur injoignable</a></li>
+    <li><a href="rejoindre.html#rejoindre">Rejoindre</a>, <a href="rejoindre.html#rejoindre-pseudo-pris">pseudo pris</a>, <a href="rejoindre.html#rejoindre-place-reprise">place reprise</a></li>
+  </ul>
+</section>
+<section>
+  <h2>Écrans d'état</h2>
+  <ul>
+    <li><a href="etats.html#reveil">Réveil du serveur</a>, <a href="etats.html#serveur-indisponible">serveur indisponible</a></li>
+    <li><a href="etats.html#session-introuvable">Session introuvable</a>, <a href="etats.html#session-injoignable">session injoignable</a></li>
+    <li><a href="etats.html#session-vide">Session vide</a>, <a href="etats.html#session-vide-qr">QR code déplié</a>, <a href="etats.html#session-vide-votant">en votant</a></li>
+  </ul>
+</section>
+<section>
+  <h2>Session sur PC</h2>
+  <ul>
+    <li><a href="session-pc.html#observateur">Vu par Eric, observateur</a></li>
+    <li><a href="session-pc.html#choisir">Sofia doit choisir sa carte</a>, <a href="session-pc.html#votant">Sofia a voté</a></li>
+    <li><a href="session-pc.html#revele">Tour révélé sans consensus</a></li>
+    <li><a href="session-pc.html#menu">Menu du participant</a>, <a href="session-pc.html#qr">QR code</a></li>
+  </ul>
+</section>
+<section>
+  <h2>Session sur téléphone</h2>
+  <ul>
+    <li><a href="session-telephone.html#cache">Tour caché</a>, <a href="session-telephone.html#revele">tour révélé</a></li>
+    <li><a href="session-telephone.html#reconnexion">Reconnexion</a>, <a href="session-telephone.html#observateur">observatrice</a></li>
+  </ul>
+</section>
+</div>
+</body>
+</html>

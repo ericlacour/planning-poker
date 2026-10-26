@@ -26,6 +26,16 @@ app-root {
   min-height: 100%;
 }
 
+/* Hôtes des écrans : ils occupent la hauteur libre sous la barre du haut, pour que les écrans d'état et le
+   formulaire d'entrée (flex: 1) se centrent verticalement. */
+app-home,
+app-session-entry,
+app-wake-screen {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
 .btn {
   min-height: var(--spacing-touch-min);
   padding: 0 20px;

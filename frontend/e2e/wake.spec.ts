@@ -49,6 +49,12 @@ test('un serveur endormi affiche l\'écran de réveil, puis l\'accueil dès son 
   await expect(page.getByRole('heading', { name: 'Réveil du serveur…' })).toBeVisible();
   await expect(page.getByText("Ça peut prendre jusqu'à 2 minutes.")).toBeVisible();
   await expect(page.locator('.deck .card-back')).toHaveCount(3);
+  // L'écran d'état est centré verticalement sous la barre du haut.
+  const bar = (await page.locator('.top-bar').boundingBox())!;
+  const screen = (await page.locator('main.state-screen').boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(screen.y).toBeCloseTo(bar.y + bar.height, 0);
+  expect(screen.y + screen.height).toBeCloseTo(viewport.height, 0);
   awake = true;
   await expect(page.getByRole('heading', { name: 'Planning Poker' })).toBeVisible({ timeout: 10_000 });
   await checkSecurity();

@@ -213,6 +213,16 @@ app-root {
   min-height: 100%;
 }
 
+/* Hôtes des écrans : ils occupent la hauteur libre sous la barre du haut, pour que les écrans d'état et le
+   formulaire d'entrée (flex: 1) se centrent verticalement. */
+app-home,
+app-session-entry,
+app-wake-screen {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
 .btn {
   min-height: var(--spacing-touch-min);
   padding: 0 20px;
@@ -702,9 +712,10 @@ app-root {
 }
 
 @media (min-width: 600px) and (max-height: 800px) {
+  /* Marges serrées : un message d'erreur sous le bouton tient encore dans 1280 × 600. */
   .entry-screen {
-    padding-top: var(--spacing-4);
-    padding-bottom: var(--spacing-4);
+    padding-top: var(--spacing-2);
+    padding-bottom: var(--spacing-2);
   }
 
   .entry-form {
@@ -727,7 +738,7 @@ app-root {
   }
 
   .entry-form-submit {
-    margin-top: var(--spacing-5);
+    margin-top: var(--spacing-4);
   }
 }
 

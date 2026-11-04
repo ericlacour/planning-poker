@@ -122,7 +122,11 @@ async function observeReveal(
   synthesisSelector = '.result-panel',
 ): Promise<() => Promise<Observed>> {
   await page.evaluate((selector) => {
-    const w = window as unknown as { flipAt?: number; synthesisAtFlip?: string };
+    const w = window as unknown as {
+      flipAt?: number;
+      synthesisAtFlip?: string;
+      flippingAtFlip?: boolean;
+    };
     const visibility = () => {
       const element = document.querySelector(selector);
       return element ? getComputedStyle(element).visibility : 'missing';
@@ -131,6 +135,9 @@ async function observeReveal(
       if (w.flipAt !== undefined || !document.querySelector('.seat-card-flip')) return;
       w.flipAt = performance.now();
       w.synthesisAtFlip = visibility();
+      // Relevé ici et non au retour dans observing() : la fenêtre ne dure que REVEAL_FLIP_MS, moins qu'un aller-retour
+      // Node ↔ navigateur sur un runner chargé.
+      w.flippingAtFlip = !!document.querySelector('app-session-page.session-flipping');
       observer.disconnect();
     };
     const observer = new MutationObserver(seen);
@@ -138,7 +145,11 @@ async function observeReveal(
   }, synthesisSelector);
   return () =>
     page.evaluate(async (selector) => {
-      const w = window as unknown as { flipAt?: number; synthesisAtFlip?: string };
+      const w = window as unknown as {
+        flipAt?: number;
+        synthesisAtFlip?: string;
+        flippingAtFlip?: boolean;
+      };
       const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
       while (w.flipAt === undefined) await frame();
       await frame();
@@ -177,7 +188,7 @@ async function observeReveal(
       const observed = {
         label: face.getAttribute('aria-label'),
         animations: face.getAnimations().map((a) => (a as CSSAnimation).animationName),
-        flipping: !!document.querySelector('app-session-page.session-flipping'),
+        flipping: w.flippingAtFlip!,
         back: back(),
         synthesis: w.synthesisAtFlip!,
         live:

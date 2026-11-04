@@ -46,6 +46,11 @@
   line-height: var(--typography-card-corner-line-height);
 }
 
+/* Index dessiné, pas écrit : il ne compte pas dans le texte visible de la carte (voir CardFaceComponent). */
+.card-index::after {
+  content: attr(data-text);
+}
+
 .card-index-top {
   top: 5px;
   left: 5px;

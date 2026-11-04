@@ -180,7 +180,7 @@ describe('ParticipantTableComponent', () => {
     const mine = seats[0].querySelector('.seat-card-face');
     expect(mine?.getAttribute('aria-label')).toBe('Carte 8');
     expect(mine?.querySelector('.card-value')?.textContent).toBe('8');
-    expect([...(mine?.querySelectorAll('.card-index') ?? [])].map((c) => c.textContent)).toEqual(['8', '8']);
+    expect([...(mine?.querySelectorAll('.card-index') ?? [])].map((c) => c.getAttribute('data-text'))).toEqual(['8', '8']);
     expect(seats[0].querySelector('.seat-note')?.textContent).toBe('visible par toi seul');
     expect(seats[1].querySelector('.seat-card-back.card-back')).not.toBeNull();
     expect(seats[2].querySelector('.seat-card-empty')).not.toBeNull();

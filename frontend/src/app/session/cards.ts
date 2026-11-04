@@ -49,16 +49,18 @@ export function voteCounter(progress: { readonly voted: number; readonly expecte
 /**
  * Anatomie d'une face de carte (`poker-card`, `seat-card-face`) posée sur l'élément hôte : valeur au centre, index
  * dans le coin supérieur gauche et, retourné, dans le coin inférieur droit. Décoratif : l'hôte porte le nom
- * accessible.
+ * accessible. Les index des coins sont dessinés en CSS (`::after` sur `data-text`) et non en texte : le texte visible
+ * de la carte reste la seule valeur, contenue dans son nom (« 5 » dans « Carte 5 », WCAG 2.5.3, règle axe
+ * label-content-name-mismatch), là où « 5 5 5 » ne l'est pas.
  */
 @Component({
   selector: '[appCardFace]',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'card-face', '[class.card-face-long]': 'long()' },
   template: `
-    <span class="card-index card-index-top" aria-hidden="true">{{ text() }}</span>
+    <span class="card-index card-index-top" aria-hidden="true" [attr.data-text]="text()"></span>
     <span class="card-value" aria-hidden="true">{{ text() }}</span>
-    <span class="card-index card-index-bottom" aria-hidden="true">{{ text() }}</span>
+    <span class="card-index card-index-bottom" aria-hidden="true" [attr.data-text]="text()"></span>
   `,
 })
 export class CardFaceComponent {

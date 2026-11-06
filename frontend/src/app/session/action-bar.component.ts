@@ -44,7 +44,11 @@ export function blocksActions(state: SessionState): boolean {
     }
     <div class="action-bar" [class.action-bar-revealed]="revealed()">
       @if (revealed()) {
-        <app-result-panel [summary]="state().summary" [spreadVoters]="spreadVoters()" />
+        <app-result-panel
+          [summary]="state().summary"
+          [spreadVoters]="spreadVoters()"
+          [estimationRule]="state().estimationRule"
+        />
       } @else {
         <span class="vote-counter">{{ counter() }}</span>
       }

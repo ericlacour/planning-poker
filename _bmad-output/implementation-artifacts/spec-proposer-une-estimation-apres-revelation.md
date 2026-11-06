@@ -2,7 +2,7 @@
 title: 'Proposer une estimation après la révélation'
 type: 'feature'
 created: '2026-11-06'
-status: 'in-review'
+status: 'done'
 baseline_commit: '6796487f2aefe5349c53c7388b5dfa2eaa7fbe52'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -108,3 +108,23 @@ Règles (décisions d'Eric du 06/11/2026) :
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Source | Constat | Verdict | Preuve / décision |
+|---|---|---|---|---|
+| 1 | verification-gap | `estimationRule`, `proposal`, `spreadTooWide` jamais vérifiés sur le WebSocket réel | medium | Constat pré-vérifié : `SessionStateMessage.of` n'est appelé par aucun test, `SessionSocketHandlerTest` ne lit pas ces champs. → patch |
+| 2 | edge-case | `"estimationRule": null` accepté comme NONE sans test | low | Même précédent que `deck: null`, mais non épinglé. Correction directe (un test). → patch |
+| 3 | edge-case | Un seul pseudo avec « expliquent » | false | Inatteignable : `spreadTooWide` exige min ≠ max, chacun voté par une place affichée (votes hors jeu refusés, votes des partis retirés). |
+| 4 | blind | Règles non expliquées sur le formulaire | low | Réel : seuls les libellés, choix définitif. Correction simple (aide sous le groupe, comme pour le jeu). → patch |
+| 5 | blind | La règle de la session n'est jamais affichée en séance | low | Réel : `estimationRule` n'est lu par aucun composant de séance ; on ne sait pas d'où vient la proposition. → patch (règle dans le libellé du panneau PC) |
+| 6 | blind | Contrôle « exemple de médiane » de `validate.mjs` satisfait par un consensus | low | Réel : la condition ne demande pas min ≠ max. Correction directe. → patch |
+| 7 | blind | Java lève une exception pour un vote hors jeu, JS non | false | Inatteignable : `Round.vote` refuse toute carte hors du jeu, figé à la création ; l'échec bruyant est voulu. |
+| 8 | blind | Champs requis + `hasExactly` : un onglet de l'ancienne version rejette les nouveaux états pendant un déploiement | medium | Réel mais préexistant : `deck` a été ajouté de la même façon (commit ce4fb4c). → defer |
+| 9 | blind | Aucun test de mise en page pour « Écart trop grand » et « Proposition » | maybe-false | Pas vérifié que le message long tienne sans défilement en 360 × 740 / 1280 × 650. Ajout direct de cas dans `layout.spec.ts`. → patch |
+| 10 | blind | Commentaire périmé et `getByText('Proposition')` fragile dans `reveal.spec.ts` | low | Réel, correction directe. → patch |
+| 11 | blind | `Summary.of(votes)` par défaut, piège | low | Côté développeurs seulement, sert aux tests ; refonte au-delà d'une correction directe. Rejeté. |
+| 12 | blind | Constructeur `Session` recopié 8 fois | low | Dette préexistante (déjà 9 arguments). Rejeté. |
+| 13 | blind | Groupe de règles réutilisant les classes `.role` | low | Même motif que le groupe du jeu ; refonte CSS. Rejeté. |
+| 14 | blind | Test des flèches de la règle ne vérifie pas le jeu | low | Réel, correction directe (une assertion). → patch |
+| 15 | blind | Repli « le min et le max expliquent leur vote » mal tourné | low | Réel (texte), correction directe : « ceux qui ont voté le min et le max ». → patch |
+| 16 | blind | Seuil de 3 niveaux et liste des règles dupliqués | low | Le script de contrat est une référence indépendante voulue. Rejeté. |
+| 17 | blind | Spec décalée de l'implémentation | — | Sa correction modifie la spec : rejeté. |

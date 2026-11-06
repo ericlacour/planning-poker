@@ -133,8 +133,9 @@ test('révéler, lire le résultat, passer au tour suivant', async ({ page }) =>
   await expect(page.locator('.result-max')).toHaveText(/Max\s*8/);
   await expect(page.locator('.consensus-badge')).toHaveCount(0);
   // Session créée sans règle (« Aucune ») : ni « Proposition », ni « Écart trop grand ».
-  await expect(page.getByText('Proposition')).toHaveCount(0);
-  await expect(page.getByText('Écart trop grand')).toHaveCount(0);
+  for (const selector of ['.result-proposal', '.result-line-proposal', '.result-spread', '.result-line-spread']) {
+    await expect(page.locator(selector)).toHaveCount(0);
+  }
   await expect(button(page, 'Masquer')).toBeEnabled();
   await expect(button(page, 'Nouveau tour')).toBeEnabled();
   await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveAttribute('aria-disabled', 'true');
@@ -182,7 +183,7 @@ test('médiane : votant et observateur voient la même proposition, recalculée 
     proposal: '8',
     spreadTooWide: false,
   });
-  // Bob revote 2 après le masquage : de 2 à 8, 3 niveaux ; médiane de 2 et 5 → 5.
+  // Bob revote 2 après le masquage : votes 5 et 2, médiane paire → 5 (de 2 à 5, 2 niveaux).
   const second = withMedian(
     {
       ...revealed(11, BOB),
@@ -218,11 +219,11 @@ test('médiane : votant et observateur voient la même proposition, recalculée 
   };
   broadcast(first);
   for (const p of [page, observer]) {
-    await expect(p.locator('.result-proposal')).toHaveText(/Proposition\s*8/);
+    await expect(p.locator('.result-proposal')).toHaveText(/Proposition \(médiane\)\s*8/);
     await expect(p.locator('.result-spread')).toHaveCount(0);
   }
   await expect(live(page)).toHaveText(
-    'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 1 vote chacune. Min 5, max 8. Proposition 8.',
+    'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 1 vote chacune. Min 5, max 8. Proposition (médiane) 8.',
   );
 
   // Masqué, revoté, révélé de nouveau : la proposition suit les votes du moment.
@@ -234,7 +235,7 @@ test('médiane : votant et observateur voient la même proposition, recalculée 
   await expect(page.locator('.result-panel')).toHaveCount(0);
   broadcast(second);
   for (const p of [page, observer]) {
-    await expect(p.locator('.result-proposal')).toHaveText(/Proposition\s*5/);
+    await expect(p.locator('.result-proposal')).toHaveText(/Proposition \(médiane\)\s*5/);
   }
   await check();
 });

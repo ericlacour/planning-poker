@@ -303,6 +303,14 @@ test('une règle de proposition inconnue est refusée', async () => {
   assert.ok(hasError(errors, 'create-session-request/median.json', 'estimationRule'), errors.join('\n'));
 });
 
+test('un exemple de médiane aux votes tous égaux ne suffit pas', async () => {
+  // revealed-consensus.json (médiane, 3 et 3) reste : la médiane n'y départage rien.
+  const dir = copyContract();
+  rmSync(join(dir, 'examples/session-state/revealed-median.json'));
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'proposition par la médiane'), errors.join('\n'));
+});
+
 test('il faut un exemple de médiane et un exemple d\'écart trop grand', async () => {
   const dir = copyContract();
   rmSync(join(dir, 'examples/session-state/revealed-spread-too-wide.json'));

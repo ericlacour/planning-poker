@@ -22,11 +22,16 @@ const DECK_TYPES: readonly { readonly value: DeckType; readonly label: string }[
   { value: 'TSHIRT', label: 'Tailles de tee-shirt' },
 ];
 
-const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly label: string }[] = [
-  { value: 'NONE', label: 'Aucune' },
-  { value: 'MAX', label: 'La plus grande' },
-  { value: 'MEDIAN', label: 'Médiane' },
-  { value: 'BELOW_MAX', label: 'Juste sous le max' },
+/** Règles de proposition, chacune avec la phrase qui l'explique sous le groupe. */
+const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly label: string; readonly hint: string }[] = [
+  { value: 'NONE', label: 'Aucune', hint: 'Pas de proposition après la révélation.' },
+  { value: 'MAX', label: 'La plus grande', hint: 'Propose la plus grande carte votée.' },
+  {
+    value: 'MEDIAN',
+    label: 'Médiane',
+    hint: "Propose la médiane si l'écart ne dépasse pas 3 cartes ; sinon, le min et le max s'expliquent.",
+  },
+  { value: 'BELOW_MAX', label: 'Juste sous le max', hint: 'Propose la carte du jeu juste sous la plus grande votée.' },
 ];
 
 /**
@@ -35,7 +40,7 @@ const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly labe
  * d'une session (`withDeck`), « Cartes de la session » propose la suite de Fibonacci ou les tailles de tee-shirt,
  * toutes les cartes retenues au départ : on en retire à volonté, mais il en reste au moins deux. Dessous,
  * « Proposition d'estimation » choisit la règle que le webservice applique à chaque révélation (« Aucune » par
- * défaut). Ces choix sont définitifs pour la session.
+ * défaut), expliquée d'une phrase sous le groupe. Ces choix sont définitifs pour la session.
  */
 @Component({
   selector: 'app-entry-form',
@@ -143,7 +148,12 @@ const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly labe
 
         <div class="rule-group">
           <span class="field-label" id="entry-rule-label">Proposition d'estimation</span>
-          <div class="roles rules" role="radiogroup" aria-labelledby="entry-rule-label">
+          <div
+            class="roles rules"
+            role="radiogroup"
+            aria-labelledby="entry-rule-label"
+            aria-describedby="entry-rule-hint"
+          >
             @for (option of estimationRules; track option.value) {
               <button
                 #ruleButton
@@ -160,6 +170,7 @@ const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly labe
               </button>
             }
           </div>
+          <p id="entry-rule-hint" class="deck-hint rule-hint">{{ ruleHint() }}</p>
         </div>
       }
 
@@ -208,6 +219,9 @@ export class EntryFormComponent {
   protected readonly deckType = signal<DeckType>('FIBONACCI');
   protected readonly estimationRules = ESTIMATION_RULES;
   protected readonly estimationRule = signal<EstimationRule>('NONE');
+  protected readonly ruleHint = computed(
+    () => ESTIMATION_RULES.find((option) => option.value === this.estimationRule())!.hint,
+  );
   /** Cartes retirées du jeu, par famille : changer de famille ne perd pas le choix fait dans l'autre. */
   private readonly dropped = signal<Readonly<Record<DeckType, readonly Card[]>>>({ FIBONACCI: [], TSHIRT: [] });
   protected readonly familyCards = computed(() => DECK_FAMILIES[this.deckType()]);

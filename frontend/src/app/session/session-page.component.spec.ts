@@ -116,7 +116,7 @@ describe('SessionPageComponent', () => {
     expect(live()?.textContent?.trim()).toBe('');
     show(revealedTie);
     expect(live()?.textContent?.trim()).toBe(
-      'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 2 votes chacune. Min 5, max 8. Proposition 8.',
+      'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 2 votes chacune. Min 5, max 8. Proposition (la plus grande) 8.',
     );
     const newRound = {
       ...hidden,

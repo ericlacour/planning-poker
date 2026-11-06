@@ -306,7 +306,7 @@
 
 /*
  * PC bas (1280 × 600) : chaque groupe de boutons radio pose son libellé à gauche de ses boutons, pour que la
- * proposition d'estimation tienne sans défiler. Les cartes du jeu et leur consigne gardent toute la largeur.
+ * proposition d'estimation et son explication tiennent sans défiler. Les cartes du jeu et leur consigne gardent toute la largeur.
  */
 @media (min-width: 700px) and (max-height: 800px) {
   .role-group,
@@ -326,7 +326,26 @@
   }
 
   .deck-group > .deck-cards,
-  .deck-group > .deck-hint {
+  .deck-group > .deck-hint,
+  .rule-group > .rule-hint {
     grid-column: 1 / -1;
+  }
+
+  /* Marges resserrées : l'explication de la règle tient aussi, message d'erreur compris. */
+  .entry-form {
+    padding-top: var(--spacing-3);
+    padding-bottom: var(--spacing-3);
+  }
+
+  .entry-form h1 {
+    margin-bottom: var(--spacing-3);
+  }
+
+  .deck-hint {
+    margin-top: var(--spacing-1);
+  }
+
+  .entry-form-submit {
+    margin-top: var(--spacing-3);
   }
 }

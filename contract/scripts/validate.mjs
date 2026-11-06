@@ -222,8 +222,9 @@ function checkSessionStates(states) {
   if (!states.some(({ data: s }) => s.round?.status === 'REVEALED' && s.summary?.mostVoted?.values.length > 1)) {
     errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une égalité sur la plus votée');
   }
-  if (!states.some(({ data: s }) => s.estimationRule === 'MEDIAN' && s.summary?.proposal != null)) {
-    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une proposition par la médiane');
+  if (!states.some(({ data: s }) => s.estimationRule === 'MEDIAN' && s.summary?.proposal != null
+    && s.summary.min !== s.summary.max)) {
+    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une proposition par la médiane, entre un min et un max différents');
   }
   if (!states.some(({ data: s }) => s.summary?.spreadTooWide === true)) {
     errors.push('examples/session-state/ : il faut un exemple de tour révélé avec un écart trop grand pour la médiane');

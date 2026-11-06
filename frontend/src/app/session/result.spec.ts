@@ -11,7 +11,7 @@ import revealedTie from '../../../../contract/examples/session-state/revealed-ti
 import revealedTshirt from '../../../../contract/examples/session-state/revealed-tshirt-tie.json';
 import revealedMedian from '../../../../contract/examples/session-state/revealed-median.json';
 import revealedSpread from '../../../../contract/examples/session-state/revealed-spread-too-wide.json';
-import { SessionState, Summary } from '../api/contract';
+import { EstimationRule, SessionState, Summary } from '../api/contract';
 import {
   announcementFor,
   arrivalAnnouncements,
@@ -19,6 +19,7 @@ import {
   formatAverage,
   joinValues,
   NEW_ROUND_ANNOUNCEMENT,
+  proposalLabel,
   ResultLineComponent,
   ResultPanelComponent,
   revealAnnouncement,
@@ -66,22 +67,24 @@ describe('result formatting', () => {
     expect(revealAnnouncement({ ...mockup, mostVoted: { values: ['5', '8'], count: 3 } }, 'fr')).toBe(
       'Votes révélés. Moyenne 5,9. Plus votée 5 et 8, 3 votes chacune. Min 3, max 13.',
     );
-    expect(revealAnnouncement(summaryOf(revealedConsensus), 'fr')).toBe(
-      'Votes révélés. Moyenne 3. Plus votée 3, 2 votes. Min 3, max 3. Consensus ! Proposition 3.',
+    expect(revealAnnouncement(summaryOf(revealedConsensus), 'fr', null, 'MEDIAN')).toBe(
+      'Votes révélés. Moyenne 3. Plus votée 3, 2 votes. Min 3, max 3. Consensus ! Proposition (médiane) 3.',
     );
     expect(revealAnnouncement(summaryOf(revealedNoNumeric), 'fr')).toBe('Votes révélés. Pas de résultat chiffré.');
   });
 
   it('announces a reveal of sizes without any average', () => {
-    expect(revealAnnouncement(summaryOf(revealedTshirt), 'fr')).toBe(
-      'Votes révélés. Plus votée M et L, 2 votes chacune. Min M, max L. Proposition M.',
+    expect(revealAnnouncement(summaryOf(revealedTshirt), 'fr', null, 'BELOW_MAX')).toBe(
+      'Votes révélés. Plus votée M et L, 2 votes chacune. Min M, max L. Proposition (sous le max) M.',
     );
   });
 
   it('announces the proposal of the session, and nothing with the rule « Aucune »', () => {
-    expect(revealAnnouncement(summaryOf(revealedMedian), 'fr')).toBe(
-      'Votes révélés. Moyenne 5,3. Plus votée 5, 2 votes. Min 3, max 8. Proposition 5.',
+    expect(revealAnnouncement(summaryOf(revealedMedian), 'fr', null, 'MEDIAN')).toBe(
+      'Votes révélés. Moyenne 5,3. Plus votée 5, 2 votes. Min 3, max 8. Proposition (médiane) 5.',
     );
+    // Règle inconnue : « Proposition » seul.
+    expect(revealAnnouncement(summaryOf(revealedMedian), 'fr')).toContain(' Proposition 5.');
     expect(revealAnnouncement(summaryOf(revealedObserver), 'fr')).not.toContain('Proposition');
     expect(revealAnnouncement(summaryOf(revealedObserver), 'fr')).not.toContain('Écart');
   });
@@ -106,14 +109,16 @@ describe('result formatting', () => {
     // Pas d'écart trop grand : personne.
     expect(spreadVoters(revealedMedian as SessionState)).toBeNull();
     expect(spreadVoters(hidden)).toBeNull();
-    expect(spreadMessage(null)).toBe('Écart trop grand : le min et le max expliquent leur vote, puis revotez');
+    expect(spreadMessage(null)).toBe(
+      'Écart trop grand : ceux qui ont voté le min et le max expliquent leur vote, puis revotez',
+    );
   });
 
   it('announces a reveal and a new round, whoever made them, and nothing else', () => {
     const hidden = { ...(revealedTie as SessionState), round: { ...revealedTie.round, status: 'HIDDEN' }, summary: null } as SessionState;
     expect(announcementFor(null, revealedTie as SessionState, 'fr')).toBeNull();
     expect(announcementFor(hidden, revealedTie as SessionState, 'fr')).toBe(
-      'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 2 votes chacune. Min 5, max 8. Proposition 8.',
+      'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 2 votes chacune. Min 5, max 8. Proposition (la plus grande) 8.',
     );
     expect(announcementFor(revealedTie as SessionState, newRound as SessionState, 'fr')).toBe(NEW_ROUND_ANNOUNCEMENT);
     expect(NEW_ROUND_ANNOUNCEMENT).toBe('Nouveau tour');
@@ -152,11 +157,12 @@ describe('result formatting', () => {
 });
 
 describe('ResultPanelComponent', () => {
-  function render(summary: Summary | null, spreadVoters: string | null = null) {
+  function render(summary: Summary | null, spreadVoters: string | null = null, rule: EstimationRule | null = null) {
     TestBed.configureTestingModule({ providers: [{ provide: LOCALE_ID, useValue: 'fr' }] });
     const fixture = TestBed.createComponent(ResultPanelComponent);
     fixture.componentRef.setInput('summary', summary);
     fixture.componentRef.setInput('spreadVoters', spreadVoters);
+    fixture.componentRef.setInput('estimationRule', rule);
     fixture.detectChanges();
     const element: HTMLElement = fixture.nativeElement;
     const text = (selector: string) => element.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim();
@@ -219,11 +225,24 @@ describe('ResultPanelComponent', () => {
     expect(element.textContent).not.toContain('coffee');
   });
 
-  it('the proposal of the session: « Proposition 5 » after the max', () => {
-    const { element, text } = render(summaryOf(revealedMedian));
-    expect(text('.result-proposal')).toBe('Proposition 5');
+  it('the proposal of the session, named after its rule: « Proposition (médiane) 5 » after the max', () => {
+    const { element, text } = render(summaryOf(revealedMedian), null, 'MEDIAN');
+    expect(text('.result-proposal')).toBe('Proposition (médiane) 5');
     expect(element.querySelector('.result-max + .result-proposal')).not.toBeNull();
     expect(element.querySelector('.result-spread')).toBeNull();
+  });
+
+  it('names each rule next to the proposal', () => {
+    expect(proposalLabel('MAX')).toBe('Proposition (la plus grande)');
+    expect(proposalLabel('MEDIAN')).toBe('Proposition (médiane)');
+    expect(proposalLabel('BELOW_MAX')).toBe('Proposition (sous le max)');
+    expect(proposalLabel(null)).toBe('Proposition');
+    const { text } = render(summaryOf(revealedTie), null, 'MAX');
+    expect(text('.result-proposal')).toBe('Proposition (la plus grande) 8');
+    TestBed.resetTestingModule();
+    expect(render(summaryOf(revealedTshirt), null, 'BELOW_MAX').text('.result-proposal')).toBe(
+      'Proposition (sous le max) M',
+    );
   });
 
   it('no proposal with the rule « Aucune »: neither « Proposition » nor « Écart trop grand »', () => {

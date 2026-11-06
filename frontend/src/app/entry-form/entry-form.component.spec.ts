@@ -279,6 +279,27 @@ describe('EntryFormComponent', () => {
       expect(ruleRadios()[3].getAttribute('aria-checked')).toBe('true');
       // Le rôle et le jeu n'ont pas bougé.
       expect(radios()[0].getAttribute('aria-checked')).toBe('true');
+      const deckRadios = [...element.querySelectorAll<HTMLButtonElement>('.deck-group [role="radio"]')];
+      expect(deckRadios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    });
+
+    it('explains the selected rule in one sentence, linked to the group', () => {
+      const hint = () => element.querySelector('#entry-rule-hint')?.textContent?.trim();
+      expect(element.querySelector('.rule-group [role="radiogroup"]')?.getAttribute('aria-describedby')).toBe(
+        'entry-rule-hint',
+      );
+      const hints: string[] = [];
+      for (const index of [0, 1, 2, 3]) {
+        ruleRadios()[index].click();
+        fixture.detectChanges();
+        hints.push(hint()!);
+      }
+      expect(hints).toEqual([
+        'Pas de proposition après la révélation.',
+        'Propose la plus grande carte votée.',
+        "Propose la médiane si l'écart ne dépasse pas 3 cartes ; sinon, le min et le max s'expliquent.",
+        'Propose la carte du jeu juste sous la plus grande votée.',
+      ]);
     });
 
     it('locks the rule while busy', () => {

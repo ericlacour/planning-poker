@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, LOCALE_ID, computed, inject, input } from '@angular/core';
 
-import { Card, SessionState, Summary } from '../api/contract';
+import { Card, EstimationRule, SessionState, Summary } from '../api/contract';
 import { cardText } from './cards';
 import { seatsOf } from './participant-table.component';
 
@@ -53,19 +53,39 @@ export function spreadVoters(state: SessionState): string | null {
 
 /**
  * « Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez » ; sans les pseudos (inconnus),
- * « Écart trop grand : le min et le max expliquent leur vote, puis revotez ».
+ * « Écart trop grand : ceux qui ont voté le min et le max expliquent leur vote, puis revotez ».
  */
 export function spreadMessage(voters: string | null): string {
-  return `Écart trop grand : ${voters ?? 'le min et le max'} expliquent leur vote, puis revotez`;
+  return `Écart trop grand : ${voters ?? 'ceux qui ont voté le min et le max'} expliquent leur vote, puis revotez`;
+}
+
+/** Nom de la règle de la session, accolé à la proposition : `médiane`, `la plus grande`, `sous le max`. */
+const RULE_NAMES: Readonly<Record<EstimationRule, string | null>> = {
+  NONE: null,
+  MAX: 'la plus grande',
+  MEDIAN: 'médiane',
+  BELOW_MAX: 'sous le max',
+};
+
+/** « Proposition (médiane) » ; « Proposition » seul si la règle n'est pas connue. */
+export function proposalLabel(rule: EstimationRule | null): string {
+  const name = rule === null ? null : RULE_NAMES[rule];
+  return name === null ? 'Proposition' : `Proposition (${name})`;
 }
 
 /**
  * Annonce d'une révélation pour la région `aria-live` : « Votes révélés. Moyenne 5,9. Plus votée 5, 6 votes.
- * Min 3, max 13. », avec « Consensus ! » s'il y a consensus, puis « Proposition 8. » s'il y a une proposition, ou
+ * Min 3, max 13. », avec « Consensus ! » s'il y a consensus, puis « Proposition (médiane) 8. » s'il y a une
+ * proposition (avec le nom de la règle de la session), ou
  * « Écart trop grand : … puis revotez. » ; sans vote qui compte, « Votes révélés. Pas de résultat chiffré. ».
  * Des tailles n'ont pas de moyenne : l'annonce la saute.
  */
-export function revealAnnouncement(summary: Summary | null, locale: string, voters: string | null = null): string {
+export function revealAnnouncement(
+  summary: Summary | null,
+  locale: string,
+  voters: string | null = null,
+  rule: EstimationRule | null = null,
+): string {
   if (!summary || !hasResult(summary)) return 'Votes révélés. Pas de résultat chiffré.';
   const mostVoted = summary.mostVoted!;
   const tie = mostVoted.values.length > 1;
@@ -75,7 +95,7 @@ export function revealAnnouncement(summary: Summary | null, locale: string, vote
     `Plus votée ${joinValues(mostVoted.values)}, ${votesCount(mostVoted.count, tie)}.`,
     `Min ${cardText(summary.min!)}, max ${cardText(summary.max!)}.`,
     ...(summary.consensus ? ['Consensus !'] : []),
-    ...(summary.proposal === null ? [] : [`Proposition ${cardText(summary.proposal)}.`]),
+    ...(summary.proposal === null ? [] : [`${proposalLabel(rule)} ${cardText(summary.proposal)}.`]),
     ...(summary.spreadTooWide ? [`${spreadMessage(voters)}.`] : []),
   ].join(' ');
 }
@@ -99,7 +119,7 @@ export function announcementFor(previous: SessionState | null, next: SessionStat
   if (!previous) return null;
   if (previous.round.roundId !== next.round.roundId) return NEW_ROUND_ANNOUNCEMENT;
   if (previous.round.status === 'HIDDEN' && next.round.status === 'REVEALED') {
-    return revealAnnouncement(next.summary, locale, spreadVoters(next));
+    return revealAnnouncement(next.summary, locale, spreadVoters(next), next.estimationRule);
   }
   return null;
 }
@@ -120,8 +140,8 @@ export function arrivalAnnouncements(previous: SessionState | null, next: Sessio
 /**
  * Panneau de résultat (`result-panel`, `consensus-badge`) : affichage pur de la synthèse reçue, sans aucun calcul.
  * Moyenne au format français (absente pour des tailles), badge « Consensus ! », « Plus votée », « Min », « Max »,
- * puis « Proposition » si la règle de la session en donne une, ou « Écart trop grand : … » quand la médiane n'est
- * pas proposée ; sans vote qui compte, « Pas de résultat chiffré ».
+ * puis « Proposition (médiane) » (avec le nom de la règle de la session) si elle en donne une, ou « Écart trop
+ * grand : … » quand la médiane n'est pas proposée ; sans vote qui compte, « Pas de résultat chiffré ».
  */
 @Component({
   selector: 'app-result-panel',
@@ -150,7 +170,9 @@ export function arrivalAnnouncements(previous: SessionState | null, next: Sessio
         </div>
         @if (n.proposal !== null) {
           <div class="result-stat result-proposal">
-            <span class="result-label">Proposition</span>{{ ' ' }}<span class="result-value">{{ n.proposal }}</span>
+            <span class="result-label">{{ n.proposalLabel }}</span>{{ ' ' }}<span class="result-value">{{
+              n.proposal
+            }}</span>
           </div>
         }
         @if (n.spread !== null) {
@@ -168,6 +190,8 @@ export class ResultPanelComponent {
   readonly summary = input.required<Summary | null>();
   /** « Léa (2) et Max (13) » : qui explique son vote quand l'écart est trop grand ({@link spreadVoters}). */
   readonly spreadVoters = input<string | null>(null);
+  /** Règle de la session, nommée à côté de la proposition : « Proposition (médiane) ». */
+  readonly estimationRule = input<EstimationRule | null>(null);
 
   protected readonly numbers = computed(() => {
     const summary = this.summary();
@@ -181,6 +205,7 @@ export class ResultPanelComponent {
       min: cardText(summary.min!),
       max: cardText(summary.max!),
       ...proposalOf(summary, this.spreadVoters()),
+      proposalLabel: proposalLabel(this.estimationRule()),
     };
   });
 }

@@ -205,6 +205,13 @@ class SessionControllerTest {
     }
 
     @Test
+    void anExplicitNullRuleIsReadAsNone() throws Exception {
+        // Comme « deck: null » : lu comme l'absence de règle.
+        JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"estimationRule\":null}");
+        assertThat(stored(response).estimationRule()).isEqualTo(EstimationRule.NONE);
+    }
+
+    @Test
     void anUnknownRuleStoresNothing() throws Exception {
         int before = store.count();
         create("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"estimationRule\":\"AVERAGE\"}")

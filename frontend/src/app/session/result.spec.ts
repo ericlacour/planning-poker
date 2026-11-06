@@ -100,6 +100,12 @@ describe('result formatting', () => {
       'Votes révélés. Moyenne 6,3. Plus votée 5, 2 votes. Min 2, max 13. ' +
         'Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez.',
     );
+    // Avec « La plus grande », la proposition est gardée, puis l'invitation à expliquer son vote.
+    const withMax = { ...state, estimationRule: 'MAX', summary: { ...state.summary!, proposal: '13' } } as SessionState;
+    expect(announcementFor({ ...hidden, estimationRule: 'MAX' } as SessionState, withMax, 'fr')).toBe(
+      'Votes révélés. Moyenne 6,3. Plus votée 5, 2 votes. Min 2, max 13. Proposition (la plus grande) 13. ' +
+        'Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez.',
+    );
     // Plusieurs votes égaux au min : tous nommés, dans l'ordre de la table.
     const [lea, max, nina, omar] = state.participants;
     const twice = { ...state, participants: [lea, max, { ...nina, vote: '2' }, omar] } as SessionState;
@@ -260,6 +266,17 @@ describe('ResultPanelComponent', () => {
     expect(text('.result-max')).toBe('Max 13');
   });
 
+  it('a spread too wide with another rule: the proposal and the voters of the min and the max', () => {
+    const spreadMax: Summary = { ...summaryOf(revealedSpread)!, proposal: '13' };
+    const { text } = render(spreadMax, 'Léa (2) et Max (13)', 'MAX');
+    expect(text('.result-proposal')).toBe('Proposition (la plus grande) 13');
+    expect(text('.result-spread')).toBe('Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez');
+    TestBed.resetTestingModule();
+    const { element, text: noneText } = render(summaryOf(revealedSpread), 'Léa (2) et Max (13)', 'NONE');
+    expect(element.querySelector('.result-proposal')).toBeNull();
+    expect(noneText('.result-spread')).toBe('Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez');
+  });
+
   it('without a numeric vote: only « Pas de résultat chiffré »', () => {
     const { element, text } = render(summaryOf(revealedNoNumeric));
     expect(text('.result-panel')).toBe('Pas de résultat chiffré');
@@ -327,6 +344,15 @@ describe('ResultLineComponent (phone)', () => {
   it('a spread too wide: the message under the line', () => {
     const { element, text } = render(summaryOf(revealedSpread), 'Léa (2) et Max (13)');
     expect(element.querySelector('.result-line-proposal')).toBeNull();
+    expect(text('.result-line-spread')).toBe(
+      'Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez',
+    );
+  });
+
+  it('a spread too wide with another rule: the proposal on the line, the message under it', () => {
+    const spreadBelowMax: Summary = { ...summaryOf(revealedSpread)!, proposal: '8' };
+    const { text } = render(spreadBelowMax, 'Léa (2) et Max (13)');
+    expect(text('.result-line-proposal')).toBe('Proposition 8');
     expect(text('.result-line-spread')).toBe(
       'Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez',
     );

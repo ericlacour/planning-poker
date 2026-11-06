@@ -76,8 +76,8 @@ export function proposalLabel(rule: EstimationRule | null): string {
 /**
  * Annonce d'une révélation pour la région `aria-live` : « Votes révélés. Moyenne 5,9. Plus votée 5, 6 votes.
  * Min 3, max 13. », avec « Consensus ! » s'il y a consensus, puis « Proposition (médiane) 8. » s'il y a une
- * proposition (avec le nom de la règle de la session), ou
- * « Écart trop grand : … puis revotez. » ; sans vote qui compte, « Votes révélés. Pas de résultat chiffré. ».
+ * proposition (avec le nom de la règle de la session), puis
+ * « Écart trop grand : … puis revotez. » si le min et le max sont trop éloignés, quelle que soit la règle ; sans vote qui compte, « Votes révélés. Pas de résultat chiffré. ».
  * Des tailles n'ont pas de moyenne : l'annonce la saute.
  */
 export function revealAnnouncement(
@@ -140,8 +140,8 @@ export function arrivalAnnouncements(previous: SessionState | null, next: Sessio
 /**
  * Panneau de résultat (`result-panel`, `consensus-badge`) : affichage pur de la synthèse reçue, sans aucun calcul.
  * Moyenne au format français (absente pour des tailles), badge « Consensus ! », « Plus votée », « Min », « Max »,
- * puis « Proposition (médiane) » (avec le nom de la règle de la session) si elle en donne une, ou « Écart trop
- * grand : … » quand la médiane n'est pas proposée ; sans vote qui compte, « Pas de résultat chiffré ».
+ * puis « Proposition (médiane) » (avec le nom de la règle de la session) si elle en donne une, et « Écart trop
+ * grand : … » quand le min et le max sont trop éloignés, quelle que soit la règle ; sans vote qui compte, « Pas de résultat chiffré ».
  */
 @Component({
   selector: 'app-result-panel',
@@ -221,7 +221,7 @@ function proposalOf(summary: Summary, voters: string | null): { proposal: string
 /**
  * Résultat condensé du téléphone (`result-panel` < 600 px) : « Moy. 5,9 · Plus votée 5 (6) · Min 3 · Max 13 »,
  * puis « · Proposition 8 » s'il y en a une, badge « Consensus ! » à côté de la moyenne ; « Écart trop grand : … »
- * en dessous quand la médiane n'est pas proposée. Affichage pur de la synthèse reçue. Si la ligne déborde, elle passe
+ * en dessous quand le min et le max sont trop éloignés, quelle que soit la règle. Affichage pur de la synthèse reçue. Si la ligne déborde, elle passe
  * sur deux lignes : la moyenne et le badge, puis le reste (les séparateurs « · » en début de ligne sont rognés par
  * la feuille de style). Sans vote numérique : « Pas de résultat chiffré ».
  */

@@ -25,9 +25,6 @@ class SummaryTest {
         return Summary.of(Arrays.stream(cards).map(c -> Card.of(c).orElseThrow()).toList(), deck, rule);
     }
 
-    private static final EstimationRule[] PROPOSING = { EstimationRule.MAX, EstimationRule.MEDIAN,
-            EstimationRule.BELOW_MAX };
-
     @Test
     void theAverageIsRoundedHalfUpToOneDecimal() {
         // La carte 6 n'est pas dans le jeu : 5,25 (21 / 4) s'obtient avec 3, 5, 5, 8.
@@ -190,7 +187,6 @@ class SummaryTest {
         assertThat(summary.proposal()).isNull();
         assertThat(summary.spreadTooWide()).isFalse();
         assertThat(of(EstimationRule.NONE, "5", "5").proposal()).isNull();
-        assertThat(of(EstimationRule.NONE, "2", "21").spreadTooWide()).isFalse();
         assertThat(of("3", "8").proposal()).isNull();
     }
 
@@ -210,12 +206,21 @@ class SummaryTest {
         assertThat(of(sizes, EstimationRule.MEDIAN, "XXS", "L").spreadTooWide()).isTrue();
     }
 
+    @ParameterizedTest
+    @EnumSource(EstimationRule.class)
+    void everyRuleSaysTheSpreadIsTooWideBeyondThreeLevels(EstimationRule rule) {
+        assertThat(of(rule, "2", "13").spreadTooWide()).as("2 à 13, 4 niveaux").isTrue();
+        assertThat(of(rule, "0", "21").spreadTooWide()).isTrue();
+        assertThat(of(rule, "2", "8").spreadTooWide()).as("2 à 8, 3 niveaux").isFalse();
+        assertThat(of(rule, "2", "?", "coffee").spreadTooWide()).isFalse();
+    }
+
     @Test
-    void onlyTheMedianCanSayTheSpreadIsTooWide() {
-        for (EstimationRule rule : PROPOSING) {
-            Summary summary = of(rule, "0", "21");
-            assertThat(summary.spreadTooWide()).as(rule.name()).isEqualTo(rule == EstimationRule.MEDIAN);
-        }
+    void aSpreadTooWideKeepsTheProposalOfTheOtherRules() {
+        assertThat(of(EstimationRule.MAX, "2", "3", "13").proposal()).isEqualTo(Card.THIRTEEN);
+        assertThat(of(EstimationRule.BELOW_MAX, "2", "3", "13").proposal()).isEqualTo(Card.EIGHT);
+        assertThat(of(EstimationRule.MEDIAN, "2", "3", "13").proposal()).isNull();
+        assertThat(of(EstimationRule.NONE, "2", "3", "13").proposal()).isNull();
     }
 
     private static void assertProposal(Summary summary, Card expected) {

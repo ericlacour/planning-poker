@@ -138,11 +138,11 @@
           "type": "boolean"
         },
         "proposal": {
-          "description": "The estimate proposed by the session's estimationRule, a ranked card of the deck; null with NONE, without any ranked vote, or when spreadTooWide is true. A suggestion only: nothing is kept.",
+          "description": "The estimate proposed by the session's estimationRule, a ranked card of the deck; null with NONE, without any ranked vote, or with MEDIAN when spreadTooWide is true. A suggestion only: nothing is kept.",
           "oneOf": [{ "type": "null" }, { "$ref": "numeric-card.json" }]
         },
         "spreadTooWide": {
-          "description": "true only with MEDIAN, when min and max are more than 3 levels apart in the session deck: no proposal, the voters of min and max explain their vote before voting again.",
+          "description": "true, whatever the estimationRule, when min and max are more than 3 levels apart in the session deck: the voters of min and max explain their vote before voting again. With MEDIAN there is then no proposal; MAX and BELOW_MAX keep theirs.",
           "type": "boolean"
         }
       }

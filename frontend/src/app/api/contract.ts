@@ -204,8 +204,9 @@ export interface ParticipantState {
 /**
  * `session-state.json#/$defs/summary` : synthèse d'un tour révélé, calculée par le webservice seul. `average` est
  * nulle pour des tailles de tee-shirt, qui n'ont pas de moyenne. `proposal` est la carte proposée par la règle de la
- * session (une suggestion, rien n'est retenu) ; `spreadTooWide` dit que la médiane n'est pas proposée parce que le
- * min et le max sont trop éloignés.
+ * session (une suggestion, rien n'est retenu) ; `spreadTooWide` dit, quelle que soit la règle, que le min et le max
+ * sont trop éloignés (plus de 3 niveaux) : ceux qui les ont votés expliquent leur vote. La médiane n'est alors pas
+ * proposée ; les autres règles gardent leur proposition.
  */
 export interface Summary {
   readonly average: number | null;

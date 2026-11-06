@@ -113,6 +113,11 @@ const spreadTooWide = () => ({
   participants: participants(true, SPREAD_VOTES),
   estimationRule: 'MEDIAN',
 });
+/** Même écart trop grand avec « La plus grande » : la proposition 21 et le message, ensemble. */
+const spreadTooWideWithProposal = () => {
+  const state = spreadTooWide();
+  return { ...state, summary: { ...state.summary, proposal: '21' }, estimationRule: 'MAX' };
+};
 /** La ligne condensée la plus longue (égalité à trois valeurs), plus la proposition de la plus grande carte. */
 const tieWithProposal = () => ({ ...revealed({ ...TIE_SUMMARY, proposal: '21' }), estimationRule: 'MAX' });
 
@@ -334,6 +339,20 @@ test.describe('PC 1280 × 650, proposition d’estimation', () => {
     await expect(message).toHaveText(SPREAD_MESSAGE);
     await expectWhole(page, message, panel);
     await expect(panel.locator('.result-proposal')).toHaveCount(0);
+    await expectNoPageScroll(page);
+    for (const name of ['Masquer', 'Nouveau tour']) {
+      expect(await inViewport(page, actionBar(page).getByRole('button', { name, exact: true }))).toBe(true);
+    }
+    await check();
+  });
+
+  test('écart trop grand avec « La plus grande » : proposition et message tiennent, sans défiler', async ({ page }) => {
+    const { check } = await openSession(page, spreadTooWideWithProposal());
+    const panel = actionBar(page).locator('.result-panel');
+    await expect(panel.locator('.result-proposal')).toHaveText('Proposition (la plus grande) 21');
+    const message = panel.locator('.result-spread');
+    await expect(message).toHaveText(SPREAD_MESSAGE);
+    await expectWhole(page, message, panel);
     await expectNoPageScroll(page);
     for (const name of ['Masquer', 'Nouveau tour']) {
       expect(await inViewport(page, actionBar(page).getByRole('button', { name, exact: true }))).toBe(true);
@@ -583,6 +602,18 @@ test.describe('téléphone étroit 360 × 740', () => {
     const { check } = await openSession(page, spreadTooWide());
     const line = page.locator('.result-line-dock');
     await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toBeHidden();
+    const message = line.locator('.result-line-spread');
+    await expect(message).toHaveText(SPREAD_MESSAGE);
+    await expectWhole(page, message, line);
+    await expectNoPageScroll(page);
+    expect(await inViewport(page, actionBar(page))).toBe(true);
+    await check();
+  });
+
+  test('écart trop grand avec « La plus grande » : proposition dans la ligne, message dessous, sans défiler', async ({ page }) => {
+    const { check } = await openSession(page, spreadTooWideWithProposal());
+    const line = page.locator('.result-line-dock');
+    await expect(line.locator('.result-line-proposal')).toHaveText('Proposition 21');
     const message = line.locator('.result-line-spread');
     await expect(message).toHaveText(SPREAD_MESSAGE);
     await expectWhole(page, message, line);

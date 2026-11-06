@@ -288,12 +288,27 @@ test('juste sous le max propose la carte du jeu, même si personne ne l\'a voté
   editJson(dir, 'examples/session-state/revealed-spread-too-wide.json', (s) => {
     s.estimationRule = 'BELOW_MAX';
     s.summary.proposal = '8';
-    s.summary.spreadTooWide = false;
   });
   editJson(dir, 'examples/session-state/revealed-median.json', (s) => { s.summary.spreadTooWide = true; });
   const { errors } = await validateContract(dir);
   assert.ok(!errors.some((e) => e.includes('revealed-spread-too-wide.json')), errors.join('\n'));
   assert.ok(hasError(errors, 'revealed-median.json', 'summary incohérent'), errors.join('\n'));
+});
+
+test('l\'écart trop grand est signalé quelle que soit la règle, et les autres règles gardent leur proposition', async () => {
+  for (const [rule, proposal] of [['NONE', null], ['MAX', '13'], ['BELOW_MAX', '8']]) {
+    const dir = copyContract();
+    editJson(dir, 'examples/session-state/revealed-spread-too-wide.json', (s) => {
+      s.estimationRule = rule;
+      s.summary.proposal = proposal;
+    });
+    const ok = await validateContract(dir);
+    assert.ok(!ok.errors.some((e) => e.includes('revealed-spread-too-wide.json')), `${rule}\n${ok.errors.join('\n')}`);
+
+    editJson(dir, 'examples/session-state/revealed-spread-too-wide.json', (s) => { s.summary.spreadTooWide = false; });
+    const { errors } = await validateContract(dir);
+    assert.ok(hasError(errors, 'revealed-spread-too-wide.json', 'summary incohérent', '"spreadTooWide":true'), `${rule}\n${errors.join('\n')}`);
+  }
 });
 
 test('une règle de proposition inconnue est refusée', async () => {

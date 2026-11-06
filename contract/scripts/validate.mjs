@@ -227,7 +227,7 @@ function checkSessionStates(states) {
     errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une proposition par la médiane, entre un min et un max différents');
   }
   if (!states.some(({ data: s }) => s.summary?.spreadTooWide === true)) {
-    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec un écart trop grand pour la médiane');
+    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec un écart trop grand');
   }
   return errors;
 }
@@ -237,7 +237,7 @@ function checkSessionStates(states) {
 // règle de la session (estimationRule) ; un niveau est un pas entre deux cartes classées du jeu de la session.
 const RANKED = ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const isNumber = (v) => /^\d+(\.\d+)?$/.test(v);
-const MAX_MEDIAN_LEVELS = 3;
+const MAX_SPREAD_LEVELS = 3;
 function summarize(votes, deck, rule) {
   const ranked = votes.filter((v) => RANKED.includes(v));
   if (ranked.length === 0) {
@@ -259,22 +259,21 @@ function summarize(votes, deck, rule) {
 }
 
 function propose(sorted, deck, rule) {
-  const none = { proposal: null, spreadTooWide: false };
   const [min, max] = [sorted[0], sorted.at(-1)];
-  if (rule === 'NONE') return none;
-  if (min === max) return { proposal: min, spreadTooWide: false };
   const levels = deck.filter((c) => RANKED.includes(c));
+  // Quelle que soit la règle, plus de 3 niveaux entre min et max : l'écart est trop grand.
+  const spreadTooWide = levels.indexOf(max) - levels.indexOf(min) > MAX_SPREAD_LEVELS;
+  if (rule === 'NONE') return { proposal: null, spreadTooWide };
+  if (min === max) return { proposal: min, spreadTooWide };
   switch (rule) {
     case 'MAX':
-      return { proposal: max, spreadTooWide: false };
+      return { proposal: max, spreadTooWide };
     case 'MEDIAN':
-      return levels.indexOf(max) - levels.indexOf(min) > MAX_MEDIAN_LEVELS
-        ? { proposal: null, spreadTooWide: true }
-        : { proposal: sorted[Math.floor(sorted.length / 2)], spreadTooWide: false };
+      return { proposal: spreadTooWide ? null : sorted[Math.floor(sorted.length / 2)], spreadTooWide };
     case 'BELOW_MAX':
-      return { proposal: levels[levels.indexOf(max) - 1], spreadTooWide: false };
+      return { proposal: levels[levels.indexOf(max) - 1], spreadTooWide };
     default:
-      return none;
+      return { proposal: null, spreadTooWide };
   }
 }
 

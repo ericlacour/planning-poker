@@ -22,14 +22,18 @@ import java.util.Objects;
  * @param consensus     vrai si au moins deux votes numériques, tous identiques
  * @param proposal      carte proposée par la règle de la session ; nulle avec {@link EstimationRule#NONE}, sans vote
  *                      classé, ou quand l'écart est trop grand
- * @param spreadTooWide vrai seulement avec {@link EstimationRule#MEDIAN}, quand le minimum et le maximum sont à plus
- *                      de {@value #MAX_MEDIAN_LEVELS} niveaux : pas de proposition
+ * @param spreadTooWide vrai, quelle que soit la règle, quand le minimum et le maximum sont à plus de
+ *                      {@value #MAX_SPREAD_LEVELS} niveaux : ceux qui les ont votés expliquent leur vote ; la médiane
+ *                      n'est alors pas proposée
  */
 public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card max, boolean consensus, Card proposal,
         boolean spreadTooWide) {
 
-    /** Écart maximal, en niveaux du jeu, entre le minimum et le maximum pour proposer la médiane. */
-    public static final int MAX_MEDIAN_LEVELS = 3;
+    /**
+     * Écart maximal, en niveaux du jeu, entre le minimum et le maximum ; au-delà, l'écart est trop grand (et la
+     * médiane n'est pas proposée).
+     */
+    public static final int MAX_SPREAD_LEVELS = 3;
 
     /** Aucun vote numérique. */
     public static final Summary EMPTY = new Summary(null, null, null, null, false, null, false);
@@ -41,9 +45,13 @@ public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card ma
         }
     }
 
-    /** Synthèse sans proposition ({@link EstimationRule#NONE}). */
+    /**
+     * Synthèse sans proposition ({@link EstimationRule#NONE}), sur le jeu complet de la famille des votes (les
+     * tailles si l'un d'eux en est une, Fibonacci sinon).
+     */
     public static Summary of(Collection<Card> votes) {
-        return of(votes, Deck.standard(), EstimationRule.NONE);
+        DeckType type = votes.stream().anyMatch(Card::isSize) ? DeckType.TSHIRT : DeckType.FIBONACCI;
+        return of(votes, new Deck(type, type.cards()), EstimationRule.NONE);
     }
 
     /**
@@ -71,16 +79,20 @@ public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card ma
         Card max = ranked.stream().max(Comparator.naturalOrder()).orElseThrow();
         boolean consensus = ranked.size() >= 2 && counts.size() == 1;
         List<Card> sorted = ranked.stream().sorted().toList();
-        Card proposal = proposalOf(sorted, deck, rule);
-        boolean spreadTooWide = rule == EstimationRule.MEDIAN && proposal == null;
+        List<Card> levels = deck.cards().stream().filter(Card::isRanked).toList();
+        boolean spreadTooWide = levelOf(levels, max) - levelOf(levels, min) > MAX_SPREAD_LEVELS;
+        Card proposal = proposalOf(sorted, levels, rule, spreadTooWide);
         return new Summary(average, new MostVoted(tied, top), min, max, consensus, proposal, spreadTooWide);
     }
 
     /**
      * Carte proposée pour des votes classés triés (au moins un) ; nulle avec {@link EstimationRule#NONE}, et pour la
-     * médiane quand l'écart dépasse {@value #MAX_MEDIAN_LEVELS} niveaux.
+     * médiane quand l'écart est trop grand.
+     *
+     * @param levels cartes classées du jeu de la session, dans l'ordre
      */
-    private static Card proposalOf(List<Card> sorted, Deck deck, EstimationRule rule) {
+    private static Card proposalOf(List<Card> sorted, List<Card> levels, EstimationRule rule,
+            boolean spreadTooWide) {
         Card min = sorted.getFirst();
         Card max = sorted.getLast();
         if (rule == EstimationRule.NONE) {
@@ -89,14 +101,11 @@ public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card ma
         if (min == max) {
             return min;
         }
-        List<Card> levels = deck.cards().stream().filter(Card::isRanked).toList();
-        int minLevel = levelOf(levels, min);
-        int maxLevel = levelOf(levels, max);
         return switch (rule) {
             case MAX -> max;
             // Pour un nombre pair de votes, la carte supérieure des deux du milieu.
-            case MEDIAN -> maxLevel - minLevel > MAX_MEDIAN_LEVELS ? null : sorted.get(sorted.size() / 2);
-            case BELOW_MAX -> levels.get(maxLevel - 1);
+            case MEDIAN -> spreadTooWide ? null : sorted.get(sorted.size() / 2);
+            case BELOW_MAX -> levels.get(levelOf(levels, max) - 1);
             case NONE -> null;
         };
     }

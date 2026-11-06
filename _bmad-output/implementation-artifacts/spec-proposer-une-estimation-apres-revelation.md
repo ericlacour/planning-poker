@@ -21,8 +21,10 @@ context:
 Règles (décisions d'Eric du 06/11/2026) :
 0. **Aucune** (`NONE`), présélectionnée et appliquée quand la requête n'en porte pas : pas de proposition.
 1. **La plus grande** (`MAX`) : la carte maximale votée.
-2. **La médiane** (`MEDIAN`) : la médiane des votes classés ; pour un nombre pair de votes, la carte **supérieure** des deux du milieu. Seulement si min et max sont à **3 niveaux au plus** ; au-delà, pas de proposition : le front affiche « Écart trop grand » et invite les pseudos ayant voté le min et le max à expliquer leur vote avant de revoter.
+2. **La médiane** (`MEDIAN`) : la médiane des votes classés ; pour un nombre pair de votes, la carte **supérieure** des deux du milieu. Seulement si min et max sont à **3 niveaux au plus** ; au-delà, pas de proposition.
 3. **Juste sous le max** (`BELOW_MAX`) : la carte **du jeu** juste sous le max, même si personne ne l'a votée (3, 3, 13 → 8).
+
+**Écart trop grand, quelle que soit la règle** (`NONE` comprise ; décision d'Eric du 06/11/2026, voir le Spec Change Log) : si min et max sont à **plus de 3 niveaux**, le front affiche « Écart trop grand » et invite les pseudos ayant voté le min et le max à expliquer leur vote avant de revoter. `MAX` et `BELOW_MAX` gardent leur proposition, `MEDIAN` n'en donne pas.
 
 ## Boundaries & Constraints
 
@@ -46,10 +48,11 @@ Règles (décisions d'Eric du 06/11/2026) :
 | Médiane paire | 3, 5, 5, 8 | Médiane | 5 |
 | Médiane paire, entre deux cartes | 3, 5 | Médiane | 5 |
 | Médiane, écart trop grand | 2, 13 (4 niveaux) | Médiane | aucune, `spreadTooWide` vrai |
+| Écart trop grand, autres règles | 2, 3, 13 (4 niveaux) | La plus grande / Juste sous le max / Aucune | 13 / 8 / aucune, `spreadTooWide` vrai |
 | Médiane, 3 niveaux | 2, 8 | Médiane | 8 |
 | Sous le max | 3, 3, 13 | Juste sous le max | 8 |
 | Un seul vote / tous égaux | 5 | toutes sauf Aucune | 5 |
-| Règle Aucune | 3, 8 | Aucune | aucune |
+| Règle Aucune | 3, 8 (2 niveaux) | Aucune | aucune, `spreadTooWide` faux |
 | Consensus | 5, 5 | toutes sauf Aucune | 5 |
 | Rien de classé | ?, coffee | toutes | aucune |
 | Tailles | S, M, M, XL | Médiane | M |
@@ -99,13 +102,15 @@ Règles (décisions d'Eric du 06/11/2026) :
 
 ## Implementation Notes
 
-- Médiane : `votes classés triés[n / 2]` (milieu pour un nombre impair, carte supérieure des deux du milieu pour un nombre pair). Niveaux = indices dans les cartes classées du jeu de la session. `spreadTooWide` n'est vrai qu'avec `MEDIAN`.
+- Médiane : `votes classés triés[n / 2]` (milieu pour un nombre impair, carte supérieure des deux du milieu pour un nombre pair). Niveaux = indices dans les cartes classées du jeu de la session. `spreadTooWide` est calculé pour toute règle (depuis le 06/11/2026, voir le Spec Change Log).
 - `Summary.of(votes)` reste une commodité (règle `NONE`) ; le domaine passe par `Summary.of(votes, deck, rule)` depuis `Round.summary(deck, rule)`.
 - Exemples : `hidden-round.json` passe en `NONE` (règle sans effet sur un tour caché) pour que les instantanés simulés des e2e qui le reprennent restent cohérents ; nouveaux `revealed-median.json`, `revealed-spread-too-wide.json`, `create-session-request/median.json`. `validate.mjs` exige un exemple de médiane et un d'écart trop grand.
 - Front : pseudos de l'écart calculés par `spreadVoters(state)` dans l'ordre de `seatsOf` (ma place en tête de son groupe) ; dans l'annonce `aria-live`, « Proposition N. » (ou le message d'écart) vient après « Consensus ! ».
 - Accueil 1280 × 600 : sur PC bas, les trois groupes radio posent leur libellé à gauche des boutons (marges 12 px) pour tenir sans défiler ; règles en 4 boutons segmentés sur PC, 2 × 2 sur téléphone.
 
 ## Spec Change Log
+
+- **2026-11-06, demande d'Eric** : l'écart trop grand (min et max à plus de 3 niveaux) est signalé **quelle que soit la règle**, `NONE` comprise, et plus seulement avec la médiane : les pseudos ayant voté le min et le max sont invités à expliquer leur vote. Choix d'implémentation : `MAX` et `BELOW_MAX` gardent leur proposition (affichée avec le message), `MEDIAN` reste sans proposition. `Summary.MAX_MEDIAN_LEVELS` devient `MAX_SPREAD_LEVELS` ; contrat (`session-state.json`, README, `validate.mjs`), `SummaryTest`, `validate.test.mjs`, `result.spec.ts` et `layout.spec.ts` mis à jour. Forme du contrat inchangée : seul le sens de `spreadTooWide` s'élargit.
 
 ## Review Triage Log
 

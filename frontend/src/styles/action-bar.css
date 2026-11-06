@@ -71,6 +71,23 @@
   line-height: 1.1;
 }
 
+/* Proposition d'estimation : une suggestion du webservice, séparée des chiffres par un filet. */
+.result-proposal {
+  padding-left: var(--spacing-6);
+  border-left: 1px solid var(--border);
+}
+
+/* Écart trop grand pour proposer la médiane : sur sa propre ligne, sous les chiffres. */
+.result-spread {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--warning);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
 .result-count {
   color: var(--muted-foreground);
   font-family: var(--typography-label-font-family);

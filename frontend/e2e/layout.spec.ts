@@ -82,9 +82,9 @@ const hidden = (version = 8) => {
 };
 
 /** Synthèse de la maquette (calculée par le webservice, ici donnée telle quelle). */
-const MOCKUP_SUMMARY = { average: 5.9, mostVoted: { values: ['5'], count: 6 }, min: '3', max: '13', consensus: false };
+const MOCKUP_SUMMARY = { average: 5.9, mostVoted: { values: ['5'], count: 6 }, min: '3', max: '13', consensus: false, proposal: null, spreadTooWide: false };
 /** Égalité à trois valeurs et consensus absent : la ligne condensée la plus longue. */
-const TIE_SUMMARY = { average: 10.5, mostVoted: { values: ['3', '5', '13'], count: 3 }, min: '3', max: '21', consensus: false };
+const TIE_SUMMARY = { average: 10.5, mostVoted: { values: ['3', '5', '13'], count: 3 }, min: '3', max: '21', consensus: false, proposal: null, spreadTooWide: false };
 
 /** Tour révélé : tous ont voté sauf Karim (« n'a pas voté »). */
 const revealed = (summary: object = MOCKUP_SUMMARY, version = 9) => ({
@@ -95,6 +95,45 @@ const revealed = (summary: object = MOCKUP_SUMMARY, version = 9) => ({
   summary,
   lastChange: { action: 'REVEAL', byParticipantId: SELF },
 });
+
+/** Médiane, écart trop grand : deux votants au min (Bob, David : 3) et deux au max (Farid, Gaëlle : 21). */
+const SPREAD_VOTES = ['8', '3', '5', '3', '5', '21', '21', '8', '5', '?', null] as const;
+const SPREAD_MESSAGE =
+  'Écart trop grand : Bob (3), David (3), Farid (21) et Gaëlle (21) expliquent leur vote, puis revotez';
+const spreadTooWide = () => ({
+  ...revealed({
+    average: 8.7,
+    mostVoted: { values: ['5'], count: 3 },
+    min: '3',
+    max: '21',
+    consensus: false,
+    proposal: null,
+    spreadTooWide: true,
+  }),
+  participants: participants(true, SPREAD_VOTES),
+  estimationRule: 'MEDIAN',
+});
+/** La ligne condensée la plus longue (égalité à trois valeurs), plus la proposition de la plus grande carte. */
+const tieWithProposal = () => ({ ...revealed({ ...TIE_SUMMARY, proposal: '21' }), estimationRule: 'MAX' });
+
+/** L'élément est visible, entier dans la fenêtre, et rien de lui ne déborde de son conteneur. */
+async function expectWhole(page: Page, locator: Locator, container: Locator) {
+  await expect(locator).toBeVisible();
+  expect(await inViewport(page, locator)).toBe(true);
+  const b = await box(locator);
+  const c = await box(container);
+  expect(b.x).toBeGreaterThanOrEqual(c.x - 0.5);
+  expect(b.x + b.width).toBeLessThanOrEqual(c.x + c.width + 0.5);
+  expect(b.y + b.height).toBeLessThanOrEqual(c.y + c.height + 0.5);
+  // Aucun texte rogné à l'intérieur.
+  expect(await locator.evaluate((e) => e.scrollWidth - e.clientWidth)).toBeLessThanOrEqual(0);
+}
+
+const expectNoPageScroll = async (page: Page) => {
+  const overflow = await pageOverflow(page);
+  expect(overflow.vertical).toBeLessThanOrEqual(0);
+  expect(overflow.horizontal).toBeLessThanOrEqual(0);
+};
 
 /** Webservice simulé : éveillé, session existante, jeton rangé ; le faux WebSocket envoie `snapshot`. */
 /** `answerOnce` : seul le premier `hello` reçoit son instantané (reconnexion qui n'aboutit pas). */
@@ -285,6 +324,37 @@ test.describe('PC 1280 × 650, 13 participants', () => {
   });
 });
 
+test.describe('PC 1280 × 650, proposition d’estimation', () => {
+  test.use({ viewport: PC });
+
+  test('écart trop grand : le message tient sous les chiffres, sans faire défiler la page', async ({ page }) => {
+    const { check } = await openSession(page, spreadTooWide());
+    const panel = actionBar(page).locator('.result-panel');
+    const message = panel.locator('.result-spread');
+    await expect(message).toHaveText(SPREAD_MESSAGE);
+    await expectWhole(page, message, panel);
+    await expect(panel.locator('.result-proposal')).toHaveCount(0);
+    await expectNoPageScroll(page);
+    for (const name of ['Masquer', 'Nouveau tour']) {
+      expect(await inViewport(page, actionBar(page).getByRole('button', { name, exact: true }))).toBe(true);
+    }
+    await check();
+  });
+
+  test('égalité la plus longue et proposition : tout tient, à gauche des boutons', async ({ page }) => {
+    const { check } = await openSession(page, tieWithProposal());
+    const panel = actionBar(page).locator('.result-panel');
+    const proposal = panel.locator('.result-proposal');
+    await expect(proposal).toHaveText(/Proposition \(la plus grande\)\s*21/);
+    await expectWhole(page, proposal, panel);
+    const buttons = await box(actionBar(page).locator('.action-buttons'));
+    const result = await box(panel);
+    expect(result.x + result.width).toBeLessThanOrEqual(buttons.x);
+    await expectNoPageScroll(page);
+    await check();
+  });
+});
+
 test.describe('PC bas 1280 × 500', () => {
   test.use({ viewport: { width: 1280, height: 500 } });
 
@@ -467,7 +537,7 @@ test.describe('téléphone étroit 360 × 740', () => {
   test('consensus : moyenne et badge sur la première ligne, le reste sur la seconde', async ({ page }) => {
     const { check } = await openSession(
       page,
-      revealed({ average: 13, mostVoted: { values: ['13'], count: 10 }, min: '13', max: '13', consensus: true }),
+      revealed({ average: 13, mostVoted: { values: ['13'], count: 10 }, min: '13', max: '13', consensus: true, proposal: null, spreadTooWide: false }),
     );
     const line = page.locator('.result-line-dock');
     await expect(line.locator('.consensus-badge')).toHaveText('Consensus !');
@@ -494,6 +564,8 @@ test.describe('téléphone étroit 360 × 740', () => {
         min: '0',
         max: '21',
         consensus: false,
+        proposal: null,
+        spreadTooWide: false,
       }),
     );
     const line = page.locator('.result-line-dock');
@@ -504,6 +576,36 @@ test.describe('téléphone étroit 360 × 740', () => {
       const b = await box(item);
       expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
     }
+    await check();
+  });
+
+  test('écart trop grand : le message sous la ligne condensée, entier, sans faire défiler la page', async ({ page }) => {
+    const { check } = await openSession(page, spreadTooWide());
+    const line = page.locator('.result-line-dock');
+    await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toBeHidden();
+    const message = line.locator('.result-line-spread');
+    await expect(message).toHaveText(SPREAD_MESSAGE);
+    await expectWhole(page, message, line);
+    await expectNoPageScroll(page);
+    expect(await inViewport(page, actionBar(page))).toBe(true);
+    await check();
+  });
+
+  test('égalité la plus longue et proposition : « Proposition 21 » tient dans la ligne condensée', async ({ page }) => {
+    const { check } = await openSession(page, tieWithProposal());
+    const line = page.locator('.result-line-dock');
+    await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toBeHidden();
+    const proposal = line.locator('.result-line-proposal');
+    await expect(proposal).toHaveText('Proposition 21');
+    // Rien n'est rogné à droite (le « · » de tête de ligne tombe, lui, dans la marge rognée à gauche).
+    const panel = await box(line.locator('.result-line'));
+    expect(await inViewport(page, proposal)).toBe(true);
+    for (const item of await line.locator('.result-line-item').all()) {
+      const b = await box(item);
+      expect(b.x + b.width).toBeLessThanOrEqual(panel.x + panel.width + 0.5);
+    }
+    expect(await lines(line.locator('.result-line-item'))).toBeLessThanOrEqual(3);
+    await expectNoPageScroll(page);
     await check();
   });
 

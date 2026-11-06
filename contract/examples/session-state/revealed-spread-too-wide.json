@@ -1,0 +1,91 @@
+{
+  "type": "sessionState",
+  "sessionId": "k3Jx9QvT2mLpZ8wR4nYb7A",
+  "version": 6,
+  "selfParticipantId": "2c4e6a8b-0d1f-4a3c-9e5b-7d9f1b3d5e7a",
+  "round": {
+    "roundId": "Jd8sK2pQ",
+    "status": "REVEALED"
+  },
+  "participants": [
+    {
+      "participantId": "2c4e6a8b-0d1f-4a3c-9e5b-7d9f1b3d5e7a",
+      "pseudo": "Léa",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 1,
+      "hasVoted": true,
+      "vote": "2",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "4e6a8c0d-2f1b-4c5e-8a7d-9b1d3f5a7c9e",
+      "pseudo": "Max",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 2,
+      "hasVoted": true,
+      "vote": "13",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "6a8c0e2f-4b1d-4e7a-9c9f-1d3f5b7d9a1c",
+      "pseudo": "Nina",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 3,
+      "hasVoted": true,
+      "vote": "5",
+      "canVoteThisRound": true
+    },
+    {
+      "participantId": "8c0e2a4b-6d1f-4a9c-8e1b-3f5b7d9f1c3e",
+      "pseudo": "Omar",
+      "role": "VOTER",
+      "connected": true,
+      "joinOrder": 4,
+      "hasVoted": true,
+      "vote": "5",
+      "canVoteThisRound": true
+    }
+  ],
+  "progress": {
+    "voted": 4,
+    "expected": 4
+  },
+  "summary": {
+    "average": 6.3,
+    "mostVoted": {
+      "values": [
+        "5"
+      ],
+      "count": 2
+    },
+    "min": "2",
+    "max": "13",
+    "consensus": false,
+    "proposal": null,
+    "spreadTooWide": true
+  },
+  "lastChange": {
+    "action": "REVEAL",
+    "byParticipantId": "4e6a8c0d-2f1b-4c5e-8a7d-9b1d3f5a7c9e"
+  },
+  "deck": {
+    "type": "FIBONACCI",
+    "cards": [
+      "0",
+      "0.5",
+      "1",
+      "2",
+      "3",
+      "5",
+      "8",
+      "13",
+      "21",
+      "?",
+      "coffee"
+    ]
+  },
+  "estimationRule": "MEDIAN"
+}

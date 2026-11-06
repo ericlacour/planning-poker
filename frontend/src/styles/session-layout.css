@@ -287,6 +287,16 @@ app-action-bar,
   line-height: var(--typography-result-stat-line-height);
 }
 
+/* Écart trop grand : sous la ligne condensée, le texte peut passer sur plusieurs lignes. */
+.result-line-spread {
+  margin: var(--spacing-1) 0 0;
+  color: var(--warning);
+  font-family: var(--typography-label-font-family);
+  font-size: var(--typography-label-font-size);
+  font-weight: var(--typography-label-font-weight);
+  line-height: var(--typography-label-line-height);
+}
+
 .result-line .result-none {
   padding: var(--spacing-1) 0;
 }

@@ -167,6 +167,7 @@ describe('EntryFormComponent', () => {
           pseudo: 'Eric',
           role: 'VOTER',
           deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
+          estimationRule: 'NONE',
         },
       ]);
     });
@@ -231,6 +232,79 @@ describe('EntryFormComponent', () => {
       set('busy', true);
       expect(chips().every((c) => c.disabled)).toBe(true);
       expect(deckRadios().every((r) => r.disabled)).toBe(true);
+    });
+  });
+
+  describe('estimation rule (session creation)', () => {
+    const ruleRadios = () => [...element.querySelectorAll<HTMLButtonElement>('.rule-group [role="radio"]')];
+    const submitForm = () => element.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+
+    beforeEach(() => set('withDeck', true));
+
+    it('is absent unless the form creates a session', () => {
+      set('withDeck', false);
+      expect(element.querySelector('.rule-group')).toBeNull();
+    });
+
+    it('sits under the deck, in an accessible radio group, with « Aucune » checked', () => {
+      expect(element.querySelector('.deck-group + .rule-group')).not.toBeNull();
+      expect(element.querySelector('#entry-rule-label')?.textContent).toBe("Proposition d'estimation");
+      expect(element.querySelector('.rule-group [role="radiogroup"]')?.getAttribute('aria-labelledby')).toBe(
+        'entry-rule-label',
+      );
+      expect(ruleRadios().map((r) => r.textContent?.trim())).toEqual([
+        'Aucune', 'La plus grande', 'Médiane', 'Juste sous le max',
+      ]);
+      expect(ruleRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false']);
+      expect(ruleRadios().map((r) => r.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1']);
+    });
+
+    it('submits the chosen rule with the deck', () => {
+      type('Eric');
+      ruleRadios()[2].click();
+      fixture.detectChanges();
+      expect(ruleRadios().map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true', 'false']);
+      submitForm();
+      expect(submitted[0].estimationRule).toBe('MEDIAN');
+      expect(submitted[0].deck?.type).toBe('FIBONACCI');
+    });
+
+    it('moves the rule with the arrow keys, wrapping around', () => {
+      ruleRadios()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      fixture.detectChanges();
+      expect(ruleRadios()[1].getAttribute('aria-checked')).toBe('true');
+      ruleRadios()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      ruleRadios()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      fixture.detectChanges();
+      expect(ruleRadios()[3].getAttribute('aria-checked')).toBe('true');
+      // Le rôle et le jeu n'ont pas bougé.
+      expect(radios()[0].getAttribute('aria-checked')).toBe('true');
+      const deckRadios = [...element.querySelectorAll<HTMLButtonElement>('.deck-group [role="radio"]')];
+      expect(deckRadios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    });
+
+    it('explains the selected rule in one sentence, linked to the group', () => {
+      const hint = () => element.querySelector('#entry-rule-hint')?.textContent?.trim();
+      expect(element.querySelector('.rule-group [role="radiogroup"]')?.getAttribute('aria-describedby')).toBe(
+        'entry-rule-hint',
+      );
+      const hints: string[] = [];
+      for (const index of [0, 1, 2, 3]) {
+        ruleRadios()[index].click();
+        fixture.detectChanges();
+        hints.push(hint()!);
+      }
+      expect(hints).toEqual([
+        'Pas de proposition après la révélation.',
+        'Propose la plus grande carte votée.',
+        "Propose la médiane si l'écart ne dépasse pas 3 cartes ; sinon, le min et le max s'expliquent.",
+        'Propose la carte du jeu juste sous la plus grande votée.',
+      ]);
+    });
+
+    it('locks the rule while busy', () => {
+      set('busy', true);
+      expect(ruleRadios().every((r) => r.disabled)).toBe(true);
     });
   });
 });

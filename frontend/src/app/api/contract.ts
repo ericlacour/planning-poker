@@ -19,13 +19,20 @@ export interface Deck {
 }
 
 /**
+ * `common.json#/$defs/estimationRule` : comment le webservice propose une estimation après la révélation, choisi à
+ * la création de la session et figé ensuite. `NONE` : aucune proposition.
+ */
+export type EstimationRule = 'NONE' | 'MAX' | 'MEDIAN' | 'BELOW_MAX';
+
+/**
  * `create-session-request.json` : le pseudo est brut, le webservice le normalise. Sans `deck`, la session propose
- * toute la suite de Fibonacci.
+ * toute la suite de Fibonacci ; sans `estimationRule`, aucune proposition (`NONE`).
  */
 export interface CreateSessionRequest {
   readonly pseudo: string;
   readonly role: Role;
   readonly deck?: Deck;
+  readonly estimationRule?: EstimationRule;
 }
 
 /** `create-session-response.json`. `participantToken` est SECRET : jamais dans une URL ni un journal. */
@@ -85,8 +92,18 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const matches = (value: unknown, pattern: RegExp): value is string =>
   typeof value === 'string' && pattern.test(value);
 
-export function createSessionRequest(pseudo: string, role: Role, deck?: Deck): CreateSessionRequest {
-  return deck === undefined ? { pseudo, role } : { pseudo, role, deck };
+export function createSessionRequest(
+  pseudo: string,
+  role: Role,
+  deck?: Deck,
+  estimationRule?: EstimationRule,
+): CreateSessionRequest {
+  return {
+    pseudo,
+    role,
+    ...(deck === undefined ? {} : { deck }),
+    ...(estimationRule === undefined ? {} : { estimationRule }),
+  };
 }
 
 /** Lit une réponse de création, ou lève une erreur si elle ne respecte pas le contrat. */
@@ -186,7 +203,9 @@ export interface ParticipantState {
 
 /**
  * `session-state.json#/$defs/summary` : synthèse d'un tour révélé, calculée par le webservice seul. `average` est
- * nulle pour des tailles de tee-shirt, qui n'ont pas de moyenne.
+ * nulle pour des tailles de tee-shirt, qui n'ont pas de moyenne. `proposal` est la carte proposée par la règle de la
+ * session (une suggestion, rien n'est retenu) ; `spreadTooWide` dit que la médiane n'est pas proposée parce que le
+ * min et le max sont trop éloignés.
  */
 export interface Summary {
   readonly average: number | null;
@@ -194,6 +213,8 @@ export interface Summary {
   readonly min: Card | null;
   readonly max: Card | null;
   readonly consensus: boolean;
+  readonly proposal: Card | null;
+  readonly spreadTooWide: boolean;
 }
 
 /** `session-state.json` : instantané complet pour ce destinataire ; le client le remplace sans fusionner. */
@@ -210,6 +231,8 @@ export interface SessionState {
   readonly lastChange: { readonly action: ChangeAction; readonly byParticipantId: string | null };
   /** Les cartes de la session, dans l'ordre de la main : les mêmes pour tous, pour toute la vie de la session. */
   readonly deck: Deck;
+  /** La règle de proposition de la session : la même pour tous, pour toute la vie de la session. */
+  readonly estimationRule: EstimationRule;
 }
 
 /** `tick.json` */
@@ -312,6 +335,8 @@ const CARDS: readonly Card[] = [
 /** Les cartes qui comptent dans la synthèse (`numeric-card.json`) : tout sauf `?` et `coffee`. */
 const RANKED_CARDS: readonly Card[] = CARDS.filter((card) => card !== '?' && card !== 'coffee');
 const DECK_TYPES: readonly DeckType[] = ['FIBONACCI', 'TSHIRT'];
+/** `common.json#/$defs/estimationRule` */
+export const ESTIMATION_RULES: readonly EstimationRule[] = ['NONE', 'MAX', 'MEDIAN', 'BELOW_MAX'];
 const ACTIONS: readonly ChangeAction[] = ['JOIN', 'LEAVE', 'VOTE', 'REVEAL', 'HIDE', 'CLEAR', 'ROLE', 'PRESENCE'];
 const ERROR_CODES: readonly ErrorCode[] = ['ROUND_REVEALED', 'NOT_A_VOTER', 'INVALID_CARD', 'INVALID_MESSAGE'];
 const ROLES: readonly Role[] = ['VOTER', 'OBSERVER'];
@@ -347,7 +372,12 @@ function isParticipant(value: unknown): value is ParticipantState {
 }
 
 function isSummary(value: unknown): value is Summary {
-  if (!isObject(value) || !hasExactly(value, ['average', 'mostVoted', 'min', 'max', 'consensus'])) return false;
+  if (
+    !isObject(value) ||
+    !hasExactly(value, ['average', 'mostVoted', 'min', 'max', 'consensus', 'proposal', 'spreadTooWide'])
+  ) {
+    return false;
+  }
   const mostVoted = value['mostVoted'];
   return (
     (value['average'] === null || typeof value['average'] === 'number') &&
@@ -360,7 +390,9 @@ function isSummary(value: unknown): value is Summary {
         isInteger(mostVoted['count'], 1))) &&
     isRankedCardOrNull(value['min']) &&
     isRankedCardOrNull(value['max']) &&
-    typeof value['consensus'] === 'boolean'
+    typeof value['consensus'] === 'boolean' &&
+    isRankedCardOrNull(value['proposal']) &&
+    typeof value['spreadTooWide'] === 'boolean'
   );
 }
 
@@ -382,7 +414,7 @@ function isSessionState(json: Record<string, unknown>): boolean {
   return (
     hasExactly(json, [
       'type', 'sessionId', 'version', 'selfParticipantId', 'round', 'participants', 'progress', 'summary', 'lastChange',
-      'deck',
+      'deck', 'estimationRule',
     ]) &&
     matches(json['sessionId'], BASE64URL_128_BITS) &&
     isInteger(json['version'], 1) &&
@@ -399,6 +431,7 @@ function isSessionState(json: Record<string, unknown>): boolean {
     isInteger(progress['expected'], 0) &&
     (summary === null || isSummary(summary)) &&
     isDeck(deck) &&
+    isOneOf(json['estimationRule'], ESTIMATION_RULES) &&
     isObject(lastChange) &&
     hasExactly(lastChange, ['action', 'byParticipantId']) &&
     isOneOf(lastChange['action'], ACTIONS) &&

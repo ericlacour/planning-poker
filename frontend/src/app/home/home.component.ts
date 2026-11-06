@@ -42,13 +42,15 @@ export class HomeComponent {
   protected readonly pseudoError = signal<string | null>(null);
   protected readonly submitError = signal<string | null>(null);
 
-  protected async create({ pseudo, role, deck }: EntryFormValue): Promise<void> {
+  protected async create({ pseudo, role, deck, estimationRule }: EntryFormValue): Promise<void> {
     this.busy.set(true);
     this.pseudoError.set(null);
     this.submitError.set(null);
     let sessionId: string;
     try {
-      const response = await this.api.createSession(createSessionRequest(pseudo, role, deck));
+      const response = await this.api.createSession(
+        createSessionRequest(pseudo, role, deck, estimationRule),
+      );
       sessionId = response.sessionId;
       this.storage.saveToken(sessionId, response.participantToken);
       this.storage.savePseudo(pseudo.trim());

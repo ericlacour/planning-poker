@@ -209,7 +209,7 @@ function checkSessionStates(states) {
     }
     if (s.round?.status === 'HIDDEN' && s.summary !== null) fail('summary doit valoir null pendant un tour caché');
     if (s.round?.status === 'REVEALED') {
-      const expected = summarize(ps.map((p) => p.vote));
+      const expected = summarize(ps.map((p) => p.vote), deck, s.estimationRule);
       if (!isDeepStrictEqual(s.summary, expected)) {
         fail(`summary incohérent avec les votes : attendu ${JSON.stringify(expected)}`);
       }
@@ -222,16 +222,27 @@ function checkSessionStates(states) {
   if (!states.some(({ data: s }) => s.round?.status === 'REVEALED' && s.summary?.mostVoted?.values.length > 1)) {
     errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une égalité sur la plus votée');
   }
+  if (!states.some(({ data: s }) => s.estimationRule === 'MEDIAN' && s.summary?.proposal != null
+    && s.summary.min !== s.summary.max)) {
+    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec une proposition par la médiane, entre un min et un max différents');
+  }
+  if (!states.some(({ data: s }) => s.summary?.spreadTooWide === true)) {
+    errors.push('examples/session-state/ : il faut un exemple de tour révélé avec un écart trop grand pour la médiane');
+  }
   return errors;
 }
 
 // Synthèse de référence (FR14), pour vérifier les exemples ; le domaine Java reste l'autorité. Les cartes qui comptent
-// sont les numériques et les tailles, dans l'ordre du jeu ; les tailles n'ont pas de moyenne.
+// sont les numériques et les tailles, dans l'ordre du jeu ; les tailles n'ont pas de moyenne. La proposition suit la
+// règle de la session (estimationRule) ; un niveau est un pas entre deux cartes classées du jeu de la session.
 const RANKED = ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', 'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const isNumber = (v) => /^\d+(\.\d+)?$/.test(v);
-function summarize(votes) {
+const MAX_MEDIAN_LEVELS = 3;
+function summarize(votes, deck, rule) {
   const ranked = votes.filter((v) => RANKED.includes(v));
-  if (ranked.length === 0) return { average: null, mostVoted: null, min: null, max: null, consensus: false };
+  if (ranked.length === 0) {
+    return { average: null, mostVoted: null, min: null, max: null, consensus: false, proposal: null, spreadTooWide: false };
+  }
   const counts = new Map();
   for (const v of ranked) counts.set(v, (counts.get(v) ?? 0) + 1);
   const count = Math.max(...counts.values());
@@ -243,7 +254,28 @@ function summarize(votes) {
     min: sorted[0],
     max: sorted.at(-1),
     consensus: ranked.length >= 2 && counts.size === 1,
+    ...propose(sorted, deck, rule),
   };
+}
+
+function propose(sorted, deck, rule) {
+  const none = { proposal: null, spreadTooWide: false };
+  const [min, max] = [sorted[0], sorted.at(-1)];
+  if (rule === 'NONE') return none;
+  if (min === max) return { proposal: min, spreadTooWide: false };
+  const levels = deck.filter((c) => RANKED.includes(c));
+  switch (rule) {
+    case 'MAX':
+      return { proposal: max, spreadTooWide: false };
+    case 'MEDIAN':
+      return levels.indexOf(max) - levels.indexOf(min) > MAX_MEDIAN_LEVELS
+        ? { proposal: null, spreadTooWide: true }
+        : { proposal: sorted[Math.floor(sorted.length / 2)], spreadTooWide: false };
+    case 'BELOW_MAX':
+      return { proposal: levels[levels.indexOf(max) - 1], spreadTooWide: false };
+    default:
+      return none;
+  }
 }
 
 function collectSchemaRefs(node, found = new Set()) {

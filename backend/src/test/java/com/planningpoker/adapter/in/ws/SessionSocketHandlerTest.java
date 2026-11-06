@@ -102,7 +102,12 @@ class SessionSocketHandlerTest {
     }
 
     private Created createSession(String pseudo, String role) throws Exception {
-        JsonNode body = post("/api/sessions", pseudo, role);
+        return createSession(pseudo, role, "");
+    }
+
+    /** {@code extra} : champs JSON ajoutés au corps, précédés d'une virgule ({@code ,"estimationRule":"MEDIAN"}). */
+    private Created createSession(String pseudo, String role, String extra) throws Exception {
+        JsonNode body = post("/api/sessions", pseudo, role, extra);
         return new Created(body.get("sessionId").asString(), body.get("participantId").asString(),
                 body.get("participantToken").asString());
     }
@@ -113,10 +118,14 @@ class SessionSocketHandlerTest {
     }
 
     private JsonNode post(String path, String pseudo, String role) throws Exception {
+        return post(path, pseudo, role, "");
+    }
+
+    private JsonNode post(String path, String pseudo, String role, String extra) throws Exception {
         HttpResponse<String> response = http.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(
-                        "{\"pseudo\":\"" + pseudo + "\",\"role\":\"" + role + "\"}"))
+                        "{\"pseudo\":\"" + pseudo + "\",\"role\":\"" + role + "\"" + extra + "}"))
                 .build(), HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isBetween(200, 201);
         return jsonMapper.readTree(response.body());
@@ -662,6 +671,10 @@ class SessionSocketHandlerTest {
             assertThat(summary.get("min").asString()).isEqualTo("5");
             assertThat(summary.get("max").asString()).isEqualTo("8");
             assertThat(summary.get("consensus").asBoolean()).isFalse();
+            // Session créée sans règle : aucune proposition.
+            assertThat(state.get("estimationRule").asString()).isEqualTo("NONE");
+            assertThat(summary.get("proposal").isNull()).isTrue();
+            assertThat(summary.get("spreadTooWide").asBoolean()).isFalse();
         }
 
         // Déjà révélé : rien. Vote : ROUND_REVEALED à son seul auteur.
@@ -686,6 +699,46 @@ class SessionSocketHandlerTest {
                 assertThat(participant.get("hasVoted").asBoolean()).isFalse();
                 assertThat(participant.get("vote").isNull()).isTrue();
             }
+        }
+    }
+
+    @Test
+    void aSessionCreatedWithTheMedianSendsItsRuleAndItsProposalToEveryone() throws Exception {
+        Created alice = createSession("Alice", "VOTER", ",\"estimationRule\":\"MEDIAN\"");
+        Connected[] both = twoVoters(alice);
+        Connected a = both[0];
+        Connected b = both[1];
+        assertThat(a.state().get("estimationRule").asString()).isEqualTo("MEDIAN");
+        assertThat(b.state().get("estimationRule").asString()).isEqualTo("MEDIAN");
+
+        // 3 et 5 : médiane paire, la carte supérieure.
+        a.client().send(vote(a.state(), "3"));
+        nextState(a.client());
+        nextState(b.client());
+        b.client().send(vote(b.state(), "5"));
+        nextState(a.client());
+        nextState(b.client());
+        a.client().send(intent("reveal", a.state()));
+        for (Client client : new Client[] { a.client(), b.client() }) {
+            JsonNode state = nextState(client);
+            assertThat(state.get("estimationRule").asString()).isEqualTo("MEDIAN");
+            assertThat(state.get("summary").get("proposal").asString()).isEqualTo("5");
+            assertThat(state.get("summary").get("spreadTooWide").asBoolean()).isFalse();
+        }
+
+        // Masquer, Bob revote 21 : de 3 à 21, 4 niveaux, écart trop grand.
+        a.client().send(intent("hide", a.state()));
+        nextState(a.client());
+        nextState(b.client());
+        b.client().send(vote(b.state(), "21"));
+        nextState(a.client());
+        nextState(b.client());
+        b.client().send(intent("reveal", b.state()));
+        for (Client client : new Client[] { a.client(), b.client() }) {
+            JsonNode state = nextState(client);
+            assertThat(state.get("estimationRule").asString()).isEqualTo("MEDIAN");
+            assertThat(state.get("summary").get("proposal").isNull()).isTrue();
+            assertThat(state.get("summary").get("spreadTooWide").asBoolean()).isTrue();
         }
     }
 

@@ -9,6 +9,8 @@ import hello from '../../../../contract/examples/hello/hello.json';
 import alone from '../../../../contract/examples/session-state/alone-after-create.json';
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import newRoundAfterSweep from '../../../../contract/examples/session-state/new-round-after-sweep.json';
+import revealedMedian from '../../../../contract/examples/session-state/revealed-median.json';
+import revealedSpread from '../../../../contract/examples/session-state/revealed-spread-too-wide.json';
 import revealedConsensus from '../../../../contract/examples/session-state/revealed-consensus.json';
 import revealedNoNumeric from '../../../../contract/examples/session-state/revealed-no-numeric-vote.json';
 import revealedObserver from '../../../../contract/examples/session-state/revealed-seen-by-observer.json';
@@ -47,6 +49,8 @@ describe('WebSocket contract round trip', () => {
     ['revealed-seen-by-observer', revealedObserver],
     ['revealed-tie', revealedTie],
     ['revealed-tshirt-tie', revealedTshirt],
+    ['revealed-median', revealedMedian],
+    ['revealed-spread-too-wide', revealedSpread],
   ])('session-state/%s', (_, example) => {
     expect(roundTrip(parseServerMessage(example))).toEqual(example);
   });
@@ -125,6 +129,33 @@ describe('parseServerMessage', () => {
     expect(parseServerMessage({ ...alone, deck: { ...deck, cards: ['1', '1'] } })).toBeNull();
     expect(parseServerMessage({ ...alone, deck: { ...deck, cards: ['1', '4'] } })).toBeNull();
     expect(parseServerMessage({ ...alone, deck: { ...deck, extra: 1 } })).toBeNull();
+  });
+
+  it('rejects a snapshot whose estimation rule is missing or unknown', () => {
+    const { estimationRule, ...withoutRule } = alone;
+    expect(estimationRule).toBe('NONE');
+    expect(parseServerMessage(withoutRule)).toBeNull();
+    expect(parseServerMessage({ ...alone, estimationRule: 'AVERAGE' })).toBeNull();
+    expect(parseServerMessage({ ...alone, estimationRule: null })).toBeNull();
+  });
+
+  it('reads the proposal and rejects a summary without it or outside the contract', () => {
+    const parsed = parseServerMessage(revealedMedian);
+    expect(parsed?.type === 'sessionState' && parsed.summary?.proposal).toBe('5');
+    expect(parsed?.type === 'sessionState' && parsed.estimationRule).toBe('MEDIAN');
+    const spread = parseServerMessage(revealedSpread);
+    expect(spread?.type === 'sessionState' && spread.summary?.spreadTooWide).toBe(true);
+    expect(spread?.type === 'sessionState' && spread.summary?.proposal).toBeNull();
+
+    const { proposal, ...withoutProposal } = revealedMedian.summary;
+    expect(proposal).toBe('5');
+    expect(parseServerMessage({ ...revealedMedian, summary: withoutProposal })).toBeNull();
+    const { spreadTooWide, ...withoutSpread } = revealedMedian.summary;
+    expect(spreadTooWide).toBe(false);
+    expect(parseServerMessage({ ...revealedMedian, summary: withoutSpread })).toBeNull();
+    expect(parseServerMessage({ ...revealedMedian, summary: { ...revealedMedian.summary, proposal: '?' } })).toBeNull();
+    expect(parseServerMessage({ ...revealedMedian, summary: { ...revealedMedian.summary, proposal: '4' } })).toBeNull();
+    expect(parseServerMessage({ ...revealedMedian, summary: { ...revealedMedian.summary, spreadTooWide: 'no' } })).toBeNull();
   });
 
   it('reads the deck of a T-shirt session and a summary without average', () => {

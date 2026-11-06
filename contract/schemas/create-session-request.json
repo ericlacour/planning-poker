@@ -11,6 +11,10 @@
     "deck": {
       "description": "Optional. Without it, the session offers every card of FIBONACCI. A deck that breaks the rules of its family is refused with INVALID_DECK.",
       "$ref": "common.json#/$defs/deck"
+    },
+    "estimationRule": {
+      "description": "Optional. Without it, NONE: no proposal after a reveal. An unknown value is a malformed body (400 without code).",
+      "$ref": "common.json#/$defs/estimationRule"
     }
   }
 }

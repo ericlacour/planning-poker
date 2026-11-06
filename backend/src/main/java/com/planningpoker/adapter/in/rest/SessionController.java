@@ -49,7 +49,8 @@ public class SessionController {
         CreationRateLimiter.Slot slot = creationRateLimiter.acquire(ClientAddress.of(http));
         CreateSessionResult result;
         try {
-            result = createSession.create(request.pseudo(), request.role(), request.deckOrDefault());
+            result = createSession.create(request.pseudo(), request.role(), request.deckOrDefault(),
+                    request.estimationRuleOrDefault());
         } catch (RuntimeException e) {
             creationRateLimiter.release(slot);
             throw e;

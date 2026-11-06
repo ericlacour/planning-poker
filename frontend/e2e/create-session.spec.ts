@@ -164,7 +164,41 @@ test('choisir les cartes de la session : tailles de tee-shirt, certaines retiré
 
   await page.getByRole('button', { name: 'Créer une session' }).click();
   await expect(page).toHaveURL(`${APP}/s/${SESSION_ID}`);
-  expect(bodies).toEqual([{ pseudo: 'Eric', role: 'VOTER', deck: { type: 'TSHIRT', cards: ['M', 'XL'] } }]);
+  expect(bodies).toEqual([
+    { pseudo: 'Eric', role: 'VOTER', deck: { type: 'TSHIRT', cards: ['M', 'XL'] }, estimationRule: 'NONE' },
+  ]);
+});
+
+test('choisir la proposition d\'estimation : « Aucune » cochée, puis « Médiane » au clavier, envoyée à la création', async ({
+  page,
+}) => {
+  const check = await watchPage(page);
+  const bodies = await mockApi(page, () => 'created');
+  await page.goto('/');
+
+  const group = page.getByRole('radiogroup', { name: "Proposition d'estimation" });
+  await expect(group).toBeVisible();
+  await expect(group.getByRole('radio')).toHaveText(['Aucune', 'La plus grande', 'Médiane', 'Juste sous le max']);
+  await expect(group.getByRole('radio', { name: 'Aucune' })).toHaveAttribute('aria-checked', 'true');
+
+  await group.getByRole('radio', { name: 'Aucune' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(group.getByRole('radio', { name: 'Médiane' })).toHaveAttribute('aria-checked', 'true');
+  await expect(group.getByRole('radio', { name: 'Médiane' })).toBeFocused();
+  await check();
+
+  await page.getByLabel('Ton pseudo').fill('Eric');
+  await page.getByRole('button', { name: 'Créer une session' }).click();
+  await expect(page).toHaveURL(`${APP}/s/${SESSION_ID}`);
+  expect(bodies).toEqual([
+    {
+      pseudo: 'Eric',
+      role: 'VOTER',
+      deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
+      estimationRule: 'MEDIAN',
+    },
+  ]);
 });
 
 test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistrés, et « Copier le lien » copie le lien', async ({
@@ -189,6 +223,7 @@ test('créer une session mène à /s/{id}, avec le jeton et le pseudo enregistr�
       pseudo: '  Eric ',
       role: 'OBSERVER',
       deck: { type: 'FIBONACCI', cards: ['0', '0.5', '1', '2', '3', '5', '8', '13', '21', '?', 'coffee'] },
+      estimationRule: 'NONE',
     },
   ]);
   expect(await page.evaluate((id) => localStorage.getItem(`pp.token.${id}`), SESSION_ID)).toBe(CREATED.participantToken);

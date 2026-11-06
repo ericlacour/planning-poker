@@ -46,3 +46,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-garder-le-serveur-eveille-par-http.md`
   summary: Vérifier sur Render qu'une page de session ouverte plus de 15 min (onglet caché) empêche bien la mise en veille, et le consigner dans `deploy/README.md`.
   evidence: Les tests simulent le webservice ; seul un essai sur Render prouve que l'appel `/api/health` toutes les 5 min (et le `heartbeat` WebSocket) gardent le service éveillé.
+- source_spec: `_bmad-output/implementation-artifacts/spec-proposer-une-estimation-apres-revelation.md`
+  summary: Décider comment le front survit à un déploiement qui ajoute des champs requis à `sessionState` (rechargement forcé, contrôle de version ou parseur tolérant), puisque `hasExactly` rejette tout champ inconnu.
+  evidence: Un onglet ouvert sur l'ancienne version rejette chaque `sessionState` portant `estimationRule` / `summary.proposal` ; même situation lors de l'ajout de `deck` (commit ce4fb4c), donc préexistant.
+- source_spec: `_bmad-output/implementation-artifacts/spec-proposer-une-estimation-apres-revelation.md`
+  summary: Stabiliser `LimitsEndToEndTest.aMessageOverTheLimitClosesWith1009`, qui a reçu une fois 1006 au lieu de 1009 pendant un `./mvnw verify` complet.
+  evidence: Échec isolé le 06/11/2026 sans changement du code de production depuis le run vert précédent ; le test passe 3 fois sur 3 seul et le `verify` suivant passe (528 tests).

@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,7 @@ import com.planningpoker.application.SessionStore;
 import com.planningpoker.domain.Card;
 import com.planningpoker.domain.Deck;
 import com.planningpoker.domain.DeckType;
+import com.planningpoker.domain.EstimationRule;
 import com.planningpoker.domain.Role;
 import com.planningpoker.domain.Session;
 
@@ -94,6 +96,9 @@ class SessionControllerTest {
         assertThat(subset.deck().cards()).containsExactly(Card.ONE, Card.THREE, Card.FIVE, Card.EIGHT, Card.UNKNOWN,
                 Card.COFFEE);
 
+        Session median = stored(created(ContractExamples.read("create-session-request", "median")));
+        assertThat(median.estimationRule()).isEqualTo(EstimationRule.MEDIAN);
+
         JsonNode observer = created(ContractExamples.read("create-session-request", "observer"));
         assertThat(stored(observer).participants().getFirst().role()).isEqualTo(Role.OBSERVER);
         assertThat(stored(observer).participants().getFirst().pseudo().value()).isEqualTo("Paul");
@@ -134,6 +139,10 @@ class SessionControllerTest {
             "{\"pseudo\":true,\"role\":\"VOTER\"}",
             "{\"pseudo\":4.2,\"role\":\"VOTER\"}",
             "{\"pseudo\":\"Alice\",\"role\":0}",
+            "{\"pseudo\":\"Alice\",\"role\":\"VOTER\",\"estimationRule\":\"AVERAGE\"}",
+            "{\"pseudo\":\"Alice\",\"role\":\"VOTER\",\"estimationRule\":\"median\"}",
+            "{\"pseudo\":\"Alice\",\"role\":\"VOTER\",\"estimationRule\":1}",
+            "{\"pseudo\":\"Alice\",\"role\":\"VOTER\",\"estimationRule\":{}}",
             "[]",
             "pas du JSON",
             "" })
@@ -178,6 +187,37 @@ class SessionControllerTest {
     void withoutADeckTheSessionOffersTheWholeFibonacciSuite() throws Exception {
         JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\"}");
         assertThat(stored(response).deck()).isEqualTo(Deck.standard());
+    }
+
+    @Test
+    void withoutARuleTheSessionProposesNothing() throws Exception {
+        JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\"}");
+        assertThat(stored(response).estimationRule()).isEqualTo(EstimationRule.NONE);
+    }
+
+    @ParameterizedTest
+    @EnumSource(EstimationRule.class)
+    void storesTheChosenRule(EstimationRule rule) throws Exception {
+        JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"estimationRule\":\"" + rule.name()
+                + "\",\"deck\":{\"type\":\"TSHIRT\",\"cards\":[\"S\",\"M\"]}}");
+        assertThat(stored(response).estimationRule()).isEqualTo(rule);
+        assertThat(stored(response).deck().type()).isEqualTo(DeckType.TSHIRT);
+    }
+
+    @Test
+    void anExplicitNullRuleIsReadAsNone() throws Exception {
+        // Comme « deck: null » : lu comme l'absence de règle.
+        JsonNode response = created("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"estimationRule\":null}");
+        assertThat(stored(response).estimationRule()).isEqualTo(EstimationRule.NONE);
+    }
+
+    @Test
+    void anUnknownRuleStoresNothing() throws Exception {
+        int before = store.count();
+        create("{\"pseudo\":\"Sofia\",\"role\":\"VOTER\",\"estimationRule\":\"AVERAGE\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").doesNotExist());
+        assertThat(store.count()).isEqualTo(before);
     }
 
     @Test

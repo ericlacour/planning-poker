@@ -1,6 +1,6 @@
 # Avancement du sprint — planning-poker
 
-> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 10-07-2026 11:46). Ne pas éditer à la main.
+> Généré par `node scripts/sprint-board.mjs` depuis `sprint-status.yaml` (mis à jour le 11-06-2026 18:00). Ne pas éditer à la main.
 
 ## En un coup d'œil
 
@@ -10,11 +10,11 @@
 | Epic 1 — Un premier atelier de bout en bout ✅ | `████████████████████` 8/8 (100 %) |
 | Epic 2 — Personne ne perd sa place ✅ | `████████████████████` 6/6 (100 %) |
 | Epic 3 — Des séances souples et soignées ✅ | `████████████████████` 6/6 (100 %) |
-| **Actions de rétro** | `██████████████████░░` 16/18 (89 %) |
+| **Actions de rétro** | `███████████████████░` 17/18 (94 %) |
 
 **En cours :** aucune story  
 **Prochaine story :** —  
-**Actions ouvertes :** 2
+**Actions ouvertes :** 1
 
 ## Stories
 
@@ -61,25 +61,20 @@
 
 ## Actions de rétrospective
 
-### 🔴 À faire (1)
-
-| # | Action | Porteur | Epic | Source |
-| --- | --- | --- | --- | --- |
-| 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
-
 ### 🟡 En cours (1)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 15 | En rédigeant chaque spec, reprendre les entrées de deferred-work.md qui la visent et les solder ou les refuser explicitement (L2, F1) | agent dev | 2 | [rétro](epic-2-retro-2026-10-05.md) |
 
-### ✅ Faites (16)
+### ✅ Faites (17)
 
 | # | Action | Porteur | Epic | Source |
 | --- | --- | --- | --- | --- |
 | 1 | Exécuter le test de charge de 10 min (5 × 13) contre Render et consigner le résultat dans deploy/README.md (R1) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 2 | Observer l'écran de réveil sur Render après une mise en veille et le consigner dans deploy/README.md (R3) | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 3 | Poser v1.0 et tenir le premier atelier réel (SM-1), après l'epic 2 et les actions 1, 2, 6 et 7 (R2)<br>↳ _Premier atelier réel tenu sur v0.3 (noté le 2026-10-05). v0.3 contient tout l'epic 2 ; pas d'étiquette v1.0, qui aurait redéployé la même application._ | Eric | 1 | [rétro](epic-1-retro-2026-10-03.md) |
+| 4 | Retirer de deferred-work.md l'entrée sur la forme de l'API Render, soldée par la PR #2, et donner un statut aux entrées (R4)<br>↳ _Fait le 2026-11-06 : entrée Render retirée, chaque entrée de deferred-work.md porte un statut (open, done ou refused) ; 5 entrées déjà réglées marquées done._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 5 | Spec 2.2 : couvrir toute coupure autre que 4401 et 4404 (y compris 4500 et 1008), avec un retour visible et sans clic perdu (F1) | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 6 | Ajouter les limites de ressources (taille des corps, nombre de sessions et de participants, débit) à l'epic 2, avec la story 2.5, avant v1.0 (F2) | Eric + agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |
 | 7 | N'autoriser le déploiement d'une étiquette v* que si la CI est verte sur ce commit, avant v1.0 (V3)<br>↳ _Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte de main avant de poser l'étiquette (deploy/README.md)._ | agent dev | 1 | [rétro](epic-1-retro-2026-10-03.md) |

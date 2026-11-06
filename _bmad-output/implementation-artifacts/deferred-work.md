@@ -1,54 +1,73 @@
+# Travail reporté
+
+Reports relevés pendant les stories et les relectures. Chaque entrée porte un statut : `open` (à faire ou à décider), `done` (réglé, avec `resolution`) ou `refused` (écarté, avec `resolution`). Une entrée réglée reste ici avec son statut pour garder la trace ; une entrée devenue sans objet peut être retirée (action de rétro 15 : en rédigeant chaque spec, reprendre les entrées qui la visent).
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-1-le-contrat-d-echange-front-webservice.md`
   summary: Faire tourner `npm ci && npm run validate && npm test` dans `contract/` en CI GitHub Actions, sous Node 24.
   evidence: Aucun workflow n'existe ; la story 1.2 (AR15) crée la CI backend, frontend et contrat.
+  status: done
+  resolution: La CI (`.github/workflows/ci.yml`, job `contract`, Node 24) lance validate et les tests depuis la story 1.2.
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-1-le-contrat-d-echange-front-webservice.md`
   summary: Vérifier automatiquement que le contrat n'évolue que par ajout (AD-13), en le comparant à la dernière version étiquetée `v*`.
   evidence: Aucune version de référence n'existe encore ; la règle n'est aujourd'hui que documentée dans `contract/README.md`.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ouvrir-l-outil-meme-quand-le-serveur-dort.md`
   summary: Ne déployer une étiquette `v*` que si la CI est verte sur ce commit (vérification des checks dans `deploy.yml`, ou règle de protection).
   evidence: Le workflow de déploiement ne consulte pas l'état de la CI ; seule la discipline humaine l'empêche aujourd'hui.
-- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-ouvrir-l-outil-meme-quand-le-serveur-dort.md`
-  summary: Confirmer au premier déploiement `v0.1` la forme réelle de la réponse `GET /v1/services/{id}/deploys` de Render et le blueprint `deploy/render.yaml`.
-  evidence: `render-deploy.sh` est testé contre une fausse API ; aucun compte Render n'était accessible pendant la story 1.2.
+  status: done
+  resolution: Contrôle manuel retenu par Eric le 2026-10-04 : vérifier la CI verte de main avant de poser l'étiquette (`deploy/README.md`, action de rétro 7).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-creer-une-session-et-en-partager-le-lien.md`
   summary: Borner les ressources du webservice : taille des corps REST, nombre de sessions en mémoire et débit de `POST /api/sessions`.
   evidence: Le pseudo brut est lu en entier avant le contrôle des 200 points de code, et le stockage en mémoire n'a ni plafond ni expiration avant la story 2.5 ; un client anonyme peut épuiser la mémoire.
+  status: done
+  resolution: Story 2.6 : taille des corps, plafond de sessions (`planning-poker.max-sessions`), débit de création par IP (`CreationRateLimiter`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
   summary: Plafonner le nombre de participants par session (et donc `nextJoinOrder`), avec les autres limites de ressources de la story 1.3.
   evidence: `Session.join` accepte des arrivées sans limite ; un client anonyme peut gonfler une session indéfiniment.
+  status: done
+  resolution: Story 2.6 : 30 participants par session (`planning-poker.max-participants`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
   summary: Décider si le pseudo doit aussi perdre les espaces insécables et caractères invisibles (U+00A0, U+200B, U+FEFF) avant comparaison, pour empêcher les sosies.
   evidence: `Pseudo` applique `String.strip()` (règle de la story 1.3) ; « Sofia » précédé d'un U+00A0 rejoint comme un participant distinct, identique à l'écran.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-rejoindre-une-session-par-son-lien.md`
   summary: Story 2.4 — remplacer le 409 systématique par la reprise d'un participant déconnecté portant le même pseudo (FR-8, `openapi.yaml` joinSession).
   evidence: `Session.join` lève `PseudoTakenException` pour tout pseudo présent ; la notion de déconnexion n'existait pas encore.
-
+  status: done
+  resolution: Story 2.4 : la reprise d'un participant déconnecté portant le même pseudo remplace le 409 (FR-8).
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-voir-qui-est-vraiment-la.md`
   summary: Couvrir par un test qu'un message binaire après la poignée de main compte comme activité (variante binaire de `LivenessTest.anyMessageCountsAsActivity`).
   evidence: `SessionSocketHandler.handleBinaryMessage` appelle `touch`, mais le retirer ne casse aucun test ; seul un client hors contrat (le front envoie du texte) serait touché.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-revenir-apres-une-longue-absence.md`
   summary: Borner la liste des participants retirés (`Session.departed`), qui ne se vide qu'au retour de chacun.
   evidence: Des `join` REST sans connexion la remplissent 5 min plus tard ; le plafond de 30 participants (story 2.6) ne la compte pas ; seule l'expiration à 24 h (2.5) la libère.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-reprendre-sa-place-depuis-un-autre-appareil.md`
   summary: Vérifier que « Ta place a été reprise depuis un autre appareil. » (`role="status"`, créé déjà rempli avec l'écran Rejoindre) est bien annoncé par les lecteurs d'écran.
   evidence: Non vérifié (medium si vrai) — certains lecteurs n'annoncent pas une région live insérée avec son contenu ; à tester avec NVDA et VoiceOver, sinon remplir le texte après le rendu.
-
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-une-session-qui-s-efface-d-elle-meme.md`
   summary: Vérifier par un test que le contexte sans surcharge donne aux cas d'usage les délais de production (`session-lifetime` 24 h, `absence-timeout` 5 min, `liveness-timeout` 15 s).
   evidence: Tous les tests injectent leur propre `Duration` ou surchargent la propriété ; une faute dans `application.properties` (ex. `24m`) passerait la suite (relecture verification-gap de la story 2.5).
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-un-service-qui-tient-face-aux-abus.md`
   summary: Ajouter à `CreationRateLimiterTest` un test concurrent (verrou de départ, N > max `acquire` simultanés depuis la même IP) qui vérifie qu'exactement `max` réussissent.
   evidence: Le plafond par IP sous rafale simultanée ne dépend que de `synchronized`. Tous les tests actuels appellent `acquire` depuis un seul fil, donc une régression passerait inaperçue.
-
-## Deferred from: code review of spec-3-1-changer-de-role-en-pleine-seance.md (2026-10-05)
-
-- **`HelloTimeoutTest` dépend de l'ordonnancement** : avec un délai de 0 ms et 20 connexions, rien ne garantit que le délai expire avant la fin de `afterConnectionEstablished`, donc le test pourrait passer contre l'ancien ordre. Non vérifié (medium si vrai). Pour trancher : rejouer le test contre l'ancien code plusieurs fois, ou injecter un planificateur qui exécute la tâche tout de suite.
+  status: open
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-changer-de-role-en-pleine-seance.md`
+  summary: Rendre `HelloTimeoutTest` indépendant de l'ordonnancement : avec un délai de 0 ms et 20 connexions, rien ne garantit que le délai expire avant la fin de `afterConnectionEstablished`, donc le test pourrait passer contre l'ancien ordre.
+  evidence: Non vérifié (medium si vrai), relevé en relecture de code le 2026-10-05. Pour trancher : rejouer le test contre l'ancien code plusieurs fois, ou injecter un planificateur qui exécute la tâche tout de suite.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-garder-le-serveur-eveille-par-http.md`
   summary: Vérifier sur Render qu'une page de session ouverte plus de 15 min (onglet caché) empêche bien la mise en veille, et le consigner dans `deploy/README.md`.
   evidence: Les tests simulent le webservice ; seul un essai sur Render prouve que l'appel `/api/health` toutes les 5 min (et le `heartbeat` WebSocket) gardent le service éveillé.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-proposer-une-estimation-apres-revelation.md`
   summary: Décider comment le front survit à un déploiement qui ajoute des champs requis à `sessionState` (rechargement forcé, contrôle de version ou parseur tolérant), puisque `hasExactly` rejette tout champ inconnu.
   evidence: Un onglet ouvert sur l'ancienne version rejette chaque `sessionState` portant `estimationRule` / `summary.proposal` ; même situation lors de l'ajout de `deck` (commit ce4fb4c), donc préexistant.
+  status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-proposer-une-estimation-apres-revelation.md`
   summary: Stabiliser `LimitsEndToEndTest.aMessageOverTheLimitClosesWith1009`, qui a reçu une fois 1006 au lieu de 1009 pendant un `./mvnw verify` complet.
   evidence: Échec isolé le 06/11/2026 sans changement du code de production depuis le run vert précédent ; le test passe 3 fois sur 3 seul et le `verify` suivant passe (528 tests).
+  status: open

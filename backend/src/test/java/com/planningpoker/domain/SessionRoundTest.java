@@ -35,6 +35,15 @@ class SessionRoundTest {
                 .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW, 30);
     }
 
+    /** La même table, dans une session créée avec cette règle de proposition. */
+    private static Session table(EstimationRule rule) {
+        return Session.create("k3Jx9QvT2mLpZ8wR4nYb7A", ROUND, ALICE, Pseudo.of("Alice"), Role.VOTER,
+                ParticipantToken.of("alice"), NOW, Deck.standard(), rule)
+                .join(BOB, Pseudo.of("Bob"), Role.VOTER, ParticipantToken.of("bob"), NOW, 30)
+                .join(CHLOE, Pseudo.of("Chloé"), Role.VOTER, ParticipantToken.of("chloe"), NOW, 30)
+                .join(EMMA, Pseudo.of("Emma"), Role.OBSERVER, ParticipantToken.of("emma"), NOW, 30);
+    }
+
     private static SessionSnapshot.Seat seat(SessionSnapshot snapshot, UUID participantId) {
         return snapshot.participants().stream().filter(s -> s.participantId().equals(participantId)).findFirst()
                 .orElseThrow();
@@ -69,7 +78,7 @@ class SessionRoundTest {
             assertThat(seat(snapshot, CHLOE).vote()).isEqualTo("8");
             assertThat(snapshot.summary()).isEqualTo(new Summary(new BigDecimal("5.3"),
                     new Summary.MostVoted(List.of(Card.THREE, Card.FIVE, Card.EIGHT), 1), Card.THREE, Card.EIGHT,
-                    false));
+                    false, null, false));
         }
     }
 
@@ -203,7 +212,8 @@ class SessionRoundTest {
         assertThat(secondReveal.roundId()).isEqualTo(ROUND);
         assertThat(secondReveal.votes()).containsOnly(entry(BOB, Card.THIRTEEN), entry(CHLOE, Card.EIGHT));
         assertThat(secondReveal.summary()).contains(new Summary(new BigDecimal("10.5"),
-                new Summary.MostVoted(List.of(Card.EIGHT, Card.THIRTEEN), 1), Card.EIGHT, Card.THIRTEEN, false));
+                new Summary.MostVoted(List.of(Card.EIGHT, Card.THIRTEEN), 1), Card.EIGHT, Card.THIRTEEN, false,
+                null, false));
         assertThat(secondReveal.version()).isEqualTo(revoted.version() + 1);
         assertThat(secondReveal.lastChange()).isEqualTo(LastChange.of(ChangeAction.REVEAL, CHLOE));
     }
@@ -338,5 +348,42 @@ class SessionRoundTest {
                 .join(FARID, Pseudo.of("Farid"), Role.VOTER, ParticipantToken.of("farid"), NOW, 30)
                 .connect(FARID, "farid-1", NOW).disconnect(FARID, "farid-1", NOW);
         assertThat(seat(SessionSnapshot.forRecipient(joined, FARID), FARID).canVoteThisRound()).isFalse();
+    }
+
+    // --- proposition d'estimation ---
+
+    @Test
+    void everyoneSeesTheSameProposalAndTheRuleOfTheSession() {
+        Session revealed = table(EstimationRule.MEDIAN).vote(ALICE, ROUND, "3").vote(BOB, ROUND, "5")
+                .vote(CHLOE, ROUND, "8").reveal(EMMA, ROUND);
+        for (UUID recipient : new UUID[] { ALICE, BOB, CHLOE, EMMA }) {
+            SessionSnapshot snapshot = SessionSnapshot.forRecipient(revealed, recipient);
+            assertThat(snapshot.estimationRule()).isEqualTo(EstimationRule.MEDIAN);
+            assertThat(snapshot.summary().proposal()).isEqualTo(Card.FIVE);
+            assertThat(snapshot.summary().spreadTooWide()).isFalse();
+        }
+    }
+
+    @Test
+    void withoutAChosenRuleNothingIsProposed() {
+        Session revealed = table().vote(ALICE, ROUND, "3").vote(BOB, ROUND, "8").reveal(ALICE, ROUND);
+        assertThat(revealed.estimationRule()).isEqualTo(EstimationRule.NONE);
+        SessionSnapshot snapshot = SessionSnapshot.forRecipient(revealed, EMMA);
+        assertThat(snapshot.estimationRule()).isEqualTo(EstimationRule.NONE);
+        assertThat(snapshot.summary().proposal()).isNull();
+        assertThat(snapshot.summary().spreadTooWide()).isFalse();
+    }
+
+    @Test
+    void theProposalIsComputedAgainOnTheVotesOfTheMomentAfterHideOrClear() {
+        Session first = table(EstimationRule.MAX).vote(ALICE, ROUND, "3").vote(BOB, ROUND, "5").reveal(ALICE, ROUND);
+        assertThat(first.summary().orElseThrow().proposal()).isEqualTo(Card.FIVE);
+
+        Session again = first.hide(BOB, ROUND).vote(CHLOE, ROUND, "13").reveal(BOB, ROUND);
+        assertThat(again.summary().orElseThrow().proposal()).isEqualTo(Card.THIRTEEN);
+
+        Session next = again.clear(ALICE, ROUND, NEXT).vote(ALICE, NEXT, "2").reveal(ALICE, NEXT);
+        assertThat(next.summary().orElseThrow().proposal()).isEqualTo(Card.TWO);
+        assertThat(next.estimationRule()).isEqualTo(EstimationRule.MAX);
     }
 }

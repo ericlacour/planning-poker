@@ -5,7 +5,7 @@
   "description": "Complete snapshot built by the domain for one recipient, sent after each version change and on each new connection. The client replaces its state with it and never merges. Within a connection it ignores a lower version; after a reconnection it accepts the first snapshot whatever its version.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["type", "sessionId", "version", "selfParticipantId", "round", "participants", "progress", "summary", "lastChange", "deck"],
+  "required": ["type", "sessionId", "version", "selfParticipantId", "round", "participants", "progress", "summary", "lastChange", "deck", "estimationRule"],
   "properties": {
     "type": { "const": "sessionState" },
     "sessionId": { "$ref": "common.json#/$defs/sessionId" },
@@ -70,6 +70,10 @@
     "deck": {
       "description": "The cards of the session, in hand order. Identical for everyone and for the whole life of the session.",
       "$ref": "common.json#/$defs/deck"
+    },
+    "estimationRule": {
+      "description": "The rule the server applies to propose an estimate after a reveal. Identical for everyone and for the whole life of the session.",
+      "$ref": "common.json#/$defs/estimationRule"
     }
   },
   "$defs": {
@@ -98,10 +102,10 @@
       }
     },
     "summary": {
-      "description": "\"?\" and \"coffee\" are excluded. Without any numeric or size vote, every value is null and consensus is false. T-shirt sizes have no average: average is null.",
+      "description": "\"?\" and \"coffee\" are excluded. Without any numeric or size vote, every value is null, consensus and spreadTooWide are false. T-shirt sizes have no average: average is null.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["average", "mostVoted", "min", "max", "consensus"],
+      "required": ["average", "mostVoted", "min", "max", "consensus", "proposal", "spreadTooWide"],
       "properties": {
         "average": {
           "description": "Rounded to one decimal with RoundingMode.HALF_UP (5.25 gives 5.3). Displayed in French format by the front.",
@@ -131,6 +135,14 @@
         "max": { "oneOf": [{ "type": "null" }, { "$ref": "numeric-card.json" }] },
         "consensus": {
           "description": "true when all numeric votes are identical and there are at least two of them.",
+          "type": "boolean"
+        },
+        "proposal": {
+          "description": "The estimate proposed by the session's estimationRule, a ranked card of the deck; null with NONE, without any ranked vote, or when spreadTooWide is true. A suggestion only: nothing is kept.",
+          "oneOf": [{ "type": "null" }, { "$ref": "numeric-card.json" }]
+        },
+        "spreadTooWide": {
+          "description": "true only with MEDIAN, when min and max are more than 3 levels apart in the session deck: no proposal, the voters of min and max explain their vote before voting again.",
           "type": "boolean"
         }
       }

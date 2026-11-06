@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, injec
 
 import { ChangeAction, SessionState } from '../api/contract';
 import { voteCounter } from './cards';
-import { ResultLineComponent, ResultPanelComponent } from './result';
+import { ResultLineComponent, ResultPanelComponent, spreadVoters } from './result';
 import { SessionService } from './session.service';
 
 /**
@@ -40,11 +40,11 @@ export function blocksActions(state: SessionState): boolean {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (revealed()) {
-      <app-result-line class="result-line-dock" [summary]="state().summary" />
+      <app-result-line class="result-line-dock" [summary]="state().summary" [spreadVoters]="spreadVoters()" />
     }
     <div class="action-bar" [class.action-bar-revealed]="revealed()">
       @if (revealed()) {
-        <app-result-panel [summary]="state().summary" />
+        <app-result-panel [summary]="state().summary" [spreadVoters]="spreadVoters()" />
       } @else {
         <span class="vote-counter">{{ counter() }}</span>
       }
@@ -77,6 +77,8 @@ export class ActionBarComponent {
 
   protected readonly counter = computed(() => voteCounter(this.state().progress));
   protected readonly revealed = computed(() => this.state().round.status === 'REVEALED');
+  /** Qui explique son vote quand l'écart est trop grand pour proposer la médiane. */
+  protected readonly spreadVoters = computed(() => spreadVoters(this.state()));
   /** Boutons inactifs pendant 1 s après un changement d'état fait par un autre, ou après mon propre clic. */
   protected readonly guarded = signal(false);
   /** Boutons inactifs : garde de 1 s, ou connexion pas (encore) rétablie. */

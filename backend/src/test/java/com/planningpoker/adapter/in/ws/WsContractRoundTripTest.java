@@ -13,6 +13,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import com.planningpoker.ContractExamples;
 import com.planningpoker.domain.Card;
+import com.planningpoker.domain.Deck;
+import com.planningpoker.domain.EstimationRule;
 import com.planningpoker.domain.Summary;
 
 import tools.jackson.databind.DeserializationFeature;
@@ -50,7 +52,8 @@ class WsContractRoundTripTest {
 
     @ParameterizedTest
     @ValueSource(strings = { "alone-after-create", "hidden-round", "new-round-after-sweep", "revealed-consensus",
-            "revealed-no-numeric-vote", "revealed-seen-by-observer", "revealed-tie", "revealed-tshirt-tie" })
+            "revealed-no-numeric-vote", "revealed-seen-by-observer", "revealed-tie", "revealed-tshirt-tie", "revealed-median",
+            "revealed-spread-too-wide" })
     void sessionState(String example) throws Exception {
         assertRoundTrip("session-state", example, ServerMessages.SessionStateMessage.class);
     }
@@ -99,28 +102,48 @@ class WsContractRoundTripTest {
     /** Une synthèse du domaine s'écrit comme celle de l'exemple (moyenne comparée par sa valeur). */
     @Test
     void aDomainSummaryIsWrittenLikeTheExample() throws Exception {
-        JsonNode written = writtenSummary("5", "8", "5", "8", "?");
+        JsonNode written = writtenSummary("revealed-tie", "5", "8", "5", "8", "?");
         assertThat(written.equals(NUMERIC, exampleSummary("revealed-tie"))).as(written.toString()).isTrue();
 
-        written = writtenSummary("3", "3", "coffee");
+        written = writtenSummary("revealed-consensus", "3", "3", "coffee");
         assertThat(written.equals(NUMERIC, exampleSummary("revealed-consensus"))).as(written.toString()).isTrue();
         assertThat(written.get("average").isNumber()).isTrue();
 
         // Sans carte chiffrée : un objet aux valeurs nulles, jamais « summary: null » sur un tour révélé.
-        written = writtenSummary("?", "coffee");
+        written = writtenSummary("revealed-no-numeric-vote", "?", "coffee");
         assertThat(written.equals(NUMERIC, exampleSummary("revealed-no-numeric-vote"))).as(written.toString()).isTrue();
+        assertThat(written.get("proposal").isNull()).isTrue();
     }
 
     @Test
     void aSizeSummaryIsWrittenLikeTheExampleWithoutAnAverage() throws Exception {
-        JsonNode written = writtenSummary("M", "L", "M", "L");
+        JsonNode written = writtenSummary("revealed-tshirt-tie", "M", "L", "M", "L");
         assertThat(written.equals(NUMERIC, exampleSummary("revealed-tshirt-tie"))).as(written.toString()).isTrue();
         assertThat(written.get("average").isNull()).isTrue();
     }
 
-    private JsonNode writtenSummary(String... cards) throws Exception {
+    /** La proposition du domaine s'écrit comme celle des exemples : médiane, puis écart trop grand. */
+    @Test
+    void aDomainProposalIsWrittenLikeTheExamples() throws Exception {
+        JsonNode written = writtenSummary("revealed-median", "3", "5", "5", "8");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-median"))).as(written.toString()).isTrue();
+
+        written = writtenSummary("revealed-spread-too-wide", "2", "13", "5", "5", "?");
+        assertThat(written.equals(NUMERIC, exampleSummary("revealed-spread-too-wide"))).as(written.toString()).isTrue();
+        assertThat(written.get("proposal").isNull()).isTrue();
+        assertThat(written.get("spreadTooWide").asBoolean()).isTrue();
+    }
+
+    /** Synthèse du domaine pour ces votes, avec le jeu et la règle de l'exemple. */
+    private JsonNode writtenSummary(String example, String... cards) throws Exception {
+        JsonNode state = jsonMapper.readTree(ContractExamples.read("session-state", example));
+        List<String> deckCards = new java.util.ArrayList<>();
+        state.get("deck").get("cards").forEach(c -> deckCards.add(c.asString()));
+        Deck deck = Deck.of(state.get("deck").get("type").asString(), deckCards);
+        EstimationRule rule = EstimationRule.valueOf(state.get("estimationRule").asString());
         List<Card> votes = Stream.of(cards).map(c -> Card.of(c).orElseThrow()).toList();
-        return jsonMapper.readTree(jsonMapper.writeValueAsString(ServerMessages.SummaryView.of(Summary.of(votes))));
+        return jsonMapper.readTree(
+                jsonMapper.writeValueAsString(ServerMessages.SummaryView.of(Summary.of(votes, deck, rule))));
     }
 
     private JsonNode exampleSummary(String example) throws Exception {

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, input, linkedSignal, output, signal, viewChildren } from '@angular/core';
 
-import { Card, DECK_FAMILIES, Deck, DeckType, MIN_DECK_CARDS, Role } from '../api/contract';
+import { Card, DECK_FAMILIES, Deck, DeckType, EstimationRule, MIN_DECK_CARDS, Role } from '../api/contract';
 import { cardName, cardText } from '../session/cards';
 
 export interface EntryFormValue {
@@ -8,6 +8,8 @@ export interface EntryFormValue {
   readonly role: Role;
   /** Le jeu choisi ; présent seulement quand le formulaire propose de le choisir (création d'une session). */
   readonly deck?: Deck;
+  /** La règle de proposition choisie ; présente seulement à la création d'une session, comme le jeu. */
+  readonly estimationRule?: EstimationRule;
 }
 
 const ROLES: readonly { readonly value: Role; readonly label: string }[] = [
@@ -20,12 +22,20 @@ const DECK_TYPES: readonly { readonly value: DeckType; readonly label: string }[
   { value: 'TSHIRT', label: 'Tailles de tee-shirt' },
 ];
 
+const ESTIMATION_RULES: readonly { readonly value: EstimationRule; readonly label: string }[] = [
+  { value: 'NONE', label: 'Aucune' },
+  { value: 'MAX', label: 'La plus grande' },
+  { value: 'MEDIAN', label: 'Médiane' },
+  { value: 'BELOW_MAX', label: 'Juste sous le max' },
+];
+
 /**
  * Formulaire d'entrée commun à l'Accueil et à Rejoindre (`entry-form`) : « Ton pseudo », « Ton rôle »
  * (« Je vote » par défaut) et un bouton pleine largeur, inactif tant que le pseudo est vide ou blanc. À la création
  * d'une session (`withDeck`), « Cartes de la session » propose la suite de Fibonacci ou les tailles de tee-shirt,
- * toutes les cartes retenues au départ : on en retire à volonté, mais il en reste au moins deux. Ce choix est
- * définitif pour la session.
+ * toutes les cartes retenues au départ : on en retire à volonté, mais il en reste au moins deux. Dessous,
+ * « Proposition d'estimation » choisit la règle que le webservice applique à chaque révélation (« Aucune » par
+ * défaut). Ces choix sont définitifs pour la session.
  */
 @Component({
   selector: 'app-entry-form',
@@ -130,6 +140,27 @@ const DECK_TYPES: readonly { readonly value: DeckType; readonly label: string }[
             }
           </p>
         </div>
+
+        <div class="rule-group">
+          <span class="field-label" id="entry-rule-label">Proposition d'estimation</span>
+          <div class="roles rules" role="radiogroup" aria-labelledby="entry-rule-label">
+            @for (option of estimationRules; track option.value) {
+              <button
+                #ruleButton
+                type="button"
+                class="role"
+                role="radio"
+                [attr.aria-checked]="estimationRule() === option.value"
+                [attr.tabindex]="estimationRule() === option.value ? 0 : -1"
+                [disabled]="busy()"
+                (click)="estimationRule.set(option.value)"
+                (keydown)="onRuleKeydown($event)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+        </div>
       }
 
       <button type="submit" class="btn btn-primary entry-form-submit" [disabled]="!canSubmit()">
@@ -175,6 +206,8 @@ export class EntryFormComponent {
   protected readonly name = cardName;
   protected readonly text = cardText;
   protected readonly deckType = signal<DeckType>('FIBONACCI');
+  protected readonly estimationRules = ESTIMATION_RULES;
+  protected readonly estimationRule = signal<EstimationRule>('NONE');
   /** Cartes retirées du jeu, par famille : changer de famille ne perd pas le choix fait dans l'autre. */
   private readonly dropped = signal<Readonly<Record<DeckType, readonly Card[]>>>({ FIBONACCI: [], TSHIRT: [] });
   protected readonly familyCards = computed(() => DECK_FAMILIES[this.deckType()]);
@@ -190,6 +223,7 @@ export class EntryFormComponent {
 
   private readonly roleButtons = viewChildren<ElementRef<HTMLButtonElement>>('roleButton');
   private readonly deckButtons = viewChildren<ElementRef<HTMLButtonElement>>('deckButton');
+  private readonly ruleButtons = viewChildren<ElementRef<HTMLButtonElement>>('ruleButton');
 
   protected isKept(card: Card): boolean {
     return !this.dropped()[this.deckType()].includes(card);
@@ -218,7 +252,9 @@ export class EntryFormComponent {
       this.submitted.emit({
         pseudo: this.pseudo(),
         role: this.role(),
-        ...(this.withDeck() ? { deck: { type: this.deckType(), cards: this.keptCards() } } : {}),
+        ...(this.withDeck()
+          ? { deck: { type: this.deckType(), cards: this.keptCards() }, estimationRule: this.estimationRule() }
+          : {}),
       });
     }
   }
@@ -243,5 +279,16 @@ export class EntryFormComponent {
     const next = (index + step + DECK_TYPES.length) % DECK_TYPES.length;
     this.deckType.set(DECK_TYPES[next].value);
     this.deckButtons()[next]?.nativeElement.focus();
+  }
+
+  /** Même navigation que le rôle : les flèches passent d'une règle de proposition à l'autre et la choisissent. */
+  protected onRuleKeydown(event: KeyboardEvent): void {
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const index = ESTIMATION_RULES.findIndex((option) => option.value === this.estimationRule());
+    const next = (index + step + ESTIMATION_RULES.length) % ESTIMATION_RULES.length;
+    this.estimationRule.set(ESTIMATION_RULES[next].value);
+    this.ruleButtons()[next]?.nativeElement.focus();
   }
 }

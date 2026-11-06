@@ -72,7 +72,7 @@ const revealed = (version: number, by: string) => ({
     { ...bob, vote: '8', hasVoted: true },
     emma,
   ],
-  summary: { average: 6.5, mostVoted: { values: ['5', '8'], count: 1 }, min: '5', max: '8', consensus: false },
+  summary: { average: 6.5, mostVoted: { values: ['5', '8'], count: 1 }, min: '5', max: '8', consensus: false, proposal: null, spreadTooWide: false },
   lastChange: { action: 'REVEAL', byParticipantId: by },
 });
 
@@ -132,6 +132,9 @@ test('révéler, lire le résultat, passer au tour suivant', async ({ page }) =>
   await expect(page.locator('.result-min')).toHaveText(/Min\s*5/);
   await expect(page.locator('.result-max')).toHaveText(/Max\s*8/);
   await expect(page.locator('.consensus-badge')).toHaveCount(0);
+  // Session créée sans règle (« Aucune ») : ni « Proposition », ni « Écart trop grand ».
+  await expect(page.getByText('Proposition')).toHaveCount(0);
+  await expect(page.getByText('Écart trop grand')).toHaveCount(0);
   await expect(button(page, 'Masquer')).toBeEnabled();
   await expect(button(page, 'Nouveau tour')).toBeEnabled();
   await expect(page.getByRole('toolbar', { name: 'Ta carte' })).toHaveAttribute('aria-disabled', 'true');
@@ -152,6 +155,125 @@ test('révéler, lire le résultat, passer au tour suivant', async ({ page }) =>
     { type: 'reveal', roundId: ROUND },
     { type: 'clear', roundId: ROUND },
   ]);
+  await check();
+});
+
+/** Session créée avec « Médiane » : le même tour révélé, la proposition calculée par le webservice. */
+const withMedian = <T extends object>(state: T, summary?: object) => ({
+  ...state,
+  estimationRule: 'MEDIAN',
+  ...(summary ? { summary } : {}),
+});
+
+test('médiane : votant et observateur voient la même proposition, recalculée après un masquage', async ({
+  page,
+  context,
+}) => {
+  const check = await watchPage(page);
+  await openWithToken(page);
+  const observer = await context.newPage();
+  await openWithToken(observer);
+  const first = withMedian(revealed(9, BOB), {
+    average: 6.5,
+    mostVoted: { values: ['5', '8'], count: 1 },
+    min: '5',
+    max: '8',
+    consensus: false,
+    proposal: '8',
+    spreadTooWide: false,
+  });
+  // Bob revote 2 après le masquage : de 2 à 8, 3 niveaux ; médiane de 2 et 5 → 5.
+  const second = withMedian(
+    {
+      ...revealed(11, BOB),
+      participants: [
+        { ...alice, vote: '5', hasVoted: true },
+        { ...bob, vote: '2', hasVoted: true },
+        emma,
+      ],
+    },
+    { average: 3.5, mostVoted: { values: ['2', '5'], count: 1 }, min: '2', max: '5', consensus: false, proposal: '5', spreadTooWide: false },
+  );
+  const sockets: { send: (message: string) => void }[] = [];
+  await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    sockets.push(ws);
+    ws.send(JSON.stringify(withMedian(hidden(8))));
+  });
+  await fakeSessionSocket(observer, SESSION_ID, (ws) => {
+    sockets.push(ws);
+    ws.send(JSON.stringify({ ...withMedian(hidden(8)), selfParticipantId: emma.participantId, participants: [
+      { ...alice, vote: null, hasVoted: true },
+      { ...bob, vote: null, hasVoted: true },
+      emma,
+    ] }));
+  });
+  await page.goto(`/s/${SESSION_ID}`);
+  await observer.goto(`/s/${SESSION_ID}`);
+  await expect(page.locator('.vote-counter')).toHaveText('2 votes sur 2');
+  await expect(observer.locator('.vote-counter')).toHaveText('2 votes sur 2');
+
+  const broadcast = (state: { participants: unknown[] }) => {
+    sockets[0].send(JSON.stringify(state));
+    sockets[1].send(JSON.stringify({ ...state, selfParticipantId: emma.participantId }));
+  };
+  broadcast(first);
+  for (const p of [page, observer]) {
+    await expect(p.locator('.result-proposal')).toHaveText(/Proposition\s*8/);
+    await expect(p.locator('.result-spread')).toHaveCount(0);
+  }
+  await expect(live(page)).toHaveText(
+    'Votes révélés. Moyenne 6,5. Plus votée 5 et 8, 1 vote chacune. Min 5, max 8. Proposition 8.',
+  );
+
+  // Masqué, revoté, révélé de nouveau : la proposition suit les votes du moment.
+  broadcast(withMedian({ ...hiddenAgain(10, BOB), participants: [
+    { ...alice, vote: '5', hasVoted: true },
+    { ...bob, vote: null, hasVoted: true },
+    emma,
+  ] }));
+  await expect(page.locator('.result-panel')).toHaveCount(0);
+  broadcast(second);
+  for (const p of [page, observer]) {
+    await expect(p.locator('.result-proposal')).toHaveText(/Proposition\s*5/);
+  }
+  await check();
+});
+
+test('médiane, écart trop grand : pas de proposition, les pseudos du min et du max expliquent leur vote', async ({
+  page,
+}) => {
+  const check = await watchPage(page);
+  await openWithToken(page);
+  const spread = withMedian(
+    {
+      ...revealed(9, BOB),
+      participants: [
+        { ...alice, vote: '2', hasVoted: true },
+        { ...bob, vote: '13', hasVoted: true },
+        emma,
+      ],
+    },
+    { average: 7.5, mostVoted: { values: ['2', '13'], count: 1 }, min: '2', max: '13', consensus: false, proposal: null, spreadTooWide: true },
+  );
+  await fakeSessionSocket(page, SESSION_ID, (ws) => {
+    ws.send(JSON.stringify(withMedian(hidden(8))));
+    ws.onMessage((message) => {
+      if ((JSON.parse(String(message)) as { type: string }).type === 'reveal') ws.send(JSON.stringify(spread));
+    });
+  });
+  await page.goto(`/s/${SESSION_ID}`);
+  await button(page, 'Révéler les votes').click();
+
+  const message = 'Écart trop grand : Alice (2) et Bob (13) expliquent leur vote, puis revotez';
+  await expect(page.locator('.result-spread')).toHaveText(message);
+  await expect(page.locator('.result-proposal')).toHaveCount(0);
+  await expect(live(page)).toHaveText(
+    `Votes révélés. Moyenne 7,5. Plus votée 2 et 13, 1 vote chacune. Min 2, max 13. ${message}.`,
+  );
+
+  // Téléphone : le message sous la ligne condensée.
+  await page.setViewportSize({ width: 360, height: 740 });
+  await expect(page.locator('.result-line-spread')).toHaveText(message);
   await check();
 });
 

@@ -35,7 +35,7 @@ final class ServerMessages {
     /** {@code session-state.json} : instantané pour un destinataire, sans aucun jeton. */
     record SessionStateMessage(String type, String sessionId, long version, String selfParticipantId,
             RoundView round, List<ParticipantView> participants, ProgressView progress, SummaryView summary,
-            LastChangeView lastChange, DeckView deck) {
+            LastChangeView lastChange, DeckView deck, String estimationRule) {
 
         static SessionStateMessage of(SessionSnapshot snapshot) {
             return new SessionStateMessage("sessionState", snapshot.sessionId(), snapshot.version(),
@@ -48,7 +48,8 @@ final class ServerMessages {
                             snapshot.lastChange().byParticipantId() == null ? null
                                     : snapshot.lastChange().byParticipantId().toString()),
                     new DeckView(snapshot.deck().type().name(),
-                            snapshot.deck().cards().stream().map(Card::value).toList()));
+                            snapshot.deck().cards().stream().map(Card::value).toList()),
+                    snapshot.estimationRule().name());
         }
     }
 
@@ -71,8 +72,12 @@ final class ServerMessages {
     record ProgressView(int voted, int expected) {
     }
 
-    /** Synthèse d'un tour révélé, calculée par le domaine ; {@code average} écrite en nombre JSON. */
-    record SummaryView(BigDecimal average, MostVotedView mostVoted, String min, String max, boolean consensus) {
+    /**
+     * Synthèse d'un tour révélé, calculée par le domaine ; {@code average} écrite en nombre JSON, {@code proposal}
+     * selon la règle de la session.
+     */
+    record SummaryView(BigDecimal average, MostVotedView mostVoted, String min, String max, boolean consensus,
+            String proposal, boolean spreadTooWide) {
 
         /** {@code null} pendant un tour caché. */
         static SummaryView of(Summary summary) {
@@ -85,7 +90,9 @@ final class ServerMessages {
                                     summary.mostVoted().count()),
                     summary.min() == null ? null : summary.min().value(),
                     summary.max() == null ? null : summary.max().value(),
-                    summary.consensus());
+                    summary.consensus(),
+                    summary.proposal() == null ? null : summary.proposal().value(),
+                    summary.spreadTooWide());
         }
     }
 

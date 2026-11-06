@@ -125,9 +125,14 @@ public record Round(String id, RoundStatus status, Map<UUID, Card> votes, Set<UU
         return isRevealed() && !votes.containsKey(participantId) ? withLate(participantId) : this;
     }
 
-    /** Synthèse du tour révélé ; vide pendant un tour caché (FR-14). */
-    public Optional<Summary> summary() {
-        return isRevealed() ? Optional.of(Summary.of(votes.values())) : Optional.empty();
+    /**
+     * Synthèse du tour révélé, recalculée sur les votes du moment ; vide pendant un tour caché (FR-14).
+     *
+     * @param deck jeu de la session, qui définit les niveaux de la proposition
+     * @param rule règle de proposition de la session
+     */
+    public Optional<Summary> summary(Deck deck, EstimationRule rule) {
+        return isRevealed() ? Optional.of(Summary.of(votes.values(), deck, rule)) : Optional.empty();
     }
 
     private Round withLate(UUID participantId) {

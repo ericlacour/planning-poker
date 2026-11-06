@@ -26,7 +26,7 @@ import com.planningpoker.domain.SessionFullException;
 /**
  * Erreurs REST en {@code application/problem+json} (RFC 9457), conformes à {@code problem.json} :
  * {@code type} toujours présent, propriété {@code code} pour les erreurs métier. Un corps illisible (JSON invalide,
- * rôle inconnu, champ en trop) est traité par la classe mère : 400 sans {@code code}.
+ * rôle ou règle de proposition inconnus, champ en trop) est traité par la classe mère : 400 sans {@code code}.
  */
 @RestControllerAdvice
 public class RestErrorHandler extends ResponseEntityExceptionHandler {

@@ -13,15 +13,26 @@ import java.util.Objects;
  * Synthèse d'un tour révélé (FR-14, {@code session-state.json#/$defs/summary}), calculée ici seulement : le front
  * l'affiche sans rien recalculer. Seules les cartes numériques et les tailles comptent ({@code ?} et {@code coffee}
  * exclues) ; sans vote de cette sorte, tout est nul et il n'y a pas de consensus. Les tailles n'ont pas de moyenne.
+ * La proposition suit la règle de la session ({@link EstimationRule}) ; un niveau est un pas entre deux cartes
+ * classées du jeu de la session.
  *
- * @param average   moyenne arrondie au dixième ({@code HALF_UP} : 5,25 donne 5,3), échelle 1 ; nulle pour des tailles
- * @param mostVoted valeurs les plus votées, toutes celles à égalité, dans l'ordre du jeu
- * @param consensus vrai si au moins deux votes numériques, tous identiques
+ * @param average       moyenne arrondie au dixième ({@code HALF_UP} : 5,25 donne 5,3), échelle 1 ; nulle pour des
+ *                      tailles
+ * @param mostVoted     valeurs les plus votées, toutes celles à égalité, dans l'ordre du jeu
+ * @param consensus     vrai si au moins deux votes numériques, tous identiques
+ * @param proposal      carte proposée par la règle de la session ; nulle avec {@link EstimationRule#NONE}, sans vote
+ *                      classé, ou quand l'écart est trop grand
+ * @param spreadTooWide vrai seulement avec {@link EstimationRule#MEDIAN}, quand le minimum et le maximum sont à plus
+ *                      de {@value #MAX_MEDIAN_LEVELS} niveaux : pas de proposition
  */
-public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card max, boolean consensus) {
+public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card max, boolean consensus, Card proposal,
+        boolean spreadTooWide) {
+
+    /** Écart maximal, en niveaux du jeu, entre le minimum et le maximum pour proposer la médiane. */
+    public static final int MAX_MEDIAN_LEVELS = 3;
 
     /** Aucun vote numérique. */
-    public static final Summary EMPTY = new Summary(null, null, null, null, false);
+    public static final Summary EMPTY = new Summary(null, null, null, null, false, null, false);
 
     /** @param count nombre de votes de chacune de ces valeurs */
     public record MostVoted(List<Card> values, int count) {
@@ -30,8 +41,19 @@ public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card ma
         }
     }
 
+    /** Synthèse sans proposition ({@link EstimationRule#NONE}). */
     public static Summary of(Collection<Card> votes) {
+        return of(votes, Deck.standard(), EstimationRule.NONE);
+    }
+
+    /**
+     * @param deck jeu de la session, qui contient tous les votes : il définit les niveaux
+     * @param rule règle de proposition de la session
+     */
+    public static Summary of(Collection<Card> votes, Deck deck, EstimationRule rule) {
         Objects.requireNonNull(votes, "votes");
+        Objects.requireNonNull(deck, "deck");
+        Objects.requireNonNull(rule, "rule");
         List<Card> ranked = votes.stream().filter(Card::isRanked).toList();
         if (ranked.isEmpty()) {
             return EMPTY;
@@ -48,7 +70,43 @@ public record Summary(BigDecimal average, MostVoted mostVoted, Card min, Card ma
         Card min = ranked.stream().min(Comparator.naturalOrder()).orElseThrow();
         Card max = ranked.stream().max(Comparator.naturalOrder()).orElseThrow();
         boolean consensus = ranked.size() >= 2 && counts.size() == 1;
-        return new Summary(average, new MostVoted(tied, top), min, max, consensus);
+        List<Card> sorted = ranked.stream().sorted().toList();
+        Card proposal = proposalOf(sorted, deck, rule);
+        boolean spreadTooWide = rule == EstimationRule.MEDIAN && proposal == null;
+        return new Summary(average, new MostVoted(tied, top), min, max, consensus, proposal, spreadTooWide);
+    }
+
+    /**
+     * Carte proposée pour des votes classés triés (au moins un) ; nulle avec {@link EstimationRule#NONE}, et pour la
+     * médiane quand l'écart dépasse {@value #MAX_MEDIAN_LEVELS} niveaux.
+     */
+    private static Card proposalOf(List<Card> sorted, Deck deck, EstimationRule rule) {
+        Card min = sorted.getFirst();
+        Card max = sorted.getLast();
+        if (rule == EstimationRule.NONE) {
+            return null;
+        }
+        if (min == max) {
+            return min;
+        }
+        List<Card> levels = deck.cards().stream().filter(Card::isRanked).toList();
+        int minLevel = levelOf(levels, min);
+        int maxLevel = levelOf(levels, max);
+        return switch (rule) {
+            case MAX -> max;
+            // Pour un nombre pair de votes, la carte supérieure des deux du milieu.
+            case MEDIAN -> maxLevel - minLevel > MAX_MEDIAN_LEVELS ? null : sorted.get(sorted.size() / 2);
+            case BELOW_MAX -> levels.get(maxLevel - 1);
+            case NONE -> null;
+        };
+    }
+
+    private static int levelOf(List<Card> levels, Card card) {
+        int level = levels.indexOf(card);
+        if (level < 0) {
+            throw new IllegalArgumentException("vote outside of the deck: " + card.value());
+        }
+        return level;
     }
 
     /** Moyenne au dixième des cartes numériques ; nulle pour des tailles, qui n'ont pas de valeur. */

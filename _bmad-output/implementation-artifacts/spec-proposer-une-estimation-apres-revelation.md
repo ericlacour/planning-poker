@@ -2,7 +2,7 @@
 title: 'Proposer une estimation après la révélation'
 type: 'feature'
 created: '2026-11-06'
-status: 'in-progress'
+status: 'in-review'
 baseline_commit: '6796487f2aefe5349c53c7388b5dfa2eaa7fbe52'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -73,16 +73,16 @@ Règles (décisions d'Eric du 06/11/2026) :
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `contract/` -- `common.json#/$defs/estimationRule` (`NONE`, `MAX`, `MEDIAN`, `BELOW_MAX`) ; `estimationRule` facultatif dans `create-session-request.json`, requis dans `session-state.json` ; `summary.proposal` (carte classée ou null) et `summary.spreadTooWide` (booléen) requis ; exemples mis à jour et ajoutés (médiane, écart trop grand) ; `validate.mjs` vérifie la proposition contre les votes et le jeu ; README.
-- [ ] `backend/.../domain/EstimationRule.java` (nouveau), `Summary.java` -- calcul de `proposal` et `spreadTooWide` à partir des votes, du jeu et de la règle.
-- [ ] `backend/.../domain/Session.java`, `Round.java`, `SessionSnapshot.java` -- porter la règle (figée) jusqu'à la synthèse et l'instantané.
-- [ ] `backend/.../application/CreateSessionUseCase.java`, `adapter/in/rest/CreateSessionRequest.java`, `SessionController.java` -- lire la règle (défaut `NONE`) ; valeur inconnue = corps mal formé (400 sans code).
-- [ ] `backend/.../adapter/in/ws/ServerMessages.java` -- exposer `estimationRule`, `proposal`, `spreadTooWide`.
-- [ ] Tests back -- `SummaryTest` (toute la matrice), `SessionControllerTest`, round-trips de contrat.
-- [ ] `frontend/src/app/api/contract.ts` -- types, parseurs stricts, `createSessionRequest`.
-- [ ] `frontend/src/app/entry-form/entry-form.component.ts` -- groupe radio « Proposition d'estimation » (Aucune, La plus grande, Médiane, Juste sous le max), « Aucune » cochée, flèches, envoyé à la création seulement.
-- [ ] `frontend/src/app/session/result.ts` (+ `styles/reveal.css` si besoin) -- « Proposition 8 » dans le panneau et la ligne téléphone et l'annonce `aria-live` ; « Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez » (pseudos des votes égaux au min et au max, dans l'ordre de la table).
-- [ ] Tests front -- `contract.spec.ts`, `entry-form.component.spec.ts`, `result.spec.ts`, e2e création et révélation.
+- [x] `contract/` -- `common.json#/$defs/estimationRule` (`NONE`, `MAX`, `MEDIAN`, `BELOW_MAX`) ; `estimationRule` facultatif dans `create-session-request.json`, requis dans `session-state.json` ; `summary.proposal` (carte classée ou null) et `summary.spreadTooWide` (booléen) requis ; exemples mis à jour et ajoutés (médiane, écart trop grand) ; `validate.mjs` vérifie la proposition contre les votes et le jeu ; README.
+- [x] `backend/.../domain/EstimationRule.java` (nouveau), `Summary.java` -- calcul de `proposal` et `spreadTooWide` à partir des votes, du jeu et de la règle.
+- [x] `backend/.../domain/Session.java`, `Round.java`, `SessionSnapshot.java` -- porter la règle (figée) jusqu'à la synthèse et l'instantané.
+- [x] `backend/.../application/CreateSessionUseCase.java`, `adapter/in/rest/CreateSessionRequest.java`, `SessionController.java` -- lire la règle (défaut `NONE`) ; valeur inconnue = corps mal formé (400 sans code).
+- [x] `backend/.../adapter/in/ws/ServerMessages.java` -- exposer `estimationRule`, `proposal`, `spreadTooWide`.
+- [x] Tests back -- `SummaryTest` (toute la matrice), `SessionControllerTest`, round-trips de contrat.
+- [x] `frontend/src/app/api/contract.ts` -- types, parseurs stricts, `createSessionRequest`.
+- [x] `frontend/src/app/entry-form/entry-form.component.ts` -- groupe radio « Proposition d'estimation » (Aucune, La plus grande, Médiane, Juste sous le max), « Aucune » cochée, flèches, envoyé à la création seulement.
+- [x] `frontend/src/app/session/result.ts` (+ `styles/reveal.css` si besoin) -- « Proposition 8 » dans le panneau et la ligne téléphone et l'annonce `aria-live` ; « Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez » (pseudos des votes égaux au min et au max, dans l'ordre de la table).
+- [x] Tests front -- `contract.spec.ts`, `entry-form.component.spec.ts`, `result.spec.ts`, e2e création et révélation.
 
 **Acceptance Criteria:**
 - Given une session créée avec « Médiane », when un tour est révélé, then tous les participants (votants et observateurs) voient la même proposition.
@@ -98,6 +98,12 @@ Règles (décisions d'Eric du 06/11/2026) :
 - `(cd frontend && npm run e2e)` après `build:e2e` -- succès
 
 ## Implementation Notes
+
+- Médiane : `votes classés triés[n / 2]` (milieu pour un nombre impair, carte supérieure des deux du milieu pour un nombre pair). Niveaux = indices dans les cartes classées du jeu de la session. `spreadTooWide` n'est vrai qu'avec `MEDIAN`.
+- `Summary.of(votes)` reste une commodité (règle `NONE`) ; le domaine passe par `Summary.of(votes, deck, rule)` depuis `Round.summary(deck, rule)`.
+- Exemples : `hidden-round.json` passe en `NONE` (règle sans effet sur un tour caché) pour que les instantanés simulés des e2e qui le reprennent restent cohérents ; nouveaux `revealed-median.json`, `revealed-spread-too-wide.json`, `create-session-request/median.json`. `validate.mjs` exige un exemple de médiane et un d'écart trop grand.
+- Front : pseudos de l'écart calculés par `spreadVoters(state)` dans l'ordre de `seatsOf` (ma place en tête de son groupe) ; dans l'annonce `aria-live`, « Proposition N. » (ou le message d'écart) vient après « Consensus ! ».
+- Accueil 1280 × 600 : sur PC bas, les trois groupes radio posent leur libellé à gauche des boutons (marges 12 px) pour tenir sans défiler ; règles en 4 boutons segmentés sur PC, 2 × 2 sur téléphone.
 
 ## Spec Change Log
 

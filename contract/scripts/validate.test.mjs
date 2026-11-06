@@ -142,7 +142,7 @@ test('une moyenne de 5,25 est arrondie à 5,3 (HALF_UP)', async () => {
   editJson(dir, 'examples/session-state/revealed-consensus.json', (s) => {
     ['3', '5', '5', '8'].forEach((v, i) => { s.participants[i].vote = v; s.participants[i].hasVoted = true; });
     s.progress.voted = 4;
-    s.summary = { average: 5.3, mostVoted: { values: ['5'], count: 2 }, min: '3', max: '8', consensus: false };
+    s.summary = { average: 5.3, mostVoted: { values: ['5'], count: 2 }, min: '3', max: '8', consensus: false, proposal: '5', spreadTooWide: false };
   });
   const { errors } = await validateContract(dir);
   assert.deepEqual(errors, []);
@@ -162,7 +162,7 @@ const hiddenRoundCases = [
   ['progress.expected faux', (s) => { s.progress.expected += 1; }, 'progress.expected'],
   ['progress.voted faux', (s) => { s.progress.voted -= 1; }, 'progress.voted'],
   ['summary non nul sur tour caché', (s) => {
-    s.summary = { average: null, mostVoted: null, min: null, max: null, consensus: false };
+    s.summary = { average: null, mostVoted: null, min: null, max: null, consensus: false, proposal: null, spreadTooWide: false };
   }, 'summary doit valoir null'],
   ['selfParticipantId absent', (s) => { s.selfParticipantId = '00000000-0000-4000-8000-000000000000'; }, 'selfParticipantId absent'],
   ['observateur qui peut voter', (s) => { s.participants[4].canVoteThisRound = true; }, 'un observateur ne peut pas voter'],
@@ -196,8 +196,8 @@ test('l\'absence d\'exemple de tour caché avec le vote d\'un autre à null est 
 test('une synthèse juste écrite dans un autre ordre de clés est acceptée', async () => {
   const dir = copyContract();
   editJson(dir, 'examples/session-state/revealed-tie.json', (s) => {
-    const { consensus, max, min, mostVoted, average } = s.summary;
-    s.summary = { consensus, max, min, mostVoted, average };
+    const { consensus, max, min, mostVoted, average, proposal, spreadTooWide } = s.summary;
+    s.summary = { spreadTooWide, consensus, proposal, max, min, mostVoted, average };
   });
   const { errors } = await validateContract(dir);
   assert.deepEqual(errors, []);
@@ -257,4 +257,58 @@ test('la synthèse de tailles n\'a pas de moyenne', async () => {
   editJson(dir, 'examples/session-state/revealed-tshirt-tie.json', (s) => { s.summary.average = 3; });
   const { errors } = await validateContract(dir);
   assert.ok(hasError(errors, 'revealed-tshirt-tie.json', 'summary'), errors.join('\n'));
+});
+
+test('une proposition incohérente avec la règle de la session est signalée', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-tie.json', (s) => { s.summary.proposal = '5'; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'revealed-tie.json', 'summary incohérent'), errors.join('\n'));
+});
+
+test('la règle Aucune ne propose rien', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-tie.json', (s) => { s.estimationRule = 'NONE'; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'revealed-tie.json', 'summary incohérent'), errors.join('\n'));
+});
+
+test('la médiane compte les niveaux dans le jeu de la session', async () => {
+  // 2 et 13 sont à 4 niveaux dans toute la suite de Fibonacci, mais à 3 sans le 3 : la médiane propose alors 5.
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-spread-too-wide.json', (s) => {
+    s.deck.cards = s.deck.cards.filter((c) => c !== '3');
+  });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'revealed-spread-too-wide.json', 'summary incohérent', '"proposal":"5"'), errors.join('\n'));
+});
+
+test('juste sous le max propose la carte du jeu, même si personne ne l\'a votée', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/session-state/revealed-spread-too-wide.json', (s) => {
+    s.estimationRule = 'BELOW_MAX';
+    s.summary.proposal = '8';
+    s.summary.spreadTooWide = false;
+  });
+  editJson(dir, 'examples/session-state/revealed-median.json', (s) => { s.summary.spreadTooWide = true; });
+  const { errors } = await validateContract(dir);
+  assert.ok(!errors.some((e) => e.includes('revealed-spread-too-wide.json')), errors.join('\n'));
+  assert.ok(hasError(errors, 'revealed-median.json', 'summary incohérent'), errors.join('\n'));
+});
+
+test('une règle de proposition inconnue est refusée', async () => {
+  const dir = copyContract();
+  editJson(dir, 'examples/create-session-request/median.json', (r) => { r.estimationRule = 'AVERAGE'; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'create-session-request/median.json', 'estimationRule'), errors.join('\n'));
+});
+
+test('il faut un exemple de médiane et un exemple d\'écart trop grand', async () => {
+  const dir = copyContract();
+  rmSync(join(dir, 'examples/session-state/revealed-spread-too-wide.json'));
+  rmSync(join(dir, 'examples/session-state/revealed-median.json'));
+  editJson(dir, 'examples/session-state/revealed-consensus.json', (s) => { s.estimationRule = 'MAX'; });
+  const { errors } = await validateContract(dir);
+  assert.ok(hasError(errors, 'proposition par la médiane'), errors.join('\n'));
+  assert.ok(hasError(errors, 'écart trop grand'), errors.join('\n'));
 });

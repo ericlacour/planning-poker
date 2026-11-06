@@ -82,9 +82,9 @@ const hidden = (version = 8) => {
 };
 
 /** Synthèse de la maquette (calculée par le webservice, ici donnée telle quelle). */
-const MOCKUP_SUMMARY = { average: 5.9, mostVoted: { values: ['5'], count: 6 }, min: '3', max: '13', consensus: false };
+const MOCKUP_SUMMARY = { average: 5.9, mostVoted: { values: ['5'], count: 6 }, min: '3', max: '13', consensus: false, proposal: null, spreadTooWide: false };
 /** Égalité à trois valeurs et consensus absent : la ligne condensée la plus longue. */
-const TIE_SUMMARY = { average: 10.5, mostVoted: { values: ['3', '5', '13'], count: 3 }, min: '3', max: '21', consensus: false };
+const TIE_SUMMARY = { average: 10.5, mostVoted: { values: ['3', '5', '13'], count: 3 }, min: '3', max: '21', consensus: false, proposal: null, spreadTooWide: false };
 
 /** Tour révélé : tous ont voté sauf Karim (« n'a pas voté »). */
 const revealed = (summary: object = MOCKUP_SUMMARY, version = 9) => ({
@@ -467,7 +467,7 @@ test.describe('téléphone étroit 360 × 740', () => {
   test('consensus : moyenne et badge sur la première ligne, le reste sur la seconde', async ({ page }) => {
     const { check } = await openSession(
       page,
-      revealed({ average: 13, mostVoted: { values: ['13'], count: 10 }, min: '13', max: '13', consensus: true }),
+      revealed({ average: 13, mostVoted: { values: ['13'], count: 10 }, min: '13', max: '13', consensus: true, proposal: null, spreadTooWide: false }),
     );
     const line = page.locator('.result-line-dock');
     await expect(line.locator('.consensus-badge')).toHaveText('Consensus !');
@@ -494,6 +494,8 @@ test.describe('téléphone étroit 360 × 740', () => {
         min: '0',
         max: '21',
         consensus: false,
+        proposal: null,
+        spreadTooWide: false,
       }),
     );
     const line = page.locator('.result-line-dock');

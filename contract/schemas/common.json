@@ -51,6 +51,11 @@
           "items": { "$ref": "card.json" }
         }
       }
+    },
+    "estimationRule": {
+      "description": "How the server proposes an estimate once a round is revealed, chosen at creation and frozen afterwards. NONE: no proposal. MAX: the highest ranked vote. MEDIAN: the median of the ranked votes, the upper of the two middle ones for an even count, only if min and max are at most 3 levels apart in the session deck (a level is one step between two ranked cards of the deck). BELOW_MAX: the ranked card of the deck just below the highest vote, even if nobody voted it. When all ranked votes are identical, every rule but NONE proposes that value.",
+      "type": "string",
+      "enum": ["NONE", "MAX", "MEDIAN", "BELOW_MAX"]
     }
   }
 }

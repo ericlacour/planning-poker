@@ -121,6 +121,8 @@ const revealed = (version: number, by = BOB) => ({
     min: '5',
     max: '8',
     consensus: false,
+    proposal: null,
+    spreadTooWide: false,
   },
   lastChange: { action: 'REVEAL', byParticipantId: by },
 });
@@ -317,6 +319,8 @@ function keyboardServer() {
               min: String(Math.min(...numbers)),
               max: String(Math.max(...numbers)),
               consensus: numbers.every((n) => n === numbers[0]),
+              proposal: null,
+              spreadTooWide: false,
             }
           : null,
       lastChange: { action, byParticipantId: ALICE },
@@ -559,6 +563,8 @@ test('régions live : arrivées, compteur au plus toutes les 5 s, révélation ;
       min: '5',
       max: '5',
       consensus: true,
+      proposal: null,
+      spreadTooWide: false,
     },
     lastChange: { action: 'REVEAL', byParticipantId: BOB },
   });

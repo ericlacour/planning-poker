@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import hiddenRound from '../../../../contract/examples/session-state/hidden-round.json';
 import revealedTie from '../../../../contract/examples/session-state/revealed-tie.json';
+import revealedSpread from '../../../../contract/examples/session-state/revealed-spread-too-wide.json';
 import { ChangeAction, SessionState } from '../api/contract';
 import { ActionBarComponent, blocksActions, CROSS_CLICK_GUARD_MS } from './action-bar.component';
 import { ConnectionStatus, SessionService } from './session.service';
@@ -166,6 +167,13 @@ describe('ActionBarComponent', () => {
     expect(session.clear).toHaveBeenCalledTimes(1);
     expect(session.reveal).not.toHaveBeenCalled();
     expect(session.hide).not.toHaveBeenCalled();
+  });
+
+  it('a spread too wide names the voters of the min and the max, on PC and on the phone', () => {
+    const { element } = render(revealedSpread as SessionState);
+    const message = 'Écart trop grand : Léa (2) et Max (13) expliquent leur vote, puis revotez';
+    expect(element.querySelector('.result-spread')?.textContent?.trim()).toBe(message);
+    expect(element.querySelector('.result-line-spread')?.textContent?.trim()).toBe(message);
   });
 
   it('« Masquer » sends hide, without confirmation', () => {

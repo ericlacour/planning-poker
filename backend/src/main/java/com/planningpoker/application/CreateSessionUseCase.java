@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.planningpoker.domain.Deck;
+import com.planningpoker.domain.EstimationRule;
 import com.planningpoker.domain.IdGenerator;
 import com.planningpoker.domain.ParticipantToken;
 import com.planningpoker.domain.Pseudo;
@@ -43,13 +44,19 @@ public class CreateSessionUseCase {
         return create(rawPseudo, role, Deck.standard());
     }
 
+    /** Crée une session avec ce jeu, sans proposition d'estimation ({@link EstimationRule#NONE}). */
+    public CreateSessionResult create(String rawPseudo, Role role, Deck deck) {
+        return create(rawPseudo, role, deck, EstimationRule.NONE);
+    }
+
     /**
      * @throws com.planningpoker.domain.InvalidPseudoException si le pseudo est vide ou trop long une fois normalisé
-     * @param deck jeu de cartes de la session, figé dès sa création
+     * @param deck           jeu de cartes de la session, figé dès sa création
+     * @param estimationRule règle de proposition d'une estimation, figée dès la création
      * @throws SessionLimitReachedException                    si {@code maxSessions} sessions sont déjà en mémoire ;
      *                                                         rien n'est enregistré
      */
-    public CreateSessionResult create(String rawPseudo, Role role, Deck deck) {
+    public CreateSessionResult create(String rawPseudo, Role role, Deck deck, EstimationRule estimationRule) {
         Pseudo pseudo = Pseudo.of(rawPseudo);
         UUID participantId = ids.newParticipantId();
         String token = ids.newParticipantToken();
@@ -58,12 +65,12 @@ public class CreateSessionUseCase {
                 LOG.info("Session creation refused: session limit reached");
                 throw new SessionLimitReachedException();
             }
-            return register(pseudo, role, deck, participantId, token);
+            return register(pseudo, role, deck, estimationRule, participantId, token);
         }
     }
 
-    private CreateSessionResult register(Pseudo pseudo, Role role, Deck deck, UUID participantId,
-            String token) {
+    private CreateSessionResult register(Pseudo pseudo, Role role, Deck deck, EstimationRule estimationRule,
+            UUID participantId, String token) {
         while (true) {
             String sessionId = ids.newSessionId();
             boolean created = locks.withLock(sessionId, () -> {
@@ -71,7 +78,7 @@ public class CreateSessionUseCase {
                     return false;
                 }
                 store.save(Session.create(sessionId, ids.newRoundId(), participantId, pseudo, role,
-                        ParticipantToken.of(token), clock.instant(), deck));
+                        ParticipantToken.of(token), clock.instant(), deck, estimationRule));
                 return true;
             });
             if (created) {

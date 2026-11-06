@@ -88,6 +88,8 @@ const revealed = {
     min: '5',
     max: '8',
     consensus: false,
+    proposal: null,
+    spreadTooWide: false,
   },
   lastChange: { action: 'REVEAL', byParticipantId: BOB },
 };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import observer from '../../../../contract/examples/create-session-request/observer.json';
 import fibonacciSubset from '../../../../contract/examples/create-session-request/fibonacci-subset.json';
+import median from '../../../../contract/examples/create-session-request/median.json';
 import tshirt from '../../../../contract/examples/create-session-request/tshirt.json';
 import voter from '../../../../contract/examples/create-session-request/voter.json';
 import created from '../../../../contract/examples/create-session-response/created.json';
@@ -22,6 +23,8 @@ import {
   parseJoinSessionResponse,
   parseProblem,
   Deck,
+  ESTIMATION_RULES,
+  EstimationRule,
   Role,
 } from './contract';
 
@@ -35,6 +38,21 @@ describe('contract round trip', () => {
   it.each([tshirt, fibonacciSubset])('create-session-request with a deck %j', (example) => {
     const request = createSessionRequest(example.pseudo, example.role as Role, example.deck as Deck);
     expect(JSON.parse(JSON.stringify(request))).toEqual(example);
+  });
+
+  it('create-session-request with an estimation rule', () => {
+    const request = createSessionRequest(median.pseudo, median.role as Role, undefined, median.estimationRule as EstimationRule);
+    expect(JSON.parse(JSON.stringify(request))).toEqual(median);
+    expect(createSessionRequest('Eric', 'VOTER', tshirt.deck as Deck, 'BELOW_MAX')).toEqual({
+      pseudo: 'Eric',
+      role: 'VOTER',
+      deck: tshirt.deck,
+      estimationRule: 'BELOW_MAX',
+    });
+  });
+
+  it('knows every estimation rule of the contract', () => {
+    expect(ESTIMATION_RULES).toEqual(['NONE', 'MAX', 'MEDIAN', 'BELOW_MAX']);
   });
 
   it('create-session-response/created', () => {

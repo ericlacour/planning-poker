@@ -84,7 +84,9 @@
     },
     "min": "M",
     "max": "L",
-    "consensus": false
+    "consensus": false,
+    "proposal": "M",
+    "spreadTooWide": false
   },
   "lastChange": {
     "action": "REVEAL",
@@ -98,5 +100,6 @@
       "L",
       "XL"
     ]
-  }
+  },
+  "estimationRule": "BELOW_MAX"
 }
